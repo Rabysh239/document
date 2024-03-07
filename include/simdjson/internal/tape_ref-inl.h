@@ -17,7 +17,7 @@ constexpr const uint32_t JSON_COUNT_MASK = 0xFFFFFF;
 // tape_ref inline implementation
 //
 simdjson_inline tape_ref::tape_ref() noexcept : doc{nullptr}, json_index{0} {}
-simdjson_inline tape_ref::tape_ref(const dom::document *_doc, size_t _json_index) noexcept : doc{_doc}, json_index{_json_index} {}
+simdjson_inline tape_ref::tape_ref(dom::document *_doc, size_t _json_index) noexcept : doc{_doc}, json_index{_json_index} {}
 
 
 simdjson_inline bool tape_ref::is_document_root() const noexcept {
@@ -30,29 +30,9 @@ simdjson_inline bool tape_ref::usable() const noexcept {
 // to check the type by doing a word-to-word comparison instead of extracting the
 // most significant 8 bits.
 
-simdjson_inline bool tape_ref::is_double() const noexcept {
-  constexpr uint64_t tape_double = uint64_t(tape_type::DOUBLE)<<56;
-  return doc->tape[json_index] == tape_double;
-}
-simdjson_inline bool tape_ref::is_int64() const noexcept {
-  constexpr uint64_t tape_int64 = uint64_t(tape_type::INT64)<<56;
-  return doc->tape[json_index] == tape_int64;
-}
-simdjson_inline bool tape_ref::is_uint64() const noexcept {
-  constexpr uint64_t tape_uint64 = uint64_t(tape_type::UINT64)<<56;
-  return doc->tape[json_index] == tape_uint64;
-}
-simdjson_inline bool tape_ref::is_false() const noexcept {
-  constexpr uint64_t tape_false = uint64_t(tape_type::FALSE_VALUE)<<56;
-  return doc->tape[json_index] == tape_false;
-}
 simdjson_inline bool tape_ref::is_true() const noexcept {
   constexpr uint64_t tape_true = uint64_t(tape_type::TRUE_VALUE)<<56;
   return doc->tape[json_index] == tape_true;
-}
-simdjson_inline bool tape_ref::is_null_on_tape() const noexcept {
-  constexpr uint64_t tape_null = uint64_t(tape_type::NULL_VALUE)<<56;
-  return doc->tape[json_index] == tape_null;
 }
 
 inline size_t tape_ref::after_element() const noexcept {

@@ -13,8 +13,8 @@ namespace dom {
  */
 class object {
 public:
-  /** Create a new, invalid object */
-  simdjson_inline object() noexcept;
+//  /** Create a new, invalid object */
+//  simdjson_inline object() noexcept;
 
   class iterator {
   public:
@@ -34,35 +34,35 @@ public:
      * Part of the std::iterator interface.
      *
      */
-    inline iterator& operator++() noexcept;
-    /**
-     * Get the next key/value pair.
-     *
-     * Part of the std::iterator interface.
-     *
-     */
-    inline iterator operator++(int) noexcept;
+    inline virtual iterator& operator++() noexcept = 0;
+//    /**
+//     * Get the next key/value pair.
+//     *
+//     * Part of the std::iterator interface.
+//     *
+//     */
+//    inline iterator operator++(int) noexcept;
     /**
      * Check if these values come from the same place in the JSON.
      *
      * Part of the std::iterator interface.
      */
-    inline bool operator!=(const iterator& other) const noexcept;
-    inline bool operator==(const iterator& other) const noexcept;
-
-    inline bool operator<(const iterator& other) const noexcept;
-    inline bool operator<=(const iterator& other) const noexcept;
-    inline bool operator>=(const iterator& other) const noexcept;
-    inline bool operator>(const iterator& other) const noexcept;
+    inline virtual bool operator!=(const iterator& other) const noexcept = 0;
+//    inline bool operator==(const iterator& other) const noexcept;
+//
+//    inline bool operator<(const iterator& other) const noexcept;
+//    inline bool operator<=(const iterator& other) const noexcept;
+//    inline bool operator>=(const iterator& other) const noexcept;
+//    inline bool operator>(const iterator& other) const noexcept;
     /**
      * Get the key of this key/value pair.
      */
-    inline std::string_view key() const noexcept;
+    inline virtual std::string_view key() const noexcept = 0;
     /**
      * Get the length (in bytes) of the key in this key/value pair.
      * You should expect this function to be faster than key().size().
      */
-    inline uint32_t key_length() const noexcept;
+    inline virtual uint32_t key_length() const noexcept = 0;
     /**
      * Returns true if the key in this key/value pair is equal
      * to the provided string_view.
@@ -77,20 +77,18 @@ public:
     /**
      * Get the key of this key/value pair.
      */
-    inline const char *key_c_str() const noexcept;
+    inline virtual const char *key_c_str() const noexcept = 0;
     /**
      * Get the value of this key/value pair.
      */
-    inline element value() const noexcept;
+    inline virtual std::shared_ptr<element> value() const noexcept = 0;
+//
+//    iterator() noexcept = default;
+//    iterator(const iterator&) noexcept = default;
+//    iterator& operator=(const iterator&) noexcept = default;
 
-    iterator() noexcept = default;
-    iterator(const iterator&) noexcept = default;
-    iterator& operator=(const iterator&) noexcept = default;
+    simdjson_inline virtual ~iterator() = default;
   private:
-    simdjson_inline iterator(const internal::tape_ref &tape) noexcept;
-
-    internal::tape_ref tape;
-
     friend class object;
   };
 
@@ -99,19 +97,19 @@ public:
    *
    * Part of the std::iterable interface.
    */
-  inline iterator begin() const noexcept;
+  inline virtual std::unique_ptr<object::iterator> begin() const noexcept = 0;
   /**
    * One past the last key/value pair.
    *
    * Part of the std::iterable interface.
    */
-  inline iterator end() const noexcept;
+  inline virtual std::unique_ptr<object::iterator> end() const noexcept = 0;
   /**
    * Get the size of the object (number of keys).
    * It is a saturated value with a maximum of 0xFFFFFF: if the value
    * is 0xFFFFFF then the size is 0xFFFFFF or greater.
    */
-  inline size_t size() const noexcept;
+//  inline size_t size() const noexcept;
   /**
    * Get the value associated with the given key.
    *
@@ -185,30 +183,117 @@ public:
    * @return The value associated with this field, or:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    */
-  inline simdjson_result<element> at_key(std::string_view key) const noexcept;
+  inline virtual simdjson_result<element> at_key(std::string_view key) const noexcept = 0;
+//
+//  /**
+//   * Get the value associated with the given key in a case-insensitive manner.
+//   * It is only guaranteed to work over ASCII inputs.
+//   *
+//   * Note: The key will be matched against **unescaped** JSON.
+//   *
+//   * This function has linear-time complexity: the keys are checked one by one.
+//   *
+//   * @return The value associated with this field, or:
+//   *         - NO_SUCH_FIELD if the field does not exist in the object
+//   */
+//  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
 
-  /**
-   * Get the value associated with the given key in a case-insensitive manner.
-   * It is only guaranteed to work over ASCII inputs.
-   *
-   * Note: The key will be matched against **unescaped** JSON.
-   *
-   * This function has linear-time complexity: the keys are checked one by one.
-   *
-   * @return The value associated with this field, or:
-   *         - NO_SUCH_FIELD if the field does not exist in the object
-   */
-  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
+    inline virtual void insert(std::string key, const std::shared_ptr<element> &value) noexcept = 0;
+
+  simdjson_inline virtual ~object() = default;
 
 private:
-  simdjson_inline object(const internal::tape_ref &tape) noexcept;
-
-  internal::tape_ref tape;
 
   friend class element;
   friend struct simdjson_result<element>;
   template<typename T>
   friend class simdjson::internal::string_builder;
+
+  inline virtual void wait_until_usable() const noexcept = 0;
+
+  inline virtual std::shared_ptr<element> get_wrapped_instance() const noexcept = 0;
+};
+
+class object_d: public object {
+public:
+    using data_type = std::unordered_map<std::string, std::shared_ptr<element>>;
+    using iterator_type = data_type::const_iterator;
+
+    simdjson_inline object_d() noexcept = default;
+
+    class iterator_d : public iterator {
+    public:
+        simdjson_inline iterator_d(iterator_type _iter) noexcept;
+
+        inline iterator& operator++() noexcept override;
+
+        inline bool operator!=(const iterator& other) const noexcept override;
+
+        inline std::string_view key() const noexcept override;
+        inline uint32_t key_length() const noexcept override;
+        inline const char *key_c_str() const noexcept override;
+        inline std::shared_ptr<element> value() const noexcept override;
+
+    private:
+        iterator_type iter;
+    };
+
+    inline std::unique_ptr<object::iterator> begin() const noexcept override;
+    inline std::unique_ptr<object::iterator> end() const noexcept override;
+
+    inline simdjson_result<element> at_key(std::string_view key) const noexcept override;
+
+    inline void insert(std::string key, const std::shared_ptr<element> &value) noexcept override;
+
+private:
+    data_type data;
+
+    inline void wait_until_usable() const noexcept override;
+
+    inline std::shared_ptr<element> get_wrapped_instance() const noexcept override;
+};
+
+class object_impl: public object {
+public:
+    /** Create a new, invalid object */
+    simdjson_inline object_impl() noexcept;
+    simdjson_inline object_impl(const internal::tape_ref &tape) noexcept;
+
+    class iterator_impl : public iterator {
+    public:
+        simdjson_inline iterator_impl(const internal::tape_ref &_tape) noexcept;
+        simdjson_inline iterator_impl(const internal::tape_ref &_tape, size_t _end_json_index, std::unique_ptr<iterator> _dynamic_data_iter) noexcept;
+
+        inline iterator& operator++() noexcept override;
+
+        inline bool operator!=(const iterator& other) const noexcept override;
+
+        inline std::string_view key() const noexcept override;
+        inline uint32_t key_length() const noexcept override;
+        inline const char *key_c_str() const noexcept override;
+        inline std::shared_ptr<element> value() const noexcept override;
+
+    private:
+        internal::tape_ref tape;
+        size_t end_json_index;
+        std::unique_ptr<iterator> dynamic_data_iter;
+        bool is_const;
+    };
+
+    inline std::unique_ptr<object::iterator> begin() const noexcept override;
+    inline std::unique_ptr<object::iterator> end() const noexcept override;
+
+    inline simdjson_result<element> at_key(std::string_view key) const noexcept override;
+
+    inline void insert(std::string key, const std::shared_ptr<element> &value) noexcept override;
+
+private:
+    internal::tape_ref tape;
+    std::shared_ptr<object_d> dynamic_data;
+
+    inline void wait_until_usable() const noexcept override;
+
+    inline std::shared_ptr<element> get_wrapped_instance() const noexcept override;
 };
 
 /**
@@ -219,10 +304,10 @@ public:
   /** key in the key-value pair **/
   std::string_view key;
   /** value in the key-value pair **/
-  element value;
+  std::shared_ptr<element> value;
 
 private:
-  simdjson_inline key_value_pair(std::string_view _key, element _value) noexcept;
+  simdjson_inline key_value_pair(std::string_view _key, std::shared_ptr<element> _value) noexcept;
   friend class object;
 };
 
@@ -233,19 +318,21 @@ template<>
 struct simdjson_result<dom::object> : public internal::simdjson_result_base<dom::object> {
 public:
   simdjson_inline simdjson_result() noexcept; ///< @private
-  simdjson_inline simdjson_result(dom::object value) noexcept; ///< @private
+  simdjson_inline simdjson_result(std::shared_ptr<dom::object> value) noexcept; ///< @private
   simdjson_inline simdjson_result(error_code error) noexcept; ///< @private
 
   inline simdjson_result<dom::element> operator[](std::string_view key) const noexcept;
   inline simdjson_result<dom::element> operator[](const char *key) const noexcept;
   inline simdjson_result<dom::element> at_pointer(std::string_view json_pointer) const noexcept;
   inline simdjson_result<dom::element> at_key(std::string_view key) const noexcept;
-  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+//  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+
+  inline void insert(std::string key, const std::shared_ptr<dom::element> &value) noexcept;
 
 #if SIMDJSON_EXCEPTIONS
-  inline dom::object::iterator begin() const noexcept(false);
-  inline dom::object::iterator end() const noexcept(false);
-  inline size_t size() const noexcept(false);
+  inline std::unique_ptr<dom::object::iterator> begin() const noexcept(false);
+  inline std::unique_ptr<dom::object::iterator> end() const noexcept(false);
+//  inline size_t size() const noexcept(false);
 #endif // SIMDJSON_EXCEPTIONS
 };
 

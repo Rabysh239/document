@@ -78,6 +78,7 @@ simdjson_inline void tape_builder::visit_string(const boost::json::value &value)
     tape.append(current_string_buf_loc - doc_->string_buf.get(), internal::tape_type::STRING);
     auto &str = value.get_string();
     auto str_length = uint32_t(str.size());
+    // But only add the overflow check when the document itself exceeds 4GB
     memcpy(current_string_buf_loc, &str_length, sizeof(uint32_t));
     current_string_buf_loc += sizeof(uint32_t);
     memcpy(current_string_buf_loc, str.c_str(), str_length + 1);

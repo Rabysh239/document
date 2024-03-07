@@ -10,6 +10,7 @@
 #include "../../simdjson/internal/jsonformatutils.h"
 
 #include <cstring>
+#include <utility>
 
 namespace simdjson {
 namespace dom {
@@ -17,8 +18,8 @@ namespace dom {
 //
 // document inline implementation
 //
-inline element document::root() const noexcept {
-  return element(internal::tape_ref(this, 1));
+inline simdjson_result<element> document::root() noexcept {
+    return {std::make_unique<element_impl>(element_impl(internal::tape_ref(this, 1)))};
 }
 simdjson_warn_unused
 inline size_t document::capacity() const noexcept {
@@ -151,6 +152,15 @@ inline bool document::dump_raw_tape(std::ostream &os) const noexcept {
   os << tape_idx << " : " << type << "\t// pointing to " << payload
      << " (start root)\n";
   return true;
+}
+
+error_code document::add(std::string_view json_pointer, std::string key, const std::shared_ptr<element> &value) noexcept {
+    auto element_from_pointer = root().at_pointer(json_pointer);
+    if (!element_from_pointer.is_object()) {
+        return INCORRECT_TYPE;
+    }
+    element_from_pointer.get_object().insert(std::move(key), value);
+    return SUCCESS;
 }
 
 } // namespace dom

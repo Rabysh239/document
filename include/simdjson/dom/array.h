@@ -14,6 +14,7 @@ class array {
 public:
   /** Create a new, invalid array */
   simdjson_inline array() noexcept;
+  simdjson_inline array(const internal::tape_ref &tape) noexcept;
 
   class iterator {
   public:
@@ -26,7 +27,7 @@ public:
     /**
      * Get the actual value
      */
-    inline reference operator*() const noexcept;
+    inline simdjson_result<element> operator*() const noexcept;
     /**
      * Get the next value.
      *
@@ -127,7 +128,6 @@ public:
   inline simdjson_result<element> at(size_t index) const noexcept;
 
 private:
-  simdjson_inline array(const internal::tape_ref &tape) noexcept;
   internal::tape_ref tape;
   friend class element;
   friend struct simdjson_result<element>;
@@ -144,6 +144,7 @@ struct simdjson_result<dom::array> : public internal::simdjson_result_base<dom::
 public:
   simdjson_inline simdjson_result() noexcept; ///< @private
   simdjson_inline simdjson_result(dom::array value) noexcept; ///< @private
+  simdjson_inline simdjson_result(std::shared_ptr<dom::array> value) noexcept; ///< @private
   simdjson_inline simdjson_result(error_code error) noexcept; ///< @private
 
   inline simdjson_result<dom::element> at_pointer(std::string_view json_pointer) const noexcept;

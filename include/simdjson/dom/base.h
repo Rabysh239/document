@@ -33,6 +33,7 @@ class document_stream;
 class element;
 class key_value_pair;
 class object;
+class object_d;
 class parser;
 
 #ifdef SIMDJSON_THREADS_ENABLED

@@ -67,7 +67,7 @@ simdjson_inline error_code simdjson_result_base<T>::error() const noexcept {
 template<typename T>
 simdjson_inline T& simdjson_result_base<T>::value() & noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
-  return this->first;
+  return *this->first;
 }
 
 template<typename T>
@@ -78,7 +78,7 @@ simdjson_inline T&& simdjson_result_base<T>::value() && noexcept(false) {
 template<typename T>
 simdjson_inline T&& simdjson_result_base<T>::take_value() && noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
-  return std::forward<T>(this->first);
+  return std::forward<T>(*this->first);
 }
 
 template<typename T>
@@ -90,26 +90,29 @@ simdjson_inline simdjson_result_base<T>::operator T&&() && noexcept(false) {
 
 template<typename T>
 simdjson_inline const T& simdjson_result_base<T>::value_unsafe() const& noexcept {
-  return this->first;
+  return *this->first;
 }
 
 template<typename T>
 simdjson_inline T&& simdjson_result_base<T>::value_unsafe() && noexcept {
-  return std::forward<T>(this->first);
+  return std::forward<T>(*this->first);
 }
 
 template<typename T>
-simdjson_inline simdjson_result_base<T>::simdjson_result_base(T &&value, error_code error) noexcept
-    : std::pair<T, error_code>(std::forward<T>(value), error) {}
+simdjson_inline simdjson_result_base<T>::simdjson_result_base(std::shared_ptr<T> value, error_code error) noexcept
+    : std::pair<std::shared_ptr<T>, error_code>(std::move(value), error) {}
 template<typename T>
 simdjson_inline simdjson_result_base<T>::simdjson_result_base(error_code error) noexcept
-    : simdjson_result_base(T{}, error) {}
+    : simdjson_result_base(nullptr, error) {}
+template<typename T>
+simdjson_inline simdjson_result_base<T>::simdjson_result_base(std::shared_ptr<T> value) noexcept
+    : simdjson_result_base(std::move(value), SUCCESS) {}
 template<typename T>
 simdjson_inline simdjson_result_base<T>::simdjson_result_base(T &&value) noexcept
-    : simdjson_result_base(std::forward<T>(value), SUCCESS) {}
+    : simdjson_result_base(std::make_shared<T>(value), SUCCESS) {}
 template<typename T>
 simdjson_inline simdjson_result_base<T>::simdjson_result_base() noexcept
-    : simdjson_result_base(T{}, UNINITIALIZED) {}
+    : simdjson_result_base(nullptr, UNINITIALIZED) {}
 
 } // namespace internal
 
@@ -167,15 +170,15 @@ simdjson_inline T&& simdjson_result<T>::value_unsafe() && noexcept {
 }
 
 template<typename T>
-simdjson_inline simdjson_result<T>::simdjson_result(T &&value, error_code error) noexcept
-    : internal::simdjson_result_base<T>(std::forward<T>(value), error) {}
+simdjson_inline simdjson_result<T>::simdjson_result(std::shared_ptr<T> value, error_code error) noexcept
+    : internal::simdjson_result_base<T>(std::move(value), error) {}
 template<typename T>
 simdjson_inline simdjson_result<T>::simdjson_result(error_code error) noexcept
     : internal::simdjson_result_base<T>(error) {}
 template<typename T>
 simdjson_inline simdjson_result<T>::simdjson_result(T &&value) noexcept
-    : internal::simdjson_result_base<T>(std::forward<T>(value)) {}
-template<typename T>
+    : internal::simdjson_result_base<T>(std::make_shared<T>(value)) {}
+    template<typename T>
 simdjson_inline simdjson_result<T>::simdjson_result() noexcept
     : internal::simdjson_result_base<T>() {}
 

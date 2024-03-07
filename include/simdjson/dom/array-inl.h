@@ -20,6 +20,8 @@ simdjson_inline simdjson_result<dom::array>::simdjson_result() noexcept
     : internal::simdjson_result_base<dom::array>() {}
 simdjson_inline simdjson_result<dom::array>::simdjson_result(dom::array value) noexcept
     : internal::simdjson_result_base<dom::array>(std::forward<dom::array>(value)) {}
+simdjson_inline simdjson_result<dom::array>::simdjson_result(std::shared_ptr<dom::array> value) noexcept
+        : internal::simdjson_result_base<dom::array>(std::move(value)) {}
 simdjson_inline simdjson_result<dom::array>::simdjson_result(error_code error) noexcept
     : internal::simdjson_result_base<dom::array>(error) {}
 
@@ -27,26 +29,26 @@ simdjson_inline simdjson_result<dom::array>::simdjson_result(error_code error) n
 
 inline dom::array::iterator simdjson_result<dom::array>::begin() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
-  return first.begin();
+  return first->begin();
 }
 inline dom::array::iterator simdjson_result<dom::array>::end() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
-  return first.end();
+  return first->end();
 }
 inline size_t simdjson_result<dom::array>::size() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
-  return first.size();
+  return first->size();
 }
 
 #endif // SIMDJSON_EXCEPTIONS
 
 inline simdjson_result<dom::element> simdjson_result<dom::array>::at_pointer(std::string_view json_pointer) const noexcept {
   if (error()) { return error(); }
-  return first.at_pointer(json_pointer);
+  return first->at_pointer(json_pointer);
 }
 inline simdjson_result<dom::element> simdjson_result<dom::array>::at(size_t index) const noexcept {
   if (error()) { return error(); }
-  return first.at(index);
+  return first->at(index);
 }
 
 namespace dom {
@@ -75,7 +77,7 @@ inline size_t array::number_of_slots() const noexcept {
 inline simdjson_result<element> array::at_pointer(std::string_view json_pointer) const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   if(json_pointer.empty()) { // an empty string means that we return the current node
-      return element(this->tape); // copy the current node
+      return {std::make_unique<element_impl>(element_impl(this->tape))}; // copy the current node
   } else if(json_pointer[0] != '/') { // otherwise there is an error
       return INVALID_JSON_POINTER;
   }
@@ -127,8 +129,8 @@ inline simdjson_result<element> array::at(size_t index) const noexcept {
 // array::iterator inline implementation
 //
 simdjson_inline array::iterator::iterator(const internal::tape_ref &_tape) noexcept : tape{_tape} { }
-inline element array::iterator::operator*() const noexcept {
-  return element(tape);
+inline simdjson_result<element> array::iterator::operator*() const noexcept {
+  return {std::make_unique<element_impl>(element_impl(tape))};
 }
 inline array::iterator& array::iterator::operator++() noexcept {
   tape.json_index = tape.after_element();

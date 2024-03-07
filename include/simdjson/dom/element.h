@@ -30,11 +30,8 @@ enum class element_type {
  */
 class element {
 public:
-  /** Create a new, invalid element. */
-  simdjson_inline element() noexcept;
-
   /** The type of this element. */
-  simdjson_inline element_type type() const noexcept;
+  simdjson_inline virtual element_type type() const noexcept = 0;
 
   /**
    * Cast this element to an array.
@@ -66,7 +63,7 @@ public:
    *          be invalidated the next time it parses a document or when it is destroyed.
    *          Returns INCORRECT_TYPE if the JSON element is not a string.
    */
-  inline simdjson_result<const char *> get_c_str() const noexcept;
+  inline virtual simdjson_result<const char *> get_c_str() const noexcept = 0;
   /**
    * Gives the length in bytes of the string.
    *
@@ -76,7 +73,7 @@ public:
    * @returns A string length in bytes.
    *          Returns INCORRECT_TYPE if the JSON element is not a string.
    */
-  inline simdjson_result<size_t> get_string_length() const noexcept;
+  inline virtual simdjson_result<size_t> get_string_length() const noexcept = 0;
   /**
    * Cast this element to a string.
    *
@@ -86,7 +83,7 @@ public:
    *          parses a document or when it is destroyed.
    *          Returns INCORRECT_TYPE if the JSON element is not a string.
    */
-  inline simdjson_result<std::string_view> get_string() const noexcept;
+  inline virtual simdjson_result<std::string_view> get_string() const noexcept = 0;
   /**
    * Cast this element to a signed integer.
    *
@@ -396,31 +393,31 @@ public:
    *         - INVALID_JSON_POINTER if the JSON pointer is invalid and cannot be parsed
    */
   inline simdjson_result<element> at_pointer(const std::string_view json_pointer) const noexcept;
-
-#ifndef SIMDJSON_DISABLE_DEPRECATED_API
-  /**
-   *
-   * Version 0.4 of simdjson used an incorrect interpretation of the JSON Pointer standard
-   * and allowed the following :
-   *
-   *   dom::parser parser;
-   *   element doc_ = parser.parse(R"({ "foo": { "a": [ 10, 20, 30 ] }})"_padded);
-   *   doc_.at("foo/a/1") == 20
-   *
-   * Though it is intuitive, it is not compliant with RFC 6901
-   * https://tools.ietf.org/html/rfc6901
-   *
-   * For standard compliance, use the at_pointer function instead.
-   *
-   * @return The value associated with the given JSON pointer, or:
-   *         - NO_SUCH_FIELD if a field does not exist in an object
-   *         - INDEX_OUT_OF_BOUNDS if an array index is larger than an array length
-   *         - INCORRECT_TYPE if a non-integer is used to access an array
-   *         - INVALID_JSON_POINTER if the JSON pointer is invalid and cannot be parsed
-   */
-  [[deprecated("For standard compliance, use at_pointer instead, and prefix your pointers with a slash '/', see RFC6901 ")]]
-  inline simdjson_result<element> at(const std::string_view json_pointer) const noexcept;
-#endif // SIMDJSON_DISABLE_DEPRECATED_API
+//
+//#ifndef SIMDJSON_DISABLE_DEPRECATED_API
+//  /**
+//   *
+//   * Version 0.4 of simdjson used an incorrect interpretation of the JSON Pointer standard
+//   * and allowed the following :
+//   *
+//   *   dom::parser parser;
+//   *   element doc_ = parser.parse(R"({ "foo": { "a": [ 10, 20, 30 ] }})"_padded);
+//   *   doc_.at("foo/a/1") == 20
+//   *
+//   * Though it is intuitive, it is not compliant with RFC 6901
+//   * https://tools.ietf.org/html/rfc6901
+//   *
+//   * For standard compliance, use the at_pointer function instead.
+//   *
+//   * @return The value associated with the given JSON pointer, or:
+//   *         - NO_SUCH_FIELD if a field does not exist in an object
+//   *         - INDEX_OUT_OF_BOUNDS if an array index is larger than an array length
+//   *         - INCORRECT_TYPE if a non-integer is used to access an array
+//   *         - INVALID_JSON_POINTER if the JSON pointer is invalid and cannot be parsed
+//   */
+//  [[deprecated("For standard compliance, use at_pointer instead, and prefix your pointers with a slash '/', see RFC6901 ")]]
+//  inline simdjson_result<element> at(const std::string_view json_pointer) const noexcept;
+//#endif // SIMDJSON_DISABLE_DEPRECATED_API
 
   /**
    * Get the value at the given index.
@@ -443,38 +440,64 @@ public:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    */
   inline simdjson_result<element> at_key(std::string_view key) const noexcept;
+//
+//  /**
+//   * Get the value associated with the given key in a case-insensitive manner.
+//   *
+//   * Note: The key will be matched against **unescaped** JSON.
+//   *
+//   * @return The value associated with this field, or:
+//   *         - NO_SUCH_FIELD if the field does not exist in the object
+//   */
+//  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
+//
+//  /**
+//   * operator< defines a total order for element allowing to use them in
+//   * ordered C++ STL containers
+//   *
+//   * @return TRUE if the key appears before the other one in the tape
+//   */
+//  inline bool operator<(const element &other) const noexcept;
+//
+//  /**
+//   * operator== allows to verify if two element values reference the
+//   * same JSON item
+//   *
+//   * @return TRUE if the two values references the same JSON element
+//   */
+//  inline bool operator==(const element &other) const noexcept;
 
-  /**
-   * Get the value associated with the given key in a case-insensitive manner.
-   *
-   * Note: The key will be matched against **unescaped** JSON.
-   *
-   * @return The value associated with this field, or:
-   *         - NO_SUCH_FIELD if the field does not exist in the object
-   */
-  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
-
-  /**
-   * operator< defines a total order for element allowing to use them in
-   * ordered C++ STL containers
-   *
-   * @return TRUE if the key appears before the other one in the tape
-   */
-  inline bool operator<(const element &other) const noexcept;
-
-  /**
-   * operator== allows to verify if two element values reference the
-   * same JSON item
-   *
-   * @return TRUE if the two values references the same JSON element
-   */
-  inline bool operator==(const element &other) const noexcept;
-
-  /** @private for debugging. Prints out the root element. */
-  inline bool dump_raw_tape(std::ostream &out) const noexcept;
+    simdjson_inline virtual ~element() = default;
 
 private:
-  simdjson_inline element(const internal::tape_ref &tape) noexcept;
+    inline virtual void wait_until_usable() const noexcept = 0;
+
+    inline virtual bool get_pure_bool() const noexcept = 0;
+    inline virtual uint64_t get_pure_uint64() const noexcept = 0;
+    inline virtual int64_t get_pure_int64() const noexcept = 0;
+    inline virtual double get_pure_double() const noexcept = 0;
+    inline virtual simdjson_result<array> get_pure_array() const noexcept = 0;
+    inline virtual simdjson_result<object> get_pure_object() const noexcept = 0;
+
+    inline virtual std::shared_ptr<element> get_instance() const noexcept = 0;
+};
+
+class element_impl: public element {
+public:
+    /** Create a new, invalid element. */
+    simdjson_inline element_impl() noexcept;
+    simdjson_inline element_impl(const internal::tape_ref &tape) noexcept;
+
+    inline element_type type() const noexcept override;
+
+    inline simdjson_result<const char *> get_c_str() const noexcept override;
+    inline simdjson_result<size_t> get_string_length() const noexcept override;
+    inline simdjson_result<std::string_view> get_string() const noexcept override;
+
+    /** @private for debugging. Prints out the root element. */
+    inline bool dump_raw_tape(std::ostream &out) const noexcept;
+
+private:
   internal::tape_ref tape;
   friend class document;
   friend class object;
@@ -482,6 +505,54 @@ private:
   friend struct simdjson_result<element>;
   template<typename T>
   friend class simdjson::internal::string_builder;
+
+  inline void wait_until_usable() const noexcept override;
+
+  inline bool get_pure_bool() const noexcept override;
+  inline uint64_t get_pure_uint64() const noexcept override;
+  inline int64_t get_pure_int64() const noexcept override;
+  inline double get_pure_double() const noexcept override;
+  inline simdjson_result<array> get_pure_array() const noexcept override;
+  inline simdjson_result<object> get_pure_object() const noexcept override;
+
+  inline std::shared_ptr<element> get_instance() const noexcept override;
+
+};
+
+class element_d: public element {
+public:
+    simdjson_inline element_d() noexcept;
+    simdjson_inline element_d(std::shared_ptr<array> _value) noexcept;
+    simdjson_inline element_d(std::shared_ptr<object> _value) noexcept;
+    simdjson_inline element_d(std::string _value) noexcept;
+    simdjson_inline element_d(int64_t _value) noexcept;
+    simdjson_inline element_d(uint64_t _value) noexcept;
+    simdjson_inline element_d(double _value) noexcept;
+    simdjson_inline element_d(bool _value) noexcept;
+
+    inline element_type type() const noexcept override;
+
+    inline simdjson_result<const char *> get_c_str() const noexcept override;
+    inline simdjson_result<size_t> get_string_length() const noexcept override;
+    inline simdjson_result<std::string_view> get_string() const noexcept override;
+
+private:
+    std::variant<std::shared_ptr<array>, std::shared_ptr<object>, std::string, int64_t, uint64_t, double, bool> value;
+    element_type value_type;
+    friend class object;
+    friend class array;
+    friend struct simdjson_result<element>;
+
+    inline void wait_until_usable() const noexcept override;
+
+    inline bool get_pure_bool() const noexcept override;
+    inline uint64_t get_pure_uint64() const noexcept override;
+    inline int64_t get_pure_int64() const noexcept override;
+    inline double get_pure_double() const noexcept override;
+    inline simdjson_result<array> get_pure_array() const noexcept override;
+    inline simdjson_result<object> get_pure_object() const noexcept override;
+
+    inline std::shared_ptr<element> get_instance() const noexcept override;
 
 };
 
@@ -492,7 +563,7 @@ template<>
 struct simdjson_result<dom::element> : public internal::simdjson_result_base<dom::element> {
 public:
   simdjson_inline simdjson_result() noexcept; ///< @private
-  simdjson_inline simdjson_result(dom::element &&value) noexcept; ///< @private
+  simdjson_inline simdjson_result(std::shared_ptr<dom::element> value) noexcept; ///< @private
   simdjson_inline simdjson_result(error_code error) noexcept; ///< @private
 
   simdjson_inline simdjson_result<dom::element_type> type() const noexcept;
@@ -526,11 +597,11 @@ public:
   simdjson_inline simdjson_result<dom::element> operator[](std::string_view key) const noexcept;
   simdjson_inline simdjson_result<dom::element> operator[](const char *key) const noexcept;
   simdjson_inline simdjson_result<dom::element> at_pointer(const std::string_view json_pointer) const noexcept;
-  [[deprecated("For standard compliance, use at_pointer instead, and prefix your pointers with a slash '/', see RFC6901 ")]]
-  simdjson_inline simdjson_result<dom::element> at(const std::string_view json_pointer) const noexcept;
+//  [[deprecated("For standard compliance, use at_pointer instead, and prefix your pointers with a slash '/', see RFC6901 ")]]
+//  simdjson_inline simdjson_result<dom::element> at(const std::string_view json_pointer) const noexcept;
   simdjson_inline simdjson_result<dom::element> at(size_t index) const noexcept;
   simdjson_inline simdjson_result<dom::element> at_key(std::string_view key) const noexcept;
-  simdjson_inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+//  simdjson_inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
 
 #if SIMDJSON_EXCEPTIONS
   simdjson_inline operator bool() const noexcept(false);

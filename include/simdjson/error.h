@@ -5,6 +5,7 @@
 
 #include <string>
 #include <ostream>
+#include <memory>
 
 namespace simdjson {
 
@@ -116,7 +117,7 @@ namespace internal {
  * Then any method returning simdjson_result<T> will be chainable with your methods.
  */
 template<typename T>
-struct simdjson_result_base : protected std::pair<T, error_code> {
+struct simdjson_result_base : protected std::pair<std::shared_ptr<T>, error_code> {
 
   /**
    * Create a new empty result with error = UNINITIALIZED.
@@ -132,11 +133,12 @@ struct simdjson_result_base : protected std::pair<T, error_code> {
    * Create a new successful result.
    */
   simdjson_inline simdjson_result_base(T &&value) noexcept;
+  simdjson_inline simdjson_result_base(std::shared_ptr<T> value) noexcept;
 
   /**
    * Create a new result with both things (use if you don't want to branch when creating the result).
    */
-  simdjson_inline simdjson_result_base(T &&value, error_code error) noexcept;
+  simdjson_inline simdjson_result_base(std::shared_ptr<T> value, error_code error) noexcept;
 
   /**
    * Move the value and the error to the provided variables.
@@ -227,7 +229,7 @@ struct simdjson_result : public internal::simdjson_result_base<T> {
   /**
    * @private Create a new result with both things (use if you don't want to branch when creating the result).
    */
-  simdjson_inline simdjson_result(T &&value, error_code error) noexcept;
+  simdjson_inline simdjson_result(std::shared_ptr<T> value, error_code error) noexcept;
 
   /**
    * Move the value and the error to the provided variables.

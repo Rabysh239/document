@@ -43,7 +43,9 @@ public:
   /**
    * Get the root element of this document as a JSON array.
    */
-  element root() const noexcept;
+  simdjson_result<element> root() noexcept;
+
+  error_code add(std::string_view json_pointer, std::string key, const std::shared_ptr<element>& value) noexcept;
 
   /**
    * @private Dump the raw tape for debugging.
@@ -61,6 +63,7 @@ public:
    * Should be at least byte_capacity.
    */
   std::unique_ptr<uint8_t[]> string_buf{};
+  std::unordered_map<size_t, std::shared_ptr<object_d>> dynamic_addition{};
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.
    *
