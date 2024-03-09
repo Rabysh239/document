@@ -17,7 +17,7 @@ namespace dom {
 //
 // document inline implementation
 //
-inline element document::root() const noexcept {
+inline element document::root() noexcept {
   return element(internal::tape_ref(this, 1));
 }
 simdjson_warn_unused
