@@ -15,56 +15,51 @@ namespace simdjson {
 //
 // simdjson_result<dom::object> inline implementation
 //
-template<typename T>
-simdjson_inline simdjson_result<dom::object<T>>::simdjson_result() noexcept
-    : internal::simdjson_result_base<dom::object<T>>() {}
-template<typename T>
-simdjson_inline simdjson_result<dom::object<T>>::simdjson_result(dom::object<T> value) noexcept
-    : internal::simdjson_result_base<dom::object<T>>(std::forward<dom::object<T>>(value)) {}
-template<typename T>
-simdjson_inline simdjson_result<dom::object<T>>::simdjson_result(error_code error) noexcept
-    : internal::simdjson_result_base<dom::object<T>>(error) {}
+simdjson_inline simdjson_result<dom::object>::simdjson_result() noexcept
+    : internal::simdjson_result_base<dom::object>() {}
+simdjson_inline simdjson_result<dom::object>::simdjson_result(dom::object value) noexcept
+    : internal::simdjson_result_base<dom::object>(std::forward<dom::object>(value)) {}
+simdjson_inline simdjson_result<dom::object>::simdjson_result(error_code error) noexcept
+    : internal::simdjson_result_base<dom::object>(error) {}
 
-template<typename T>
-inline simdjson_result<dom::element<T>> simdjson_result<dom::object<T>>::operator[](std::string_view key) const noexcept {
+inline simdjson_result<dom::element> simdjson_result<dom::object>::operator[](std::string_view key) const noexcept {
   if (error()) { return error(); }
   return first[key];
 }
-template<typename T>
-inline simdjson_result<dom::element<T>> simdjson_result<dom::object<T>>::operator[](const char *key) const noexcept {
+inline simdjson_result<dom::element> simdjson_result<dom::object>::operator[](const char *key) const noexcept {
   if (error()) { return error(); }
   return first[key];
 }
-template<typename T>
-inline simdjson_result<dom::element<T>> simdjson_result<dom::object<T>>::at_pointer(std::string_view json_pointer) const noexcept {
+inline simdjson_result<dom::element> simdjson_result<dom::object>::at_pointer(std::string_view json_pointer) const noexcept {
   if (error()) { return error(); }
   return first.at_pointer(json_pointer);
 }
-template<typename T>
-inline simdjson_result<dom::element<T>> simdjson_result<dom::object<T>>::at_key(std::string_view key) const noexcept {
+inline simdjson_result<dom::element> simdjson_result<dom::object>::at_key(std::string_view key) const noexcept {
   if (error()) { return error(); }
   return first.at_key(key);
 }
-template<typename T>
-inline simdjson_result<dom::element<T>> simdjson_result<dom::object<T>>::at_key_case_insensitive(std::string_view key) const noexcept {
-  if (error()) { return error(); }
-  return first.at_key_case_insensitive(key);
+//inline simdjson_result<dom::element> simdjson_result<dom::object>::at_key_case_insensitive(std::string_view key) const noexcept {
+//  if (error()) { return error(); }
+//  return first.at_key_case_insensitive(key);
+//}
+
+void simdjson_result<dom::object>::insert(std::string_view key, const dom::element &value) noexcept {
+  if (!error()) {
+    first.insert(key, value);
+  }
 }
 
 #if SIMDJSON_EXCEPTIONS
 
-template<typename T>
-inline typename dom::object<T>::iterator simdjson_result<dom::object<T>>::begin() const noexcept(false) {
+inline dom::object::iterator simdjson_result<dom::object>::begin() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
   return first.begin();
 }
-template<typename T>
-inline typename dom::object<T>::iterator simdjson_result<dom::object<T>>::end() const noexcept(false) {
+inline dom::object::iterator simdjson_result<dom::object>::end() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
   return first.end();
 }
-template<typename T>
-inline size_t simdjson_result<dom::object<T>>::size() const noexcept(false) {
+inline size_t simdjson_result<dom::object>::size() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
   return first.size();
 }
@@ -76,36 +71,33 @@ namespace dom {
 //
 // object inline implementation
 //
-template<typename T>
-simdjson_inline object<T>::object() noexcept : tape{} {}
-template<typename T>
-simdjson_inline object<T>::object(const internal::tape_ref<T> &_tape) noexcept : tape{_tape} { }
-template<typename T>
-inline typename object<T>::iterator object<T>::begin() const noexcept {
-  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-  return internal::tape_ref(tape.doc, tape.json_index + 1);
+simdjson_inline object::object() noexcept : tape{} {}
+simdjson_inline object::object(const internal::tape_ref &_tape) noexcept : tape{_tape} {
+  auto &addition_map = tape.doc->dynamic_additions;
+  if (addition_map.find(tape.json_index) == addition_map.end()) {
+    addition_map.insert(std::make_pair(tape.json_index, data_type()));
+  }
+  data = &addition_map[tape.json_index];
 }
-template<typename T>
-inline typename object<T>::iterator object<T>::end() const noexcept {
+inline object::iterator object::begin() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-  return internal::tape_ref(tape.doc, tape.after_element() - 1);
+  return {internal::tape_ref(tape.doc, tape.json_index + 1), tape.after_element() - 1, data};
 }
-template<typename T>
-inline size_t object<T>::size() const noexcept {
+inline object::iterator object::end() const noexcept {
+  return data->cend();
+}
+inline size_t object::size() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   return tape.scope_count();
 }
 
-template<typename T>
-inline simdjson_result<element<T>> object<T>::operator[](std::string_view key) const noexcept {
+inline simdjson_result<element> object::operator[](std::string_view key) const noexcept {
   return at_key(key);
 }
-template<typename T>
-inline simdjson_result<element<T>> object<T>::operator[](const char *key) const noexcept {
+inline simdjson_result<element> object::operator[](const char *key) const noexcept {
   return at_key(key);
 }
-template<typename T>
-inline simdjson_result<element<T>> object<T>::at_pointer(std::string_view json_pointer) const noexcept {
+inline simdjson_result<element> object::at_pointer(std::string_view json_pointer) const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   if(json_pointer.empty()) { // an empty string means that we return the current node
       return element(this->tape); // copy the current node
@@ -116,7 +108,7 @@ inline simdjson_result<element<T>> object<T>::at_pointer(std::string_view json_p
   size_t slash = json_pointer.find('/');
   std::string_view key = json_pointer.substr(0, slash);
   // Grab the child with the given key
-  simdjson_result<element<T>> child;
+  simdjson_result<element> child;
 
   // If there is an escape character in the key, unescape it and then get the child.
   size_t escape = key.find('~');
@@ -150,9 +142,12 @@ inline simdjson_result<element<T>> object<T>::at_pointer(std::string_view json_p
   return child;
 }
 
-template<typename T>
-inline simdjson_result<element<T>> object<T>::at_key(std::string_view key) const noexcept {
-  iterator end_field = end();
+inline simdjson_result<element> object::at_key(std::string_view key) const noexcept {
+  auto key_str = std::string(key);
+  if (data->find(key_str) != data->end()) {
+    return element(data->at(key_str));
+  }
+  iterator end_field = data->cbegin();
   for (iterator field = begin(); field != end_field; ++field) {
     if (field.key_equals(key)) {
       return field.value();
@@ -160,80 +155,83 @@ inline simdjson_result<element<T>> object<T>::at_key(std::string_view key) const
   }
   return NO_SUCH_FIELD;
 }
-// In case you wonder why we need this, please see
-// https://github.com/simdjson/simdjson/issues/323
-// People do seek keys in a case-insensitive manner.
-template<typename T>
-inline simdjson_result<element<T>> object<T>::at_key_case_insensitive(std::string_view key) const noexcept {
-  iterator end_field = end();
-  for (iterator field = begin(); field != end_field; ++field) {
-    if (field.key_equals_case_insensitive(key)) {
-      return field.value();
-    }
-  }
-  return NO_SUCH_FIELD;
+//// In case you wonder why we need this, please see
+//// https://github.com/simdjson/simdjson/issues/323
+//// People do seek keys in a case-insensitive manner.
+//inline simdjson_result<element> object::at_key_case_insensitive(std::string_view key) const noexcept {
+//  iterator end_field = end();
+//  for (iterator field = begin(); field != end_field; ++field) {
+//    if (field.key_equals_case_insensitive(key)) {
+//      return field.value();
+//    }
+//  }
+//  return NO_SUCH_FIELD;
+//}
+
+inline void object::insert(std::string_view key, const element &value) noexcept {
+  data->insert({std::string(key), value.tape});
 }
 
 //
-// object<T>::iterator inline implementation
+// object::iterator inline implementation
 //
-template<typename T>
-simdjson_inline object<T>::iterator::iterator(const internal::tape_ref<T> &_tape) noexcept : tape{_tape} { }
-template<typename T>
-inline const key_value_pair<T> object<T>::iterator::operator*() const noexcept {
+simdjson_inline object::iterator::iterator(const internal::tape_ref &_tape, size_t _end_json_index, const data_type *_data) noexcept
+  : tape{_tape}, end_json_index(_end_json_index), is_tape_part(true), data(_data) { }
+object::iterator::iterator(object::iterator_type _iter) noexcept : iter(_iter), is_tape_part(false) { }
+inline const key_value_pair object::iterator::operator*() const noexcept {
   return key_value_pair(key(), value());
 }
-template<typename T>
-inline bool object<T>::iterator::operator!=(const object<T>::iterator& other) const noexcept {
-  return tape.json_index != other.tape.json_index;
+inline bool object::iterator::operator!=(const object::iterator& other) const noexcept {
+  return is_tape_part != other.is_tape_part || is_tape_part ? tape.json_index != other.tape.json_index : iter != other.iter;
 }
-template<typename T>
-inline bool object<T>::iterator::operator==(const object<T>::iterator& other) const noexcept {
-  return tape.json_index == other.tape.json_index;
-}
-template<typename T>
-inline bool object<T>::iterator::operator<(const object<T>::iterator& other) const noexcept {
-  return tape.json_index < other.tape.json_index;
-}
-template<typename T>
-inline bool object<T>::iterator::operator<=(const object<T>::iterator& other) const noexcept {
-  return tape.json_index <= other.tape.json_index;
-}
-template<typename T>
-inline bool object<T>::iterator::operator>=(const object<T>::iterator& other) const noexcept {
-  return tape.json_index >= other.tape.json_index;
-}
-template<typename T>
-inline bool object<T>::iterator::operator>(const object<T>::iterator& other) const noexcept {
-  return tape.json_index > other.tape.json_index;
-}
-template<typename T>
-inline typename object<T>::iterator& object<T>::iterator::operator++() noexcept {
-  tape.json_index++;
-  tape.json_index = tape.after_element();
+//inline bool object::iterator::operator==(const object::iterator& other) const noexcept {
+//  return tape.json_index == other.tape.json_index;
+//}
+//inline bool object::iterator::operator<(const object::iterator& other) const noexcept {
+//  return tape.json_index < other.tape.json_index;
+//}
+//inline bool object::iterator::operator<=(const object::iterator& other) const noexcept {
+//  return tape.json_index <= other.tape.json_index;
+//}
+//inline bool object::iterator::operator>=(const object::iterator& other) const noexcept {
+//  return tape.json_index >= other.tape.json_index;
+//}
+//inline bool object::iterator::operator>(const object::iterator& other) const noexcept {
+//  return tape.json_index > other.tape.json_index;
+//}
+inline object::iterator& object::iterator::operator++() noexcept {
+  if (is_tape_part) {
+    do {
+      tape.json_index++;
+      tape.json_index = tape.after_element();
+      if (tape.json_index == end_json_index) {
+        is_tape_part = false;
+        iter = data->begin();
+        break;
+      }
+    } while (data->find(tape.get_c_str()) != data->end());
+  } else {
+    ++iter;
+  }
   return *this;
 }
-template<typename T>
-inline typename object<T>::iterator object<T>::iterator::operator++(int) noexcept {
-  object<T>::iterator out = *this;
+inline object::iterator object::iterator::operator++(int) noexcept {
+  object::iterator out = *this;
   ++*this;
   return out;
 }
-template<typename T>
-inline std::string_view object<T>::iterator::key() const noexcept {
-  return tape.get_string_view();
+inline std::string_view object::iterator::key() const noexcept {
+  return is_tape_part ? tape.get_string_view() : iter->first;
 }
-template<typename T>
-inline uint32_t object<T>::iterator::key_length() const noexcept {
-  return tape.get_string_length();
+inline uint32_t object::iterator::key_length() const noexcept {
+  return is_tape_part ? tape.get_string_length() : iter->first.size();
 }
-template<typename T>
-inline const char* object<T>::iterator::key_c_str() const noexcept {
-  return reinterpret_cast<const char *>(&tape.doc->get_string_buf(size_t(tape.tape_value()) + sizeof(uint32_t)));
+inline const char* object::iterator::key_c_str() const noexcept {
+  return is_tape_part ? reinterpret_cast<const char *>(&tape.doc->string_buf[size_t(tape.tape_value()) + sizeof(uint32_t)])
+                      : iter->first.c_str();
 }
-template<typename T>
-inline element<T> object<T>::iterator::value() const noexcept {
-  return element(internal::tape_ref(tape.doc, tape.json_index + 1));
+inline element object::iterator::value() const noexcept {
+  return element(is_tape_part ? internal::tape_ref(tape.doc, tape.json_index + 1) : iter->second);
 }
 
 /**
@@ -249,8 +247,7 @@ inline element<T> object<T>::iterator::value() const noexcept {
  * on the long run.
  */
 
-template<typename T>
-inline bool object<T>::iterator::key_equals(std::string_view o) const noexcept {
+inline bool object::iterator::key_equals(std::string_view o) const noexcept {
   // We use the fact that the key length can be computed quickly
   // without access to the string buffer.
   const uint32_t len = key_length();
@@ -261,8 +258,7 @@ inline bool object<T>::iterator::key_equals(std::string_view o) const noexcept {
   return false;
 }
 
-template<typename T>
-inline bool object<T>::iterator::key_equals_case_insensitive(std::string_view o) const noexcept {
+inline bool object::iterator::key_equals_case_insensitive(std::string_view o) const noexcept {
   // We use the fact that the key length can be computed quickly
   // without access to the string buffer.
   const uint32_t len = key_length();
@@ -277,21 +273,20 @@ inline bool object<T>::iterator::key_equals_case_insensitive(std::string_view o)
 //
 // key_value_pair inline implementation
 //
-template<typename T>
-inline key_value_pair<T>::key_value_pair(std::string_view _key, element<T> _value) noexcept :
+inline key_value_pair::key_value_pair(std::string_view _key, element _value) noexcept :
   key(_key), value(_value) {}
 
 } // namespace dom
 
 } // namespace simdjson
-//
-//#if defined(__cpp_lib_ranges)
-//static_assert(std::ranges::view<simdjson::dom::object>);
-//static_assert(std::ranges::sized_range<simdjson::dom::object>);
-//#if SIMDJSON_EXCEPTIONS
-//static_assert(std::ranges::view<simdjson::simdjson_result<simdjson::dom::object>>);
-//static_assert(std::ranges::sized_range<simdjson::simdjson_result<simdjson::dom::object>>);
-//#endif // SIMDJSON_EXCEPTIONS
-//#endif // defined(__cpp_lib_ranges)
+
+#if defined(__cpp_lib_ranges)
+static_assert(std::ranges::view<simdjson::dom::object>);
+static_assert(std::ranges::sized_range<simdjson::dom::object>);
+#if SIMDJSON_EXCEPTIONS
+static_assert(std::ranges::view<simdjson::simdjson_result<simdjson::dom::object>>);
+static_assert(std::ranges::sized_range<simdjson::simdjson_result<simdjson::dom::object>>);
+#endif // SIMDJSON_EXCEPTIONS
+#endif // defined(__cpp_lib_ranges)
 
 #endif // SIMDJSON_OBJECT_INL_H

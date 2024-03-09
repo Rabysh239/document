@@ -3,7 +3,6 @@
 #ifndef SIMDJSON_CONDITIONAL_INCLUDE
 #define SIMDJSON_SRC_GENERIC_STAGE2_JSON_ITERATOR_H
 #include "../../generic/stage2/base.h"
-#include <boost/json/src.hpp>
 #endif // SIMDJSON_CONDITIONAL_INCLUDE
 
 namespace simdjson {
@@ -27,7 +26,7 @@ simdjson_inline void walk(V &visitor, const boost::json::value &value) noexcept 
     } else {
       auto start_index = visitor.start_container();
       for (auto const &[key, val]: obj) {
-        visitor.build(key);
+        visitor.visit_string(key);
         walk(visitor, val);
       }
       visitor.visit_object_end(start_index, obj.size());
@@ -52,20 +51,13 @@ template<typename V>
 simdjson_inline void visit_primitive(V &visitor, const boost::json::value &value) noexcept {
   // Use the fact that most scalars are going to be either strings or numbers.
   if (value.is_string()) {
-    auto &str = value.get_string();
-    visitor.build(str.c_str(), str.size());
+    visitor.visit_string(value);
   } else if (value.is_number()) {
-    if (value.is_double()) {
-      visitor.build(value.get_double());
-    } else if (value.is_int64()) {
-      visitor.build(value.get_int64());
-    } else if (value.is_uint64()) {
-      visitor.build(value.get_uint64());
-    }
+    visitor.visit_number(value);
   } else
     // true, false, null are uncommon.
   if (value.is_bool()) {
-    visitor.build(value.get_bool());
+    visitor.visit_bool_atom(value);
   } else if (value.is_null()) {
     visitor.visit_null_atom();
   }
