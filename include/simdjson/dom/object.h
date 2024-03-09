@@ -16,6 +16,9 @@ public:
   /** Create a new, invalid object */
   simdjson_inline object() noexcept;
 
+  using data_type = std::unordered_map<std::string, internal::tape_ref>;
+  using iterator_type = data_type::const_iterator;
+
   class iterator {
   public:
     using value_type = const key_value_pair;
@@ -48,12 +51,12 @@ public:
      * Part of the std::iterator interface.
      */
     inline bool operator!=(const iterator& other) const noexcept;
-    inline bool operator==(const iterator& other) const noexcept;
-
-    inline bool operator<(const iterator& other) const noexcept;
-    inline bool operator<=(const iterator& other) const noexcept;
-    inline bool operator>=(const iterator& other) const noexcept;
-    inline bool operator>(const iterator& other) const noexcept;
+//    inline bool operator==(const iterator& other) const noexcept;
+//
+//    inline bool operator<(const iterator& other) const noexcept;
+//    inline bool operator<=(const iterator& other) const noexcept;
+//    inline bool operator>=(const iterator& other) const noexcept;
+//    inline bool operator>(const iterator& other) const noexcept;
     /**
      * Get the key of this key/value pair.
      */
@@ -87,9 +90,14 @@ public:
     iterator(const iterator&) noexcept = default;
     iterator& operator=(const iterator&) noexcept = default;
   private:
-    simdjson_inline iterator(const internal::tape_ref &tape) noexcept;
+    simdjson_inline iterator(const internal::tape_ref &tape, size_t end_json_index, const data_type *data) noexcept;
+    simdjson_inline iterator(iterator_type iter) noexcept;
 
     internal::tape_ref tape;
+    bool is_tape_part;
+    size_t end_json_index;
+    iterator_type iter;
+    const data_type *data;
 
     friend class object;
   };
@@ -186,24 +194,27 @@ public:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    */
   inline simdjson_result<element> at_key(std::string_view key) const noexcept;
+//
+//  /**
+//   * Get the value associated with the given key in a case-insensitive manner.
+//   * It is only guaranteed to work over ASCII inputs.
+//   *
+//   * Note: The key will be matched against **unescaped** JSON.
+//   *
+//   * This function has linear-time complexity: the keys are checked one by one.
+//   *
+//   * @return The value associated with this field, or:
+//   *         - NO_SUCH_FIELD if the field does not exist in the object
+//   */
+//  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
 
-  /**
-   * Get the value associated with the given key in a case-insensitive manner.
-   * It is only guaranteed to work over ASCII inputs.
-   *
-   * Note: The key will be matched against **unescaped** JSON.
-   *
-   * This function has linear-time complexity: the keys are checked one by one.
-   *
-   * @return The value associated with this field, or:
-   *         - NO_SUCH_FIELD if the field does not exist in the object
-   */
-  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
+  inline void insert(std::string_view key, const element &value) noexcept;
 
 private:
   simdjson_inline object(const internal::tape_ref &tape) noexcept;
 
   internal::tape_ref tape;
+  data_type *data;
 
   friend class element;
   friend struct simdjson_result<element>;
@@ -240,7 +251,9 @@ public:
   inline simdjson_result<dom::element> operator[](const char *key) const noexcept;
   inline simdjson_result<dom::element> at_pointer(std::string_view json_pointer) const noexcept;
   inline simdjson_result<dom::element> at_key(std::string_view key) const noexcept;
-  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+//  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+
+  inline void insert(std::string_view key, const dom::element &value) noexcept;
 
 #if SIMDJSON_EXCEPTIONS
   inline dom::object::iterator begin() const noexcept(false);

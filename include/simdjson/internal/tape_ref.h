@@ -16,7 +16,7 @@ namespace internal {
 class tape_ref {
 public:
   simdjson_inline tape_ref() noexcept;
-  simdjson_inline tape_ref(const dom::document *doc, size_t json_index) noexcept;
+  simdjson_inline tape_ref(dom::document *doc, size_t json_index) noexcept;
   inline size_t after_element() const noexcept;
   simdjson_inline tape_type tape_ref_type() const noexcept;
   simdjson_inline uint64_t tape_value() const noexcept;
@@ -37,7 +37,7 @@ public:
   simdjson_inline bool usable() const noexcept;
 
   /** The document this element references. */
-  const dom::document *doc;
+  dom::document *doc;
 
   /** The index of this element on `doc_.tape[]` */
   size_t json_index;
