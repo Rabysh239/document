@@ -2,6 +2,7 @@
 #define SIMDJSON_DOM_DOCUMENT_H
 
 #include "../../simdjson/dom/base.h"
+#include "../../simdjson/internal/tape_ref.h"
 
 #include <memory>
 
@@ -43,7 +44,7 @@ public:
   /**
    * Get the root element of this document as a JSON array.
    */
-  element root() const noexcept;
+  element root() noexcept;
 
   /**
    * @private Dump the raw tape for debugging.
@@ -61,6 +62,7 @@ public:
    * Should be at least byte_capacity.
    */
   std::unique_ptr<uint8_t[]> string_buf{};
+  std::unordered_map<size_t, std::unordered_map<std::string, internal::tape_ref>> dynamic_additions{};
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.
    *

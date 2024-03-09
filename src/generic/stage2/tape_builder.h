@@ -74,28 +74,28 @@ simdjson_inline void tape_builder::visit_document_end() noexcept {
 simdjson_inline tape_builder::tape_builder(dom::document &doc) noexcept : tape{doc.tape.get()}, doc_(&doc), current_string_buf_loc{doc.string_buf.get()} {}
 
 simdjson_inline void tape_builder::visit_string(const boost::json::value &value) noexcept {
-    // we advance the point, accounting for the fact that we have a NULL termination
-    tape.append(current_string_buf_loc - doc_->string_buf.get(), internal::tape_type::STRING);
-    auto &str = value.get_string();
-    auto str_length = uint32_t(str.size());
-    memcpy(current_string_buf_loc, &str_length, sizeof(uint32_t));
-    current_string_buf_loc += sizeof(uint32_t);
-    memcpy(current_string_buf_loc, str.c_str(), str_length + 1);
-    current_string_buf_loc += str_length + 1;
+  // we advance the point, accounting for the fact that we have a NULL termination
+  tape.append(current_string_buf_loc - doc_->string_buf.get(), internal::tape_type::STRING);
+  auto &str = value.get_string();
+  auto str_length = uint32_t(str.size());
+  memcpy(current_string_buf_loc, &str_length, sizeof(uint32_t));
+  current_string_buf_loc += sizeof(uint32_t);
+  memcpy(current_string_buf_loc, str.c_str(), str_length + 1);
+  current_string_buf_loc += str_length + 1;
 }
 
 simdjson_inline void tape_builder::visit_number(const boost::json::value &value) noexcept {
-    if (value.is_double()) {
-        tape.append_double(value.get_double());
-    } else if (value.is_int64()) {
-        tape.append_s64(value.get_int64());
-    } else if (value.is_uint64()) {
-        tape.append_u64(value.get_uint64());
-    }
+  if (value.is_double()) {
+    tape.append_double(value.get_double());
+  } else if (value.is_int64()) {
+    tape.append_s64(value.get_int64());
+  } else if (value.is_uint64()) {
+    tape.append_u64(value.get_uint64());
+  }
 }
 
 simdjson_inline void tape_builder::visit_bool_atom(const boost::json::value &value) noexcept {
-    tape.append(0, value.get_bool() ? internal::tape_type::TRUE_VALUE : internal::tape_type::FALSE_VALUE);
+  tape.append(0, value.get_bool() ? internal::tape_type::TRUE_VALUE : internal::tape_type::FALSE_VALUE);
 }
 
 simdjson_inline void tape_builder::visit_null_atom() noexcept {
