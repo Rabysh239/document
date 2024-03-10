@@ -114,12 +114,12 @@ public:
    * Part of the std::iterable interface.
    */
   inline iterator end() const noexcept;
-  /**
-   * Get the size of the object (number of keys).
-   * It is a saturated value with a maximum of 0xFFFFFF: if the value
-   * is 0xFFFFFF then the size is 0xFFFFFF or greater.
-   */
-  inline size_t size() const noexcept;
+//  /**
+//   * Get the size of the object (number of keys).
+//   * It is a saturated value with a maximum of 0xFFFFFF: if the value
+//   * is 0xFFFFFF then the size is 0xFFFFFF or greater.
+//   */
+//  inline size_t size() const noexcept;
   /**
    * Get the value associated with the given key.
    *
@@ -258,7 +258,7 @@ public:
 #if SIMDJSON_EXCEPTIONS
   inline dom::object::iterator begin() const noexcept(false);
   inline dom::object::iterator end() const noexcept(false);
-  inline size_t size() const noexcept(false);
+//  inline size_t size() const noexcept(false);
 #endif // SIMDJSON_EXCEPTIONS
 };
 

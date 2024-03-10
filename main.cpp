@@ -1,13 +1,5 @@
 #include <iostream>
-#include <boost/json/src.hpp>
-#include "include/simdjson/dom/document-inl.h"
-#include "src/generic/stage2/tape_builder.h"
-
-simdjson::simdjson_result<simdjson::dom::element> to_document(simdjson::dom::document &doc, const std::string &json) {
-  auto tree = boost::json::parse(json);
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder::parse_document(doc, tree);
-  return doc.root();
-}
+#include "include/components/document/document.hpp"
 
 int main() {
   const std::string json = R"(
@@ -15,14 +7,16 @@ int main() {
             "a": {
                 "b": 1,
                 "c": 2.3
+            },
+            "b": {
+                "c": true
             }
         }
     )";
 
   simdjson::dom::document doc;
-  doc.allocate(json.size());
-  auto el = to_document(doc, json);
-  auto obj = el.get_object();
+  auto otter_doc = components::document::document_from_json(doc, json);
+  auto obj = doc.root().get_object();
   std::cout << obj["a"].is_object() << std::endl;
   auto inner_obj = obj["a"].get_object();
   inner_obj.insert("d", inner_obj["c"]);
@@ -31,5 +25,7 @@ int main() {
     std::cout << it.key() << " " << it.value().get_double() << std::endl;
   }
   std::cout << obj.at_pointer("/a/d").get_double() << std::endl;
+
+  std::cout << otter_doc->is_bool("/b", "c") << " " << otter_doc->get_bool("/b", "c") << std::endl;
   return 0;
 }
