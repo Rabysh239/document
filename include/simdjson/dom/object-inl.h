@@ -59,10 +59,10 @@ inline dom::object::iterator simdjson_result<dom::object>::end() const noexcept(
   if (error()) { throw simdjson_error(error()); }
   return first.end();
 }
-inline size_t simdjson_result<dom::object>::size() const noexcept(false) {
-  if (error()) { throw simdjson_error(error()); }
-  return first.size();
-}
+//inline size_t simdjson_result<dom::object>::size() const noexcept(false) {
+//  if (error()) { throw simdjson_error(error()); }
+//  return first.size();
+//}
 
 #endif // SIMDJSON_EXCEPTIONS
 
@@ -86,10 +86,10 @@ inline object::iterator object::begin() const noexcept {
 inline object::iterator object::end() const noexcept {
   return data->cend();
 }
-inline size_t object::size() const noexcept {
-  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-  return tape.scope_count();
-}
+//inline size_t object::size() const noexcept {
+//  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
+//  return tape.scope_count();
+//}
 
 inline simdjson_result<element> object::operator[](std::string_view key) const noexcept {
   return at_key(key);
