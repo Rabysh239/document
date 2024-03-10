@@ -5,6 +5,7 @@
 #include "../../simdjson/internal/tape_ref.h"
 
 #include <memory>
+#include <unordered_map>
 
 namespace simdjson {
 namespace dom {

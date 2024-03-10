@@ -37,6 +37,7 @@ enum error_code {
   NUMBER_OUT_OF_RANGE,        ///< JSON number does not fit in 64 bits
   INDEX_OUT_OF_BOUNDS,        ///< JSON array index too large
   NO_SUCH_FIELD,              ///< JSON field not found in object
+  NO_SUCH_POINTER,            ///< JSON pointer not found
   IO_ERROR,                   ///< Error reading a file
   INVALID_JSON_POINTER,       ///< Invalid JSON pointer reference
   INVALID_URI_FRAGMENT,       ///< Invalid URI fragment
