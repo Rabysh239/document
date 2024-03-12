@@ -4,7 +4,6 @@
 #define SIMDJSON_SRC_GENERIC_BASE_H
 #include "../base.h"
 #include "../../include/simdjson/generic/base.h"
-#include <boost/json/src.hpp>
 #endif // SIMDJSON_CONDITIONAL_INCLUDE
 
 namespace simdjson {

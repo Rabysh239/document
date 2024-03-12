@@ -15,17 +15,16 @@ int main() {
     )";
 
   simdjson::dom::document doc;
-  auto otter_doc = components::document::document_from_json(doc, json);
-  auto obj = doc.root().get_object();
-  std::cout << obj["a"].is_object() << std::endl;
-  auto inner_obj = obj["a"].get_object();
-  inner_obj.insert("d", inner_obj["c"]);
-  inner_obj.insert("c", inner_obj["b"]);
-  for (auto it = inner_obj.begin(); it != inner_obj.end(); ++it) {
+  auto otter_doc = components::document::document_from_json(json);
+  std::cout << otter_doc->is_bool("/b/c") << " " << otter_doc->get_bool("/b/c") << std::endl;
+  otter_doc->set("/a/d", 3.4);
+  std::cout << otter_doc->is_double("/a/d") << " " << otter_doc->get_double("/a/d") << std::endl;
+  auto a_obj = otter_doc->get("/a").get_object();
+  for (auto it = a_obj.begin(); it != a_obj.end(); ++it) {
     std::cout << it.key() << " " << it.value().get_double() << std::endl;
   }
-  std::cout << obj.at_pointer("/a/d").get_double() << std::endl;
-
-  std::cout << otter_doc->is_bool("/b", "c") << " " << otter_doc->get_bool("/b", "c") << std::endl;
+  std::string_view val = "world!";
+  otter_doc->set("/b/hello", val);
+  std::cout << otter_doc->is_string("/b/hello") << " " << otter_doc->get_string("/b/hello") << std::endl;
   return 0;
 }
