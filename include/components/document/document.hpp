@@ -5,6 +5,7 @@
 //#include <components/document/document_id.hpp>
 #include "../../simdjson/dom/element-inl.h"
 #include "../../simdjson/dom/object-inl.h"
+#include "../../../src/generic/stage2/tape_builder.h"
 #include <tsl/htrie_map.h>
 
 namespace components::document {
@@ -17,7 +18,7 @@ public:
 //
 //  document_t();
 
-  explicit document_t(simdjson::dom::element value);
+  explicit document_t(simdjson::dom::document &&value);
 //
 //  explicit document_t(bool value);
 //
@@ -31,8 +32,8 @@ public:
 //
 //  explicit document_t(std::string_view value);
 
-//  template<class T>
-//  void set(const std::string &key, T value);
+  template<class T>
+  void set(std::string_view json_pointer, T value);
 //
 //  bool update(const ptr &update);
 
@@ -46,35 +47,21 @@ public:
 //
 //  std::size_t count() const; // no effective on current changeable object
 
-  bool is_exists(std::string_view json_pointer, const std::string &key) const;
-
-  bool is_exists(std::string_view json_pointer, std::string_view key) const;
-
-  bool is_exists(std::string_view json_pointer, uint32_t index) const;
+  bool is_exists(std::string_view json_pointer) const;
 //
 //  bool is_null(const std::string &key) const;
 //
 //  bool is_null(uint32_t index) const;
 
-  bool is_bool(std::string_view json_pointer, const std::string &key) const;
+  bool is_bool(std::string_view json_pointer) const;
 
-  bool is_bool(std::string_view json_pointer, uint32_t index) const;
-//
-//  bool is_ulong(const std::string &key) const;
-//
-//  bool is_ulong(uint32_t index) const;
-//
-//  bool is_long(const std::string &key) const;
-//
-//  bool is_long(uint32_t index) const;
-//
-//  bool is_double(const std::string &key) const;
-//
-//  bool is_double(uint32_t index) const;
-//
-//  bool is_string(const std::string &key) const;
-//
-//  bool is_string(uint32_t index) const;
+  bool is_ulong(std::string_view json_pointer) const;
+
+  bool is_long(std::string_view json_pointer) const;
+
+  bool is_double(std::string_view json_pointer) const;
+
+  bool is_string(std::string_view json_pointer) const;
 //
 //  bool is_array(std::string_view key) const;
 //
@@ -86,22 +73,16 @@ public:
 
   simdjson::simdjson_result<simdjson::dom::element> get(std::string_view json_pointer) const;
 
-  simdjson::simdjson_result<simdjson::dom::element> get(std::string_view json_pointer, const std::string &key) const;
+  bool get_bool(std::string_view json_pointer) const;
 
-  simdjson::simdjson_result<simdjson::dom::element> get(std::string_view json_pointer, std::string_view key) const;
+  uint64_t get_ulong(std::string_view json_pointer) const;
 
-  simdjson::simdjson_result<simdjson::dom::element> get(std::string_view json_pointer, uint32_t index) const;
+  int64_t get_long(std::string_view json_pointer) const;
 
-  bool get_bool(std::string_view json_pointer, const std::string &key) const;
-//
-//  uint64_t get_ulong(const std::string &key) const;
-//
-//  int64_t get_long(const std::string &key) const;
-//
-//  double get_double(const std::string &key) const;
-//
-//  std::string get_string(const std::string &key) const;
-//
+  double get_double(std::string_view json_pointer) const;
+
+  std::string get_string(std::string_view json_pointer) const;
+
 //  document_t get_array(std::string_view key) const;
 //
 //  document_t get_array(uint32_t index) const;
@@ -117,23 +98,13 @@ public:
 //  const_value_ptr get_value(uint32_t index) const;
 
   template<class T>
-  T get_as(std::string_view json_pointer, const std::string &key) const {
-    const auto value = get(json_pointer, key);
-    if (value) {
+  T get_as(std::string_view json_pointer) const {
+    const auto value = get(json_pointer);
+    if (value.error() == simdjson::SUCCESS) {
       return value.get<T>();
     }
     return T();
   }
-//
-//  template<class T>
-//  T get_as(uint32_t index) const {
-//    const auto *value = get(index);
-//    if (value) {
-//      return value->as<T>();
-//    }
-//    return T();
-//  }
-//
 //  ::document::impl::dict_iterator_t begin() const;
 //
 //  compare_t compare(const document_t &other, const std::string &key) const;
@@ -163,19 +134,17 @@ public:
 //  explicit operator bool() const;
 
 private:
-  simdjson::dom::element value_;
-  tsl::htrie_map<char, simdjson::dom::element> json_pointer_index;
-//
-//  void set_(const std::string &key, const document_const_value_t &value);
-//
-//  void set_(std::string_view key, const document_const_value_t &value);
+  simdjson::dom::document source_;
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder builder_;
+  tsl::htrie_map<char, simdjson::dom::element> json_pointer_index_;
+
+  simdjson::error_code set_(std::string_view json_pointer, const simdjson::dom::element &value);
 //
 //  std::string to_json_dict() const;
 //
 //  std::string to_json_array() const;
 
-  void build_index(const simdjson::dom::element &value, const std::string& json_pointer); //+
-  static simdjson::simdjson_result<simdjson::dom::element> get(const simdjson::dom::element &value, uint32_t index); //+
+  void build_index(const simdjson::dom::element &value, const std::string& json_pointer);
 };
 
 using document_ptr = document_t::ptr;
@@ -195,20 +164,22 @@ using document_ptr = document_t::ptr;
 
 //document_id_t get_document_id(const document_ptr &document);
 
-document_ptr document_from_json(simdjson::dom::document &dest, const std::string &json);
+document_ptr document_from_json(const std::string &json);
 //
 //std::string document_to_json(const document_ptr &doc);
-//
-//template<class T>
-//void document_t::set(const std::string &key, T value) {
-//  set_(key, ::document::impl::new_value(value));
-//}
-//
-//template<>
-//inline void document_t::set(const std::string &key, const std::string &value) {
-//  set_(key, ::document::impl::new_value(value));
-//}
-//
+
+template<class T>
+inline void document_t::set(std::string_view json_pointer, T value) {
+  auto next_element_index = builder_.next_tape_index();
+  builder_.build((T) value);
+  set_(json_pointer, simdjson::dom::element(simdjson::internal::tape_ref(&source_, next_element_index)));
+}
+
+template<>
+inline void document_t::set(std::string_view json_pointer, const std::string &value) {
+  set(json_pointer, std::string_view(value));
+}
+
 //template<>
 //inline void document_t::set(const std::string &key, std::string_view value) {
 //  set_(key, ::document::impl::new_value(value));

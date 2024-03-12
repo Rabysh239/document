@@ -208,14 +208,15 @@ public:
 //   */
 //  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
 
-  inline void insert(std::string_view key, const element &value) noexcept;
 
 private:
   simdjson_inline object(const internal::tape_ref &tape) noexcept;
+  inline void insert(std::string_view key, const element &value) noexcept;
 
   internal::tape_ref tape;
   data_type *data;
 
+  friend class components::document::document_t;
   friend class element;
   friend struct simdjson_result<element>;
   template<typename T>
@@ -252,8 +253,6 @@ public:
   inline simdjson_result<dom::element> at_pointer(std::string_view json_pointer) const noexcept;
   inline simdjson_result<dom::element> at_key(std::string_view key) const noexcept;
 //  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
-
-  inline void insert(std::string_view key, const dom::element &value) noexcept;
 
 #if SIMDJSON_EXCEPTIONS
   inline dom::object::iterator begin() const noexcept(false);

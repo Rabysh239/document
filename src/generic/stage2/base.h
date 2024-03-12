@@ -10,7 +10,6 @@ namespace SIMDJSON_IMPLEMENTATION {
 namespace stage2 {
 
 struct tape_builder;
-struct tape_writer;
 
 } // namespace stage2
 } // namespace SIMDJSON_IMPLEMENTATION
