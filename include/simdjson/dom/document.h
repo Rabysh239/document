@@ -55,13 +55,13 @@ public:
   bool dump_raw_tape(std::ostream &os) const noexcept;
 
   /** @private Structural values. */
-  std::unique_ptr<uint64_t[]> tape{};
+  std::unique_ptr<std::vector<uint64_t>> tape{new std::vector<uint64_t>};
 
   /** @private String values.
    *
    * Should be at least byte_capacity.
    */
-  std::unique_ptr<uint8_t[]> string_buf{};
+  std::unique_ptr<std::vector<uint8_t>> string_buf{new std::vector<uint8_t>};
   std::unordered_map<size_t, std::unordered_map<std::string, internal::tape_ref>> dynamic_additions{};
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.

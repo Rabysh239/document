@@ -43,12 +43,6 @@ inline simdjson_result<dom::element> simdjson_result<dom::object>::at_key(std::s
 //  return first.at_key_case_insensitive(key);
 //}
 
-void simdjson_result<dom::object>::insert(std::string_view key, const dom::element &value) noexcept {
-  if (!error()) {
-    first.insert(key, value);
-  }
-}
-
 #if SIMDJSON_EXCEPTIONS
 
 inline dom::object::iterator simdjson_result<dom::object>::begin() const noexcept(false) {
@@ -227,7 +221,7 @@ inline uint32_t object::iterator::key_length() const noexcept {
   return is_tape_part ? tape.get_string_length() : iter->first.size();
 }
 inline const char* object::iterator::key_c_str() const noexcept {
-  return is_tape_part ? reinterpret_cast<const char *>(&tape.doc->string_buf[size_t(tape.tape_value()) + sizeof(uint32_t)])
+  return is_tape_part ? reinterpret_cast<const char *>(&tape.doc->string_buf->operator[](size_t(tape.tape_value()) + sizeof(uint32_t)))
                       : iter->first.c_str();
 }
 inline element object::iterator::value() const noexcept {
