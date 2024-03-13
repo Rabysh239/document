@@ -45,7 +45,7 @@ public:
 //
 //  bool is_array() const;
 //
-//  std::size_t count() const; // no effective on current changeable object
+  std::size_t count(std::string_view json_pointer) const;
 
   bool is_exists(std::string_view json_pointer) const;
 //
