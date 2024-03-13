@@ -38,10 +38,10 @@ inline simdjson_result<dom::element> simdjson_result<dom::object>::at_key(std::s
   if (error()) { return error(); }
   return first.at_key(key);
 }
-//inline simdjson_result<dom::element> simdjson_result<dom::object>::at_key_case_insensitive(std::string_view key) const noexcept {
-//  if (error()) { return error(); }
-//  return first.at_key_case_insensitive(key);
-//}
+inline simdjson_result<dom::element> simdjson_result<dom::object>::at_key_case_insensitive(std::string_view key) const noexcept {
+  if (error()) { return error(); }
+  return first.at_key_case_insensitive(key);
+}
 
 #if SIMDJSON_EXCEPTIONS
 
@@ -53,10 +53,10 @@ inline dom::object::iterator simdjson_result<dom::object>::end() const noexcept(
   if (error()) { throw simdjson_error(error()); }
   return first.end();
 }
-//inline size_t simdjson_result<dom::object>::size() const noexcept(false) {
-//  if (error()) { throw simdjson_error(error()); }
-//  return first.size();
-//}
+inline size_t simdjson_result<dom::object>::size() const noexcept(false) {
+  if (error()) { throw simdjson_error(error()); }
+  return first.size();
+}
 
 #endif // SIMDJSON_EXCEPTIONS
 
@@ -66,24 +66,19 @@ namespace dom {
 // object inline implementation
 //
 simdjson_inline object::object() noexcept : tape{} {}
-simdjson_inline object::object(const internal::tape_ref &_tape) noexcept : tape{_tape} {
-  auto &addition_map = tape.doc->dynamic_additions;
-  if (addition_map.find(tape.json_index) == addition_map.end()) {
-    addition_map.insert(std::make_pair(tape.json_index, data_type()));
-  }
-  data = &addition_map[tape.json_index];
-}
+simdjson_inline object::object(const internal::tape_ref &_tape) noexcept : tape{_tape} { }
 inline object::iterator object::begin() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-  return {internal::tape_ref(tape.doc, tape.json_index + 1), tape.after_element() - 1, data};
+  return internal::tape_ref(tape.doc, tape.json_index + 1);
 }
 inline object::iterator object::end() const noexcept {
-  return data->cend();
+  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
+  return internal::tape_ref(tape.doc, tape.after_element() - 1);
 }
-//inline size_t object::size() const noexcept {
-//  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-//  return tape.scope_count();
-//}
+inline size_t object::size() const noexcept {
+  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
+  return tape.scope_count();
+}
 
 inline simdjson_result<element> object::operator[](std::string_view key) const noexcept {
   return at_key(key);
@@ -137,11 +132,7 @@ inline simdjson_result<element> object::at_pointer(std::string_view json_pointer
 }
 
 inline simdjson_result<element> object::at_key(std::string_view key) const noexcept {
-  auto key_str = std::string(key);
-  if (data->find(key_str) != data->end()) {
-    return element(data->at(key_str));
-  }
-  iterator end_field = data->cbegin();
+  iterator end_field = end();
   for (iterator field = begin(); field != end_field; ++field) {
     if (field.key_equals(key)) {
       return field.value();
@@ -149,64 +140,47 @@ inline simdjson_result<element> object::at_key(std::string_view key) const noexc
   }
   return NO_SUCH_FIELD;
 }
-//// In case you wonder why we need this, please see
-//// https://github.com/simdjson/simdjson/issues/323
-//// People do seek keys in a case-insensitive manner.
-//inline simdjson_result<element> object::at_key_case_insensitive(std::string_view key) const noexcept {
-//  iterator end_field = end();
-//  for (iterator field = begin(); field != end_field; ++field) {
-//    if (field.key_equals_case_insensitive(key)) {
-//      return field.value();
-//    }
-//  }
-//  return NO_SUCH_FIELD;
-//}
-
-inline void object::insert(std::string_view key, const element &value) noexcept {
-  data->insert({std::string(key), value.tape});
+// In case you wonder why we need this, please see
+// https://github.com/simdjson/simdjson/issues/323
+// People do seek keys in a case-insensitive manner.
+inline simdjson_result<element> object::at_key_case_insensitive(std::string_view key) const noexcept {
+  iterator end_field = end();
+  for (iterator field = begin(); field != end_field; ++field) {
+    if (field.key_equals_case_insensitive(key)) {
+      return field.value();
+    }
+  }
+  return NO_SUCH_FIELD;
 }
 
 //
 // object::iterator inline implementation
 //
-simdjson_inline object::iterator::iterator(const internal::tape_ref &_tape, size_t _end_json_index, const data_type *_data) noexcept
-  : tape{_tape}, end_json_index(_end_json_index), is_tape_part(true), data(_data) { }
-object::iterator::iterator(object::iterator_type _iter) noexcept : iter(_iter), is_tape_part(false) { }
+simdjson_inline object::iterator::iterator(const internal::tape_ref &_tape) noexcept : tape{_tape} { }
 inline const key_value_pair object::iterator::operator*() const noexcept {
   return key_value_pair(key(), value());
 }
 inline bool object::iterator::operator!=(const object::iterator& other) const noexcept {
-  return is_tape_part != other.is_tape_part || is_tape_part ? tape.json_index != other.tape.json_index : iter != other.iter;
+  return tape.json_index != other.tape.json_index;
 }
-//inline bool object::iterator::operator==(const object::iterator& other) const noexcept {
-//  return tape.json_index == other.tape.json_index;
-//}
-//inline bool object::iterator::operator<(const object::iterator& other) const noexcept {
-//  return tape.json_index < other.tape.json_index;
-//}
-//inline bool object::iterator::operator<=(const object::iterator& other) const noexcept {
-//  return tape.json_index <= other.tape.json_index;
-//}
-//inline bool object::iterator::operator>=(const object::iterator& other) const noexcept {
-//  return tape.json_index >= other.tape.json_index;
-//}
-//inline bool object::iterator::operator>(const object::iterator& other) const noexcept {
-//  return tape.json_index > other.tape.json_index;
-//}
+inline bool object::iterator::operator==(const object::iterator& other) const noexcept {
+  return tape.json_index == other.tape.json_index;
+}
+inline bool object::iterator::operator<(const object::iterator& other) const noexcept {
+  return tape.json_index < other.tape.json_index;
+}
+inline bool object::iterator::operator<=(const object::iterator& other) const noexcept {
+  return tape.json_index <= other.tape.json_index;
+}
+inline bool object::iterator::operator>=(const object::iterator& other) const noexcept {
+  return tape.json_index >= other.tape.json_index;
+}
+inline bool object::iterator::operator>(const object::iterator& other) const noexcept {
+  return tape.json_index > other.tape.json_index;
+}
 inline object::iterator& object::iterator::operator++() noexcept {
-  if (is_tape_part) {
-    do {
-      tape.json_index++;
-      tape.json_index = tape.after_element();
-      if (tape.json_index == end_json_index) {
-        is_tape_part = false;
-        iter = data->begin();
-        break;
-      }
-    } while (data->find(tape.get_c_str()) != data->end());
-  } else {
-    ++iter;
-  }
+  tape.json_index++;
+  tape.json_index = tape.after_element();
   return *this;
 }
 inline object::iterator object::iterator::operator++(int) noexcept {
@@ -215,17 +189,16 @@ inline object::iterator object::iterator::operator++(int) noexcept {
   return out;
 }
 inline std::string_view object::iterator::key() const noexcept {
-  return is_tape_part ? tape.get_string_view() : iter->first;
+  return tape.get_string_view();
 }
 inline uint32_t object::iterator::key_length() const noexcept {
-  return is_tape_part ? tape.get_string_length() : iter->first.size();
+  return tape.get_string_length();
 }
 inline const char* object::iterator::key_c_str() const noexcept {
-  return is_tape_part ? reinterpret_cast<const char *>(&tape.doc->string_buf->operator[](size_t(tape.tape_value()) + sizeof(uint32_t)))
-                      : iter->first.c_str();
+  return reinterpret_cast<const char *>(&tape.doc->string_buf->operator[](size_t(tape.tape_value()) + sizeof(uint32_t)));
 }
 inline element object::iterator::value() const noexcept {
-  return element(is_tape_part ? internal::tape_ref(tape.doc, tape.json_index + 1) : iter->second);
+  return element(internal::tape_ref(tape.doc, tape.json_index + 1));
 }
 
 /**
