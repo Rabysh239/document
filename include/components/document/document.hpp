@@ -14,6 +14,13 @@ namespace components::document {
 //
 //enum class compare_t { less = -1, equals = 0, more = 1 };
 
+enum class error_t {
+  SUCCESS,
+  INVALID_JSON_POINTER,
+  NO_SUCH_CONTAINER,
+  INVALID_INDEX,
+};
+
 class document_t final : public boost::intrusive_ref_counter<document_t> {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
@@ -33,7 +40,7 @@ public:
 //  explicit document_t(std::string_view value);
 
   template<class T>
-  void set(std::string_view json_pointer, T value);
+  error_t set(std::string_view json_pointer, T value);
 //
 //  bool update(const ptr &update);
 
@@ -41,17 +48,11 @@ public:
 //
 //  bool is_valid() const;
 //
-//  bool is_dict() const;
-//
-//  bool is_array() const;
-//
-  std::size_t count(std::string_view json_pointer) const;
+  std::size_t count(std::string_view json_pointer = "") const;
 
   bool is_exists(std::string_view json_pointer) const;
-//
-//  bool is_null(const std::string &key) const;
-//
-//  bool is_null(uint32_t index) const;
+
+  bool is_null(std::string_view json_pointer) const;
 
   bool is_bool(std::string_view json_pointer) const;
 
@@ -63,9 +64,9 @@ public:
 
   bool is_string(std::string_view json_pointer) const;
 
-  bool is_array(std::string_view json_pointer) const;
+  bool is_array(std::string_view json_pointer = "") const;
 
-  bool is_dict(std::string_view json_pointer) const;
+  bool is_dict(std::string_view json_pointer = "") const;
 
   bool get_bool(std::string_view json_pointer) const;
 
@@ -137,7 +138,7 @@ private:
   prefix_index prefix_ind_;
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder builder_;
 
-  void set_(std::string_view json_pointer, const simdjson::dom::element &value);
+  error_t set_(std::string_view json_pointer, const simdjson::dom::element &value);
 //
 //  std::string to_json_dict() const;
 //
@@ -165,22 +166,17 @@ private:
 //std::string document_to_json(const document_ptr &doc);
 
 template<class T>
-inline void document_t::set(std::string_view json_pointer, T value) {
+inline error_t document_t::set(std::string_view json_pointer, T value) {
   auto next_element = src_ptr_->next_element();
   builder_.build(value);
-  set_(json_pointer, next_element);
+  return set_(json_pointer, next_element);
 }
 
 template<>
-inline void document_t::set(std::string_view json_pointer, const std::string &value) {
-  set(json_pointer, std::string_view(value));
+inline error_t document_t::set(std::string_view json_pointer, const std::string &value) {
+  return set(json_pointer, std::string_view(value));
 }
 
-//template<>
-//inline void document_t::set(const std::string &key, std::string_view value) {
-//  set_(key, ::document::impl::new_value(value));
-//}
-//
 //template<>
 //inline void document_t::set(const std::string &key, document_const_value_t value) {
 //  set_(key, value);

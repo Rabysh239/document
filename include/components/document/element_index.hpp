@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tsl/htrie_map.h>
+#include <radix_tree.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <optional>
@@ -17,7 +17,8 @@ public:
   void update_or_insert(std::string_view key, const simdjson::dom::element &value);
 
 private:
-  tsl::htrie_map<char, simdjson::dom::element> data_;
+  using element_tree = radix_tree<std::string, simdjson::dom::element>;
+  element_tree data_;
 
   void build_index(const simdjson::dom::element &value, const std::string& json_pointer);
 };
@@ -26,7 +27,6 @@ class prefix_index {
 public:
   using index_ptr = boost::intrusive_ptr<element_index>;
 
-  prefix_index() = default;
   prefix_index(std::string_view prefix, index_ptr &ind_ptr);
 
   std::optional<simdjson::dom::element> get(std::string_view key) const;
