@@ -22,11 +22,12 @@ file(GLOB_RECURSE SRC_INTERNAL "src/internal/*.cpp")
 add_executable(document ${DOCUMENT_HPP} ${DOCUMENT_CPP} ${SIMDJSON} ${SIMDJSON_DOM} ${SIMDJSON_GENERIC} ${SIMDJSON_INTERNAL} ${SRC} ${SRC_GENERIC} ${SRC_GENERIC_STAGE2} ${SRC_INTERNAL} main.cpp)
 
 FetchContent_Declare(
-        hat_trie
-        GIT_REPOSITORY https://github.com/Tessil/hat-trie.git
-        GIT_TAG v0.6.0
+        radix_trie
+        GIT_REPOSITORY https://github.com/ytakano/radix_tree.git
+        GIT_TAG f8bc846ef1f00ee43af2ddc04af67d2e44d50685
 )
-FetchContent_MakeAvailable(hat_trie)
-target_link_libraries(document tsl::hat_trie)
+FetchContent_MakeAvailable(radix_trie)
+FetchContent_GetProperties(radix_trie)
+target_include_directories(document PRIVATE ${radix_trie_SOURCE_DIR})
 
 target_link_libraries(document ${CONAN_LIBS})
