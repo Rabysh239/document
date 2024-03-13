@@ -5,15 +5,17 @@ element_index::element_index(const simdjson::dom::element &value) {
 }
 
 std::optional<simdjson::dom::element> element_index::get(std::string_view key) const {
-  try {
-    return data_.at(key);
-  } catch(...) {
+  // library methods are const but not marked
+  auto it = const_cast<element_tree&>(data_).longest_match(std::string(key));
+  if (it != const_cast<element_tree&>(data_).end()) {
+    return it->second;
+  } else {
     return std::nullopt;
   }
 }
 
 void element_index::update_or_insert(std::string_view key, const simdjson::dom::element &value)  {
-  data_[key] = value;
+  data_[std::string(key)] = value;
 }
 
 void element_index::build_index(const simdjson::dom::element &value, const std::string &json_pointer) {
