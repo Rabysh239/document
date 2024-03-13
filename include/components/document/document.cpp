@@ -5,6 +5,21 @@
 
 namespace components::document {
 
+std::size_t document_t::count(std::string_view json_pointer) const {
+  const auto opt_value = prefix_ind_.get(json_pointer);
+  if (!opt_value.has_value()) {
+    return 0;
+  }
+  auto &value = opt_value.value();
+  if (value.is_array()) {
+    return value.get_array().size();
+  }
+  if (value.is_object()) {
+    return value.get_object().size();
+  }
+  return 0;
+}
+
 bool document_t::is_exists(std::string_view json_pointer) const { return prefix_ind_.get(json_pointer).has_value(); }
 
 bool document_t::is_bool(std::string_view json_pointer) const { return is_as<bool>(json_pointer); }
@@ -59,7 +74,7 @@ void document_t::set_(std::string_view json_pointer, const simdjson::dom::elemen
   if (!opt_container.has_value()) {
     return;
   }
-  auto container = opt_container.value();
+  auto &container = opt_container.value();
   if (container.is_object()) {
     prefix_ind_.update_or_insert(json_pointer, value);
   } else if (container.is_array()) {
