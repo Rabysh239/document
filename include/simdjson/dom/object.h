@@ -16,9 +16,6 @@ public:
   /** Create a new, invalid object */
   simdjson_inline object() noexcept;
 
-  using data_type = std::unordered_map<std::string, internal::tape_ref>;
-  using iterator_type = data_type::const_iterator;
-
   class iterator {
   public:
     using value_type = const key_value_pair;
@@ -51,12 +48,12 @@ public:
      * Part of the std::iterator interface.
      */
     inline bool operator!=(const iterator& other) const noexcept;
-//    inline bool operator==(const iterator& other) const noexcept;
-//
-//    inline bool operator<(const iterator& other) const noexcept;
-//    inline bool operator<=(const iterator& other) const noexcept;
-//    inline bool operator>=(const iterator& other) const noexcept;
-//    inline bool operator>(const iterator& other) const noexcept;
+    inline bool operator==(const iterator& other) const noexcept;
+
+    inline bool operator<(const iterator& other) const noexcept;
+    inline bool operator<=(const iterator& other) const noexcept;
+    inline bool operator>=(const iterator& other) const noexcept;
+    inline bool operator>(const iterator& other) const noexcept;
     /**
      * Get the key of this key/value pair.
      */
@@ -90,14 +87,9 @@ public:
     iterator(const iterator&) noexcept = default;
     iterator& operator=(const iterator&) noexcept = default;
   private:
-    simdjson_inline iterator(const internal::tape_ref &tape, size_t end_json_index, const data_type *data) noexcept;
-    simdjson_inline iterator(iterator_type iter) noexcept;
+    simdjson_inline iterator(const internal::tape_ref &tape) noexcept;
 
     internal::tape_ref tape;
-    bool is_tape_part;
-    size_t end_json_index;
-    iterator_type iter;
-    const data_type *data;
 
     friend class object;
   };
@@ -114,12 +106,12 @@ public:
    * Part of the std::iterable interface.
    */
   inline iterator end() const noexcept;
-//  /**
-//   * Get the size of the object (number of keys).
-//   * It is a saturated value with a maximum of 0xFFFFFF: if the value
-//   * is 0xFFFFFF then the size is 0xFFFFFF or greater.
-//   */
-//  inline size_t size() const noexcept;
+  /**
+   * Get the size of the object (number of keys).
+   * It is a saturated value with a maximum of 0xFFFFFF: if the value
+   * is 0xFFFFFF then the size is 0xFFFFFF or greater.
+   */
+  inline size_t size() const noexcept;
   /**
    * Get the value associated with the given key.
    *
@@ -194,29 +186,25 @@ public:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    */
   inline simdjson_result<element> at_key(std::string_view key) const noexcept;
-//
-//  /**
-//   * Get the value associated with the given key in a case-insensitive manner.
-//   * It is only guaranteed to work over ASCII inputs.
-//   *
-//   * Note: The key will be matched against **unescaped** JSON.
-//   *
-//   * This function has linear-time complexity: the keys are checked one by one.
-//   *
-//   * @return The value associated with this field, or:
-//   *         - NO_SUCH_FIELD if the field does not exist in the object
-//   */
-//  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
 
+  /**
+   * Get the value associated with the given key in a case-insensitive manner.
+   * It is only guaranteed to work over ASCII inputs.
+   *
+   * Note: The key will be matched against **unescaped** JSON.
+   *
+   * This function has linear-time complexity: the keys are checked one by one.
+   *
+   * @return The value associated with this field, or:
+   *         - NO_SUCH_FIELD if the field does not exist in the object
+   */
+  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
 
 private:
   simdjson_inline object(const internal::tape_ref &tape) noexcept;
-  inline void insert(std::string_view key, const element &value) noexcept;
 
   internal::tape_ref tape;
-  data_type *data;
 
-  friend class components::document::document_t;
   friend class element;
   friend struct simdjson_result<element>;
   template<typename T>
@@ -252,12 +240,12 @@ public:
   inline simdjson_result<dom::element> operator[](const char *key) const noexcept;
   inline simdjson_result<dom::element> at_pointer(std::string_view json_pointer) const noexcept;
   inline simdjson_result<dom::element> at_key(std::string_view key) const noexcept;
-//  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
 
 #if SIMDJSON_EXCEPTIONS
   inline dom::object::iterator begin() const noexcept(false);
   inline dom::object::iterator end() const noexcept(false);
-//  inline size_t size() const noexcept(false);
+  inline size_t size() const noexcept(false);
 #endif // SIMDJSON_EXCEPTIONS
 };
 

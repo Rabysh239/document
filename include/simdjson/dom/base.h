@@ -2,11 +2,6 @@
 #define SIMDJSON_DOM_BASE_H
 
 #include "../../simdjson/base.h"
-#include "../../components/document/document.hpp"
-
-namespace components::document {
-class document_t;
-}
 
 namespace simdjson {
 

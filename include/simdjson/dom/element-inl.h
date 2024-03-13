@@ -8,7 +8,6 @@
 #include "../../simdjson/internal/tape_type.h"
 
 #include "../../simdjson/dom/object-inl.h"
-#include "../../simdjson/dom/array-inl.h"
 #include "../../simdjson/error-inl.h"
 
 #include <ostream>
@@ -141,10 +140,10 @@ simdjson_inline simdjson_result<dom::element> simdjson_result<dom::element>::at_
   if (error()) { return error(); }
   return first.at_key(key);
 }
-//simdjson_inline simdjson_result<dom::element> simdjson_result<dom::element>::at_key_case_insensitive(std::string_view key) const noexcept {
-//  if (error()) { return error(); }
-//  return first.at_key_case_insensitive(key);
-//}
+simdjson_inline simdjson_result<dom::element> simdjson_result<dom::element>::at_key_case_insensitive(std::string_view key) const noexcept {
+  if (error()) { return error(); }
+  return first.at_key_case_insensitive(key);
+}
 
 #if SIMDJSON_EXCEPTIONS
 
@@ -408,9 +407,9 @@ inline simdjson_result<element> element::at(size_t index) const noexcept {
 inline simdjson_result<element> element::at_key(std::string_view key) const noexcept {
   return get<object>().at_key(key);
 }
-//inline simdjson_result<element> element::at_key_case_insensitive(std::string_view key) const noexcept {
-//  return get<object>().at_key_case_insensitive(key);
-//}
+inline simdjson_result<element> element::at_key_case_insensitive(std::string_view key) const noexcept {
+  return get<object>().at_key_case_insensitive(key);
+}
 inline bool element::operator<(const element &other) const noexcept {
   return tape.json_index < other.tape.json_index;
 }

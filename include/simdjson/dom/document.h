@@ -2,10 +2,8 @@
 #define SIMDJSON_DOM_DOCUMENT_H
 
 #include "../../simdjson/dom/base.h"
-#include "../../simdjson/internal/tape_ref.h"
 
 #include <memory>
-#include <unordered_map>
 
 namespace simdjson {
 namespace dom {
@@ -15,7 +13,7 @@ namespace dom {
  *
  * This class cannot be copied, only moved, to avoid unintended allocations.
  */
-class document {
+class document : public boost::intrusive_ref_counter<document> {
 public:
   /**
    * Create a document container with zero capacity.
@@ -45,7 +43,8 @@ public:
   /**
    * Get the root element of this document as a JSON array.
    */
-  element root() noexcept;
+  element root() const noexcept;
+  element next_element() const noexcept;
 
   /**
    * @private Dump the raw tape for debugging.
@@ -63,7 +62,6 @@ public:
    * Should be at least byte_capacity.
    */
   std::unique_ptr<std::vector<uint8_t>> string_buf{new std::vector<uint8_t>};
-  std::unordered_map<size_t, std::unordered_map<std::string, internal::tape_ref>> dynamic_additions{};
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.
    *
