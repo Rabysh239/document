@@ -443,16 +443,16 @@ public:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    */
   inline simdjson_result<element> at_key(std::string_view key) const noexcept;
-//
-//  /**
-//   * Get the value associated with the given key in a case-insensitive manner.
-//   *
-//   * Note: The key will be matched against **unescaped** JSON.
-//   *
-//   * @return The value associated with this field, or:
-//   *         - NO_SUCH_FIELD if the field does not exist in the object
-//   */
-//  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
+
+  /**
+   * Get the value associated with the given key in a case-insensitive manner.
+   *
+   * Note: The key will be matched against **unescaped** JSON.
+   *
+   * @return The value associated with this field, or:
+   *         - NO_SUCH_FIELD if the field does not exist in the object
+   */
+  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
 
   /**
    * operator< defines a total order for element allowing to use them in
@@ -476,7 +476,6 @@ public:
 private:
   simdjson_inline element(const internal::tape_ref &tape) noexcept;
   internal::tape_ref tape;
-  friend class components::document::document_t;
   friend class document;
   friend class object;
   friend class array;
@@ -531,7 +530,7 @@ public:
   simdjson_inline simdjson_result<dom::element> at(const std::string_view json_pointer) const noexcept;
   simdjson_inline simdjson_result<dom::element> at(size_t index) const noexcept;
   simdjson_inline simdjson_result<dom::element> at_key(std::string_view key) const noexcept;
-//  simdjson_inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+  simdjson_inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
 
 #if SIMDJSON_EXCEPTIONS
   simdjson_inline operator bool() const noexcept(false);

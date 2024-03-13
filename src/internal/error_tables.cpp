@@ -28,7 +28,6 @@ namespace internal {
     {NUMBER_OUT_OF_RANGE,        "NUMBER_OUT_OF_RANGE: The JSON number is too large or too small to fit within the requested type." },
     {INDEX_OUT_OF_BOUNDS,        "INDEX_OUT_OF_BOUNDS: Attempted to access an element of a JSON array that is beyond its length." },
     {NO_SUCH_FIELD,              "NO_SUCH_FIELD: The JSON field referenced does not exist in this object." },
-    {NO_SUCH_POINTER,            "NO_SUCH_POINTER: JSON pointer not found" },
     {IO_ERROR,                   "IO_ERROR: Error reading the file." },
     {INVALID_JSON_POINTER,       "INVALID_JSON_POINTER: Invalid JSON pointer syntax." },
     {INVALID_URI_FRAGMENT,       "INVALID_URI_FRAGMENT: Invalid URI fragment syntax." },

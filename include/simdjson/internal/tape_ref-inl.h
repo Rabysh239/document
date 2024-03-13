@@ -17,7 +17,7 @@ constexpr const uint32_t JSON_COUNT_MASK = 0xFFFFFF;
 // tape_ref inline implementation
 //
 simdjson_inline tape_ref::tape_ref() noexcept : doc{nullptr}, json_index{0} {}
-simdjson_inline tape_ref::tape_ref(dom::document *_doc, size_t _json_index) noexcept : doc{_doc}, json_index{_json_index} {}
+simdjson_inline tape_ref::tape_ref(const dom::document *_doc, size_t _json_index) noexcept : doc{_doc}, json_index{_json_index} {}
 
 
 simdjson_inline bool tape_ref::is_document_root() const noexcept {

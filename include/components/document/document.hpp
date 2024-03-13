@@ -2,11 +2,13 @@
 
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
+#include <utility>
 //#include <components/document/document_id.hpp>
+#include "../../simdjson/dom/document-inl.h"
 #include "../../simdjson/dom/element-inl.h"
 #include "../../simdjson/dom/object-inl.h"
 #include "../../../src/generic/stage2/tape_builder.h"
-#include <tsl/htrie_map.h>
+#include "element_index.hpp"
 
 namespace components::document {
 //
@@ -17,8 +19,6 @@ public:
   using ptr = boost::intrusive_ptr<document_t>;
 //
 //  document_t();
-
-  explicit document_t(simdjson::dom::document &&value);
 //
 //  explicit document_t(bool value);
 //
@@ -62,16 +62,10 @@ public:
   bool is_double(std::string_view json_pointer) const;
 
   bool is_string(std::string_view json_pointer) const;
-//
-//  bool is_array(std::string_view key) const;
-//
-//  bool is_array(uint32_t index) const;
-//
-//  bool is_dict(std::string_view key) const;
-//
-//  bool is_dict(uint32_t index) const;
 
-  simdjson::simdjson_result<simdjson::dom::element> get(std::string_view json_pointer) const;
+  bool is_array(std::string_view json_pointer) const;
+
+  bool is_dict(std::string_view json_pointer) const;
 
   bool get_bool(std::string_view json_pointer) const;
 
@@ -83,25 +77,21 @@ public:
 
   std::string get_string(std::string_view json_pointer) const;
 
-//  document_t get_array(std::string_view key) const;
-//
-//  document_t get_array(uint32_t index) const;
-//
-//  document_t get_dict(std::string_view key) const;
-//
-//  document_t get_dict(uint32_t index) const;
-//
-//  const_value_ptr get_value() const;
-//
-//  const_value_ptr get_value(std::string_view key) const;
-//
-//  const_value_ptr get_value(uint32_t index) const;
+  ptr get_array(std::string_view json_pointer) const;
+
+//  ptr get_dict(std::string_view json_pointer) const;
+
+  template<class T>
+  bool is_as(std::string_view json_pointer) const {
+    const auto opt_value = prefix_ind_.get(json_pointer);
+    return opt_value.has_value() && opt_value.value().is<T>();
+  }
 
   template<class T>
   T get_as(std::string_view json_pointer) const {
-    const auto value = get(json_pointer);
-    if (value.error() == simdjson::SUCCESS) {
-      return value.get<T>();
+    const auto opt_value = prefix_ind_.get(json_pointer);
+    if (opt_value.has_value() && opt_value.value().is<T>()) {
+      return opt_value.value().get<T>();
     }
     return T();
   }
@@ -133,21 +123,28 @@ public:
 //
 //  explicit operator bool() const;
 
-private:
-  simdjson::dom::document source_;
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder builder_;
-  tsl::htrie_map<char, simdjson::dom::element> json_pointer_index_;
+  static ptr document_from_json(const std::string &json);
 
-  simdjson::error_code set_(std::string_view json_pointer, const simdjson::dom::element &value);
+private:
+  using source_ptr = boost::intrusive_ptr<simdjson::dom::document>;
+  using index_ptr = boost::intrusive_ptr<element_index>;
+
+  explicit document_t(source_ptr source);
+  document_t(document_t::source_ptr source, index_ptr ind_ptr, std::string_view prefix);
+
+  source_ptr src_ptr_;
+  index_ptr ind_ptr_;
+  prefix_index prefix_ind_;
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder builder_;
+
+  void set_(std::string_view json_pointer, const simdjson::dom::element &value);
 //
 //  std::string to_json_dict() const;
 //
 //  std::string to_json_array() const;
-
-  void build_index(const simdjson::dom::element &value, const std::string& json_pointer);
 };
 
-using document_ptr = document_t::ptr;
+//using document_ptr = document_t::ptr;
 //
 //document_ptr make_document();
 //
@@ -164,15 +161,14 @@ using document_ptr = document_t::ptr;
 
 //document_id_t get_document_id(const document_ptr &document);
 
-document_ptr document_from_json(const std::string &json);
 //
 //std::string document_to_json(const document_ptr &doc);
 
 template<class T>
 inline void document_t::set(std::string_view json_pointer, T value) {
-  auto next_element_index = builder_.next_tape_index();
-  builder_.build((T) value);
-  set_(json_pointer, simdjson::dom::element(simdjson::internal::tape_ref(&source_, next_element_index)));
+  auto next_element = src_ptr_->next_element();
+  builder_.build(value);
+  set_(json_pointer, next_element);
 }
 
 template<>

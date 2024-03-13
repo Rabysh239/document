@@ -17,8 +17,11 @@ namespace dom {
 //
 // document inline implementation
 //
-inline element document::root() noexcept {
+inline element document::root() const noexcept {
   return element(internal::tape_ref(this, 1));
+}
+inline element document::next_element() const noexcept {
+  return element(internal::tape_ref(this, tape->size()));
 }
 simdjson_warn_unused
 inline size_t document::capacity() const noexcept {
@@ -58,98 +61,98 @@ inline error_code document::allocate(size_t capacity) noexcept {
 }
 
 inline bool document::dump_raw_tape(std::ostream &os) const noexcept {
-//  uint32_t string_length;
-//  size_t tape_idx = 0;
-//  uint64_t tape_val = tape[tape_idx];
-//  uint8_t type = uint8_t(tape_val >> 56);
-//  os << tape_idx << " : " << type;
-//  tape_idx++;
-//  size_t how_many = 0;
-//  if (type == 'r') {
-//    how_many = size_t(tape_val & internal::JSON_VALUE_MASK);
-//  } else {
-//    // Error: no starting root node?
-//    return false;
-//  }
-//  os << "\t// pointing to " << how_many << " (right after last node)\n";
-//  uint64_t payload;
-//  for (; tape_idx < how_many; tape_idx++) {
-//    os << tape_idx << " : ";
-//    tape_val = tape[tape_idx];
-//    payload = tape_val & internal::JSON_VALUE_MASK;
-//    type = uint8_t(tape_val >> 56);
-//    switch (type) {
-//    case '"': // we have a string
-//      os << "string \"";
-//      std::memcpy(&string_length, string_buf.get() + payload, sizeof(uint32_t));
-//      os << internal::escape_json_string(std::string_view(
-//        reinterpret_cast<const char *>(string_buf.get() + payload + sizeof(uint32_t)),
-//        string_length
-//      ));
-//      os << '"';
-//      os << '\n';
-//      break;
-//    case 'l': // we have a long int
-//      if (tape_idx + 1 >= how_many) {
-//        return false;
-//      }
-//      os << "integer " << static_cast<int64_t>(tape[++tape_idx]) << "\n";
-//      break;
-//    case 'u': // we have a long uint
-//      if (tape_idx + 1 >= how_many) {
-//        return false;
-//      }
-//      os << "unsigned integer " << tape[++tape_idx] << "\n";
-//      break;
-//    case 'd': // we have a double
-//      os << "float ";
-//      if (tape_idx + 1 >= how_many) {
-//        return false;
-//      }
-//      double answer;
-//      std::memcpy(&answer, &tape[++tape_idx], sizeof(answer));
-//      os << answer << '\n';
-//      break;
-//    case 'n': // we have a null
-//      os << "null\n";
-//      break;
-//    case 't': // we have a true
-//      os << "true\n";
-//      break;
-//    case 'f': // we have a false
-//      os << "false\n";
-//      break;
-//    case '{': // we have an object
-//      os << "{\t// pointing to next tape location " << uint32_t(payload)
-//         << " (first node after the scope), "
-//         << " saturated count "
-//         << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
-//      break;    case '}': // we end an object
-//      os << "}\t// pointing to previous tape location " << uint32_t(payload)
-//         << " (start of the scope)\n";
-//      break;
-//    case '[': // we start an array
-//      os << "[\t// pointing to next tape location " << uint32_t(payload)
-//         << " (first node after the scope), "
-//         << " saturated count "
-//         << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
-//      break;
-//    case ']': // we end an array
-//      os << "]\t// pointing to previous tape location " << uint32_t(payload)
-//         << " (start of the scope)\n";
-//      break;
-//    case 'r': // we start and end with the root node
-//      // should we be hitting the root node?
-//      return false;
-//    default:
-//      return false;
-//    }
-//  }
-//  tape_val = tape[tape_idx];
-//  payload = tape_val & internal::JSON_VALUE_MASK;
-//  type = uint8_t(tape_val >> 56);
-//  os << tape_idx << " : " << type << "\t// pointing to " << payload
-//     << " (start root)\n";
+  uint32_t string_length;
+  size_t tape_idx = 0;
+  uint64_t tape_val = tape->operator[](tape_idx);
+  uint8_t type = uint8_t(tape_val >> 56);
+  os << tape_idx << " : " << type;
+  tape_idx++;
+  size_t how_many = 0;
+  if (type == 'r') {
+    how_many = size_t(tape_val & internal::JSON_VALUE_MASK);
+  } else {
+    // Error: no starting root node?
+    return false;
+  }
+  os << "\t// pointing to " << how_many << " (right after last node)\n";
+  uint64_t payload;
+  for (; tape_idx < how_many; tape_idx++) {
+    os << tape_idx << " : ";
+    tape_val = tape->operator[](tape_idx);
+    payload = tape_val & internal::JSON_VALUE_MASK;
+    type = uint8_t(tape_val >> 56);
+    switch (type) {
+    case '"': // we have a string
+      os << "string \"";
+      std::memcpy(&string_length, string_buf.get() + payload, sizeof(uint32_t));
+      os << internal::escape_json_string(std::string_view(
+        reinterpret_cast<const char *>(string_buf.get() + payload + sizeof(uint32_t)),
+        string_length
+      ));
+      os << '"';
+      os << '\n';
+      break;
+    case 'l': // we have a long int
+      if (tape_idx + 1 >= how_many) {
+        return false;
+      }
+      os << "integer " << static_cast<int64_t>(tape->operator[](++tape_idx)) << "\n";
+      break;
+    case 'u': // we have a long uint
+      if (tape_idx + 1 >= how_many) {
+        return false;
+      }
+      os << "unsigned integer " << tape->operator[](++tape_idx) << "\n";
+      break;
+    case 'd': // we have a double
+      os << "float ";
+      if (tape_idx + 1 >= how_many) {
+        return false;
+      }
+      double answer;
+      std::memcpy(&answer, &tape->operator[](++tape_idx), sizeof(answer));
+      os << answer << '\n';
+      break;
+    case 'n': // we have a null
+      os << "null\n";
+      break;
+    case 't': // we have a true
+      os << "true\n";
+      break;
+    case 'f': // we have a false
+      os << "false\n";
+      break;
+    case '{': // we have an object
+      os << "{\t// pointing to next tape location " << uint32_t(payload)
+         << " (first node after the scope), "
+         << " saturated count "
+         << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
+      break;    case '}': // we end an object
+      os << "}\t// pointing to previous tape location " << uint32_t(payload)
+         << " (start of the scope)\n";
+      break;
+    case '[': // we start an array
+      os << "[\t// pointing to next tape location " << uint32_t(payload)
+         << " (first node after the scope), "
+         << " saturated count "
+         << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
+      break;
+    case ']': // we end an array
+      os << "]\t// pointing to previous tape location " << uint32_t(payload)
+         << " (start of the scope)\n";
+      break;
+    case 'r': // we start and end with the root node
+      // should we be hitting the root node?
+      return false;
+    default:
+      return false;
+    }
+  }
+  tape_val = tape->operator[](tape_idx);
+  payload = tape_val & internal::JSON_VALUE_MASK;
+  type = uint8_t(tape_val >> 56);
+  os << tape_idx << " : " << type << "\t// pointing to " << payload
+     << " (start root)\n";
   return true;
 }
 
