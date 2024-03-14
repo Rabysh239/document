@@ -71,10 +71,8 @@ error_t document_t::set_(std::string_view json_pointer, const simdjson::dom::ele
     prefix_ind_.update_or_insert(json_pointer, value);
   } else if (container.is_array()) {
     auto key = std::string(json_pointer.substr(pos + 1));
-    size_t index;
-    try {
-      index = size_t(std::atol(key.c_str()));
-    } catch (...) {
+    auto index = std::atol(key.c_str());
+    if (index < 0) {
       return error_t::INVALID_INDEX;
     }
 //    auto correct_index = std::min(index, <container size>);
