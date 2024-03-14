@@ -5,21 +5,6 @@
 
 namespace components::document {
 
-std::size_t document_t::count(std::string_view json_pointer) const {
-  const auto opt_value = prefix_ind_.get(json_pointer);
-  if (!opt_value.has_value()) {
-    return 0;
-  }
-  auto &value = opt_value.value();
-  if (value.is_array()) {
-    return value.get_array().size();
-  }
-  if (value.is_object()) {
-    return value.get_object().size();
-  }
-  return 0;
-}
-
 bool document_t::is_exists(std::string_view json_pointer) const { return prefix_ind_.get(json_pointer).has_value(); }
 
 bool document_t::is_null(std::string_view json_pointer) const {
@@ -92,8 +77,8 @@ error_t document_t::set_(std::string_view json_pointer, const simdjson::dom::ele
     } catch (...) {
       return error_t::INVALID_INDEX;
     }
-    auto correct_index = std::min(index, container.get_array().size());
-    prefix_ind_.update_or_insert(std::string(container_json_pointer) + "/" + std::to_string(correct_index), value);
+//    auto correct_index = std::min(index, <container size>);
+    prefix_ind_.update_or_insert(std::string(container_json_pointer) + "/" + std::to_string(index), value);
   }
   return error_t::SUCCESS;
 }

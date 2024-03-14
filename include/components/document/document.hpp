@@ -48,7 +48,7 @@ public:
 //
 //  bool is_valid() const;
 //
-  std::size_t count(std::string_view json_pointer = "") const;
+//  std::size_t count(std::string_view json_pointer = "") const;
 
   bool is_exists(std::string_view json_pointer) const;
 
