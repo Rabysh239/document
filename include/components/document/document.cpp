@@ -5,11 +5,15 @@
 
 namespace components::document {
 
-bool document_t::is_exists(std::string_view json_pointer) const { return prefix_ind_.get(json_pointer).has_value(); }
+std::size_t document_t::count(std::string_view json_pointer) const {
+  return element_ind_->find_node_const(json_pointer)->size();
+}
+
+bool document_t::is_exists(std::string_view json_pointer) const { return element_ind_->find(json_pointer) != nullptr; }
 
 bool document_t::is_null(std::string_view json_pointer) const {
-  const auto opt_value = prefix_ind_.get(json_pointer);
-  return opt_value.has_value() && opt_value.value().is_null();
+  const auto value_ptr = element_ind_->find(json_pointer);
+  return value_ptr != nullptr && value_ptr->is_null();
 }
 
 bool document_t::is_bool(std::string_view json_pointer) const { return is_as<bool>(json_pointer); }
@@ -36,24 +40,24 @@ double document_t::get_double(std::string_view json_pointer) const { return get_
 
 std::string document_t::get_string(std::string_view json_pointer) const { return std::string(get_as<std::string_view>(json_pointer)); }
 
-document_t::ptr document_t::get_array(std::string_view json_pointer) const {
-  const auto opt_value = prefix_ind_.get(json_pointer);
-  if (opt_value.has_value() && opt_value.value().is_array()) {
-    return new document_t(src_ptr_, ind_ptr_, json_pointer);
+document_t::ptr document_t::get_array(std::string_view json_pointer) {
+  const auto value_ptr = element_ind_->find(json_pointer);
+  if (value_ptr != nullptr && value_ptr->is_array()) {
+    return new document_t(src_ptr_, element_ind_->get_node(json_pointer));
   }
   return nullptr; //temporarily
 }
 
 document_t::document_t(document_t::source_ptr source)
         : src_ptr_(std::move(source)),
-          ind_ptr_(new element_index(src_ptr_->root())),
-          prefix_ind_(prefix_index("", ind_ptr_)),
-          builder_(*src_ptr_) {}
+          element_ind_(new word_trie_node<simdjson::dom::element>),
+          builder_(*src_ptr_) {
+  build_index(*element_ind_, src_ptr_->root(), "");
+}
 
-document_t::document_t(document_t::source_ptr source, index_ptr ind_ptr, std::string_view prefix)
+document_t::document_t(document_t::source_ptr source, word_trie_ptr root_ptr)
         : src_ptr_(std::move(source)),
-          ind_ptr_(std::move(ind_ptr)),
-          prefix_ind_(prefix_index(prefix, ind_ptr_)),
+          element_ind_(std::move(root_ptr)),
           builder_(*src_ptr_) {}
 
 error_t document_t::set_(std::string_view json_pointer, const simdjson::dom::element &value) {
@@ -62,23 +66,39 @@ error_t document_t::set_(std::string_view json_pointer, const simdjson::dom::ele
     return error_t::INVALID_JSON_POINTER;
   }
   auto container_json_pointer = json_pointer.substr(0, pos);
-  auto opt_container = prefix_ind_.get(container_json_pointer);
-  if (!opt_container.has_value()) {
+  auto container_node_ptr = element_ind_->get_node(container_json_pointer);
+  if (container_node_ptr == nullptr) {
     return error_t::NO_SUCH_CONTAINER;
   }
-  auto &container = opt_container.value();
-  if (container.is_object()) {
-    prefix_ind_.update_or_insert(json_pointer, value);
-  } else if (container.is_array()) {
-    auto key = std::string(json_pointer.substr(pos + 1));
-    auto index = std::atol(key.c_str());
+  auto *container = container_node_ptr->find();
+  auto key = json_pointer.substr(pos + 1);
+  if (container->is_object()) {
+    container_node_ptr->insert(key, value);
+  } else if (container->is_array()) {
+    auto index = std::atol(std::string(key).c_str());
     if (index < 0) {
       return error_t::INVALID_INDEX;
     }
-//    auto correct_index = std::min(index, <container size>);
-    prefix_ind_.update_or_insert(std::string(container_json_pointer) + "/" + std::to_string(index), value);
+    auto correct_index = std::min(size_t(index), container_node_ptr->size());
+    container_node_ptr->insert(std::to_string(correct_index), value);
   }
   return error_t::SUCCESS;
+}
+
+void document_t::build_index(word_trie_node<simdjson::dom::element>& node, const simdjson::dom::element &value, std::string_view key) {
+  node.insert(key, value);
+  if (value.is_object()) {
+    const auto obj = value.get_object();
+    for (auto it = obj.begin(); it != obj.end(); ++it) {
+      build_index(*node.find_node(key), it.value(), it.key());
+    }
+  } else if (value.is_array()) {
+    const auto arr = value.get_array();
+    int i = 0;
+    for (auto it : arr) {
+      build_index(*node.find_node(key), it, std::to_string(i++));
+    }
+  }
 }
 
 document_t::ptr document_t::document_from_json(const std::string &json) {
