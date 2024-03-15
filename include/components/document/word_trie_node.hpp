@@ -110,7 +110,11 @@ word_trie_node<T> *word_trie_node<T>::find_node(std::string_view words) {
 
 template<typename T>
 const T *word_trie_node<T>::find(std::string_view words) const {
-  return find_node_const(words)->value_.get();
+  auto node = find_node_const(words);
+  if (node == nullptr) {
+    return nullptr;
+  }
+  return node->value_.get();
 }
 
 template<typename T>
