@@ -6,7 +6,11 @@
 namespace components::document {
 
 std::size_t document_t::count(std::string_view json_pointer) const {
-  return element_ind_->find_node_const(json_pointer)->size();
+  const auto value_ptr = element_ind_->find_node_const(json_pointer);
+  if (value_ptr == nullptr) {
+    return 0;
+  }
+  return value_ptr->size();
 }
 
 bool document_t::is_exists(std::string_view json_pointer) const { return element_ind_->find(json_pointer) != nullptr; }
