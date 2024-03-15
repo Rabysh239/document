@@ -1,14 +1,15 @@
 #pragma once
 
+#include "word_trie_node.hpp"
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <utility>
 //#include <components/document/document_id.hpp>
 #include "../../simdjson/dom/document-inl.h"
 #include "../../simdjson/dom/element-inl.h"
+#include "../../simdjson/dom/array-inl.h"
 #include "../../simdjson/dom/object-inl.h"
 #include "../../../src/generic/stage2/tape_builder.h"
-#include "element_index.hpp"
 
 namespace components::document {
 //
@@ -24,6 +25,7 @@ enum class error_t {
 class document_t final : public boost::intrusive_ref_counter<document_t> {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
+  using word_trie_ptr = boost::intrusive_ptr<word_trie_node<simdjson::dom::element>>;
 //
 //  document_t();
 //
@@ -48,7 +50,7 @@ public:
 //
 //  bool is_valid() const;
 //
-//  std::size_t count(std::string_view json_pointer = "") const;
+  std::size_t count(std::string_view json_pointer = "") const;
 
   bool is_exists(std::string_view json_pointer) const;
 
@@ -78,21 +80,21 @@ public:
 
   std::string get_string(std::string_view json_pointer) const;
 
-  ptr get_array(std::string_view json_pointer) const;
+  ptr get_array(std::string_view json_pointer);
 
 //  ptr get_dict(std::string_view json_pointer) const;
 
   template<class T>
   bool is_as(std::string_view json_pointer) const {
-    const auto opt_value = prefix_ind_.get(json_pointer);
-    return opt_value.has_value() && opt_value.value().is<T>();
+    const auto value_ptr = element_ind_->find(json_pointer);
+    return value_ptr != nullptr && value_ptr->is<T>();
   }
 
   template<class T>
   T get_as(std::string_view json_pointer) const {
-    const auto opt_value = prefix_ind_.get(json_pointer);
-    if (opt_value.has_value() && opt_value.value().is<T>()) {
-      return opt_value.value().get<T>();
+    const auto value_ptr = element_ind_->find(json_pointer);
+    if (value_ptr != nullptr && value_ptr->is<T>()) {
+      return value_ptr->get<T>();
     }
     return T();
   }
@@ -128,17 +130,18 @@ public:
 
 private:
   using source_ptr = boost::intrusive_ptr<simdjson::dom::document>;
-  using index_ptr = boost::intrusive_ptr<element_index>;
 
   explicit document_t(source_ptr source);
-  document_t(document_t::source_ptr source, index_ptr ind_ptr, std::string_view prefix);
+  document_t(document_t::source_ptr source, word_trie_ptr root_ptr);
 
   source_ptr src_ptr_;
-  index_ptr ind_ptr_;
-  prefix_index prefix_ind_;
+  word_trie_ptr element_ind_;
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder builder_;
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element &value);
+
+  void build_index(word_trie_node<simdjson::dom::element>& node, const simdjson::dom::element &value, std::string_view key);
+
 //
 //  std::string to_json_dict() const;
 //
