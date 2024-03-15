@@ -4,20 +4,20 @@
 int main() {
   const std::string json = R"(
         {
-            "a": {
-                "b": 1,
-                "c": 2.3
-            },
-            "b": {
-                "c": true
-            }
+          "obj": {
+            "double": 2.3,
+            "arr": [
+              {
+                "hello": "world"
+              }
+            ]
+          }
         }
     )";
 
   simdjson::dom::document doc;
   auto otter_doc = components::document::document_t::document_from_json(json);
-  std::cout << otter_doc->is_bool("/b/c") << " " << otter_doc->get_bool("/b/c") << std::endl;
-  otter_doc->set("/a/d", 3.4);
-  std::cout << otter_doc->is_double("/a/d") << " " << otter_doc->get_double("/a/d") << std::endl;
+  std::cout << otter_doc->is_double("/obj/double") << " " << otter_doc->is_double("/obj/double") << std::endl;
+  std::cout << otter_doc->is_string("/obj/arr/0/hello") << " " << otter_doc->get_string("/obj/arr/0/hello") << std::endl;
   return 0;
 }

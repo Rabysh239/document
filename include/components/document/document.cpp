@@ -28,7 +28,7 @@ bool document_t::is_long(std::string_view json_pointer) const { return is_as<int
 
 bool document_t::is_double(std::string_view json_pointer) const { return is_as<double>(json_pointer); }
 
-bool document_t::is_string(std::string_view json_pointer) const { return is_as<double>(json_pointer); }
+bool document_t::is_string(std::string_view json_pointer) const { return is_as<std::string_view>(json_pointer); }
 
 bool document_t::is_array(std::string_view json_pointer) const { return is_as<simdjson::dom::array>(json_pointer); }
 
