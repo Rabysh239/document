@@ -195,7 +195,7 @@ inline uint32_t object::iterator::key_length() const noexcept {
   return tape.get_string_length();
 }
 inline const char* object::iterator::key_c_str() const noexcept {
-  return reinterpret_cast<const char *>(&tape.doc->string_buf->operator[](size_t(tape.tape_value()) + sizeof(uint32_t)));
+  return reinterpret_cast<const char *>(&tape.doc->get_string_buf(size_t(tape.tape_value()) + sizeof(uint32_t)));
 }
 inline element object::iterator::value() const noexcept {
   return element(internal::tape_ref(tape.doc, tape.json_index + 1));
