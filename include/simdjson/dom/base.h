@@ -29,6 +29,10 @@ static constexpr size_t MINIMAL_DOCUMENT_CAPACITY = 32;
 
 class array;
 class document;
+class immutable_document;
+class mutable_document;
+class tape_writer_to_mutable;
+class tape_writer_to_immutable;
 class document_stream;
 class element;
 class key_value_pair;

@@ -25,7 +25,6 @@ enum class error_t {
 class document_t final : public boost::intrusive_ref_counter<document_t> {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
-  using word_trie_ptr = boost::intrusive_ptr<word_trie_node<simdjson::dom::element>>;
 //
 //  document_t();
 //
@@ -129,14 +128,18 @@ public:
   static ptr document_from_json(const std::string &json);
 
 private:
-  using source_ptr = boost::intrusive_ptr<simdjson::dom::document>;
+  using immutable_source_ptr = boost::intrusive_ptr<simdjson::dom::immutable_document>;
+  using mutable_source_ptr = boost::intrusive_ptr<simdjson::dom::mutable_document>;
+  using word_trie_ptr = boost::intrusive_ptr<word_trie_node<simdjson::dom::element>>;
 
-  explicit document_t(source_ptr source);
-  document_t(document_t::source_ptr source, word_trie_ptr root_ptr);
+  explicit document_t(immutable_source_ptr source);
+  document_t(ptr ancestor, word_trie_ptr root_ptr);
 
-  source_ptr src_ptr_;
-  word_trie_ptr element_ind_;
+  immutable_source_ptr immut_src_ptr_;
+  mutable_source_ptr mut_src_ptr_;
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder builder_;
+  word_trie_ptr element_ind_;
+  std::vector<ptr> ancestors;
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element &value);
 
@@ -170,7 +173,7 @@ private:
 
 template<class T>
 inline error_t document_t::set(std::string_view json_pointer, T value) {
-  auto next_element = src_ptr_->next_element();
+  auto next_element = mut_src_ptr_->next_element();
   builder_.build(value);
   return set_(json_pointer, next_element);
 }

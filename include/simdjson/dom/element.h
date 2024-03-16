@@ -476,7 +476,8 @@ public:
 private:
   simdjson_inline element(const internal::tape_ref &tape) noexcept;
   internal::tape_ref tape;
-  friend class document;
+  friend class immutable_document;
+  friend class mutable_document;
   friend class object;
   friend class array;
   friend struct simdjson_result<element>;
