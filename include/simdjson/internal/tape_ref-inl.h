@@ -32,27 +32,27 @@ simdjson_inline bool tape_ref::usable() const noexcept {
 
 simdjson_inline bool tape_ref::is_double() const noexcept {
   constexpr uint64_t tape_double = uint64_t(tape_type::DOUBLE)<<56;
-  return doc->tape->operator[](json_index) == tape_double;
+  return doc->get_tape(json_index) == tape_double;
 }
 simdjson_inline bool tape_ref::is_int64() const noexcept {
   constexpr uint64_t tape_int64 = uint64_t(tape_type::INT64)<<56;
-  return doc->tape->operator[](json_index) == tape_int64;
+  return doc->get_tape(json_index) == tape_int64;
 }
 simdjson_inline bool tape_ref::is_uint64() const noexcept {
   constexpr uint64_t tape_uint64 = uint64_t(tape_type::UINT64)<<56;
-  return doc->tape->operator[](json_index) == tape_uint64;
+  return doc->get_tape(json_index) == tape_uint64;
 }
 simdjson_inline bool tape_ref::is_false() const noexcept {
   constexpr uint64_t tape_false = uint64_t(tape_type::FALSE_VALUE)<<56;
-  return doc->tape->operator[](json_index) == tape_false;
+  return doc->get_tape(json_index) == tape_false;
 }
 simdjson_inline bool tape_ref::is_true() const noexcept {
   constexpr uint64_t tape_true = uint64_t(tape_type::TRUE_VALUE)<<56;
-  return doc->tape->operator[](json_index) == tape_true;
+  return doc->get_tape(json_index) == tape_true;
 }
 simdjson_inline bool tape_ref::is_null_on_tape() const noexcept {
   constexpr uint64_t tape_null = uint64_t(tape_type::NULL_VALUE)<<56;
-  return doc->tape->operator[](json_index) == tape_null;
+  return doc->get_tape(json_index) == tape_null;
 }
 
 inline size_t tape_ref::after_element() const noexcept {
@@ -69,16 +69,16 @@ inline size_t tape_ref::after_element() const noexcept {
   }
 }
 simdjson_inline tape_type tape_ref::tape_ref_type() const noexcept {
-  return static_cast<tape_type>(doc->tape->operator[](json_index) >> 56);
+  return static_cast<tape_type>(doc->get_tape(json_index) >> 56);
 }
 simdjson_inline uint64_t internal::tape_ref::tape_value() const noexcept {
-  return doc->tape->operator[](json_index) & internal::JSON_VALUE_MASK;
+  return doc->get_tape(json_index) & internal::JSON_VALUE_MASK;
 }
 simdjson_inline uint32_t internal::tape_ref::matching_brace_index() const noexcept {
-  return uint32_t(doc->tape->operator[](json_index));
+  return uint32_t(doc->get_tape(json_index));
 }
 simdjson_inline uint32_t internal::tape_ref::scope_count() const noexcept {
-  return uint32_t((doc->tape->operator[](json_index) >> 32) & internal::JSON_COUNT_MASK);
+  return uint32_t((doc->get_tape(json_index) >> 32) & internal::JSON_COUNT_MASK);
 }
 
 template<typename T>
@@ -89,20 +89,20 @@ simdjson_inline T tape_ref::next_tape_value() const noexcept {
   // It is not generally safe. It is safer, and often faster to rely
   // on memcpy. Yes, it is uglier, but it is also encapsulated.
   T x;
-  std::memcpy(&x,&doc->tape->operator[](json_index + 1),sizeof(uint64_t));
+  std::memcpy(&x,&doc->get_tape(json_index + 1),sizeof(uint64_t));
   return x;
 }
 
 simdjson_inline uint32_t internal::tape_ref::get_string_length() const noexcept {
   size_t string_buf_index = size_t(tape_value());
   uint32_t len;
-  std::memcpy(&len, &doc->string_buf->operator[](string_buf_index), sizeof(len));
+  std::memcpy(&len, &doc->get_string_buf(string_buf_index), sizeof(len));
   return len;
 }
 
 simdjson_inline const char * internal::tape_ref::get_c_str() const noexcept {
   size_t string_buf_index = size_t(tape_value());
-  return reinterpret_cast<const char *>(&doc->string_buf->operator[](string_buf_index + sizeof(uint32_t)));
+  return reinterpret_cast<const char *>(&doc->get_string_buf(string_buf_index + sizeof(uint32_t)));
 }
 
 inline std::string_view internal::tape_ref::get_string_view() const noexcept {

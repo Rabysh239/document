@@ -42,27 +42,31 @@ int64_t document_t::get_long(std::string_view json_pointer) const { return get_a
 
 double document_t::get_double(std::string_view json_pointer) const { return get_as<double>(json_pointer); }
 
-std::string document_t::get_string(std::string_view json_pointer) const { return std::string(get_as<std::string_view>(json_pointer)); }
+std::string document_t::get_string(std::string_view json_pointer) const {
+  return std::string(get_as<std::string_view>(json_pointer));
+}
 
 document_t::ptr document_t::get_array(std::string_view json_pointer) {
   const auto value_ptr = element_ind_->find(json_pointer);
   if (value_ptr != nullptr && value_ptr->is_array()) {
-    return new document_t(src_ptr_, element_ind_->get_node(json_pointer));
+    return new document_t(this, element_ind_->get_node(json_pointer));
   }
   return nullptr; //temporarily
 }
 
-document_t::document_t(document_t::source_ptr source)
-        : src_ptr_(std::move(source)),
+document_t::document_t(document_t::immutable_source_ptr source)
+        : immut_src_ptr_(std::move(source)),
+          mut_src_ptr_(new simdjson::dom::mutable_document),
           element_ind_(new word_trie_node<simdjson::dom::element>),
-          builder_(*src_ptr_) {
-  build_index(*element_ind_, src_ptr_->root(), "");
+          builder_(*mut_src_ptr_) {
+  build_index(*element_ind_, immut_src_ptr_->root(), "");
 }
 
-document_t::document_t(document_t::source_ptr source, word_trie_ptr root_ptr)
-        : src_ptr_(std::move(source)),
+document_t::document_t(ptr ancestor, word_trie_ptr root_ptr)
+        : mut_src_ptr_(new simdjson::dom::mutable_document),
           element_ind_(std::move(root_ptr)),
-          builder_(*src_ptr_) {}
+          builder_(*mut_src_ptr_),
+          ancestors({std::move(ancestor)}) {}
 
 error_t document_t::set_(std::string_view json_pointer, const simdjson::dom::element &value) {
   size_t pos = json_pointer.find_last_of('/');
@@ -89,7 +93,8 @@ error_t document_t::set_(std::string_view json_pointer, const simdjson::dom::ele
   return error_t::SUCCESS;
 }
 
-void document_t::build_index(word_trie_node<simdjson::dom::element>& node, const simdjson::dom::element &value, std::string_view key) {
+void document_t::build_index(word_trie_node<simdjson::dom::element> &node, const simdjson::dom::element &value,
+                             std::string_view key) {
   node.insert(key, value);
   if (value.is_object()) {
     const auto obj = value.get_object();
@@ -99,14 +104,14 @@ void document_t::build_index(word_trie_node<simdjson::dom::element>& node, const
   } else if (value.is_array()) {
     const auto arr = value.get_array();
     int i = 0;
-    for (auto it : arr) {
+    for (auto it: arr) {
       build_index(*node.find_node(key), it, std::to_string(i++));
     }
   }
 }
 
 document_t::ptr document_t::document_from_json(const std::string &json) {
-  source_ptr source = new simdjson::dom::document;
+  immutable_source_ptr source = new simdjson::dom::immutable_document;
   if (source->allocate(json.size()) != simdjson::SUCCESS) {
     return nullptr;
   }
