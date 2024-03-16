@@ -114,15 +114,15 @@ inline bool document::dump_raw_tape(std::ostream &os) const noexcept {
   return true;
 }
 
-inline uint64_t &immutable_document::get_tape(size_t json_index) const {
+inline const uint64_t &immutable_document::get_tape(size_t json_index) const {
   return tape[json_index];
 }
 
-inline uint8_t &immutable_document::get_string_buf(size_t json_index) const {
+inline const uint8_t &immutable_document::get_string_buf(size_t json_index) const {
   return string_buf[json_index];
 }
 
-inline uint8_t *immutable_document::get_string_buf_ptr() const {
+inline const uint8_t *immutable_document::get_string_buf_ptr() const {
   return string_buf.get();
 }
 
@@ -166,20 +166,20 @@ inline error_code immutable_document::allocate(size_t capacity) noexcept {
   return SUCCESS;
 }
 
-inline uint64_t &mutable_document::get_tape(size_t json_index) const {
-  return tape->at(json_index);
+inline const uint64_t &mutable_document::get_tape(size_t json_index) const {
+  return tape[json_index];
 }
 
-inline uint8_t &mutable_document::get_string_buf(size_t json_index) const {
-  return string_buf->at(json_index);
+inline const uint8_t &mutable_document::get_string_buf(size_t json_index) const {
+  return string_buf[json_index];
 }
 
-inline uint8_t *mutable_document::get_string_buf_ptr() const {
-  return string_buf->data();
+inline const uint8_t *mutable_document::get_string_buf_ptr() const {
+  return string_buf.data();
 }
 
 inline element mutable_document::next_element() const noexcept {
-  return {internal::tape_ref(this, tape->size())};
+  return {internal::tape_ref(this, tape.size())};
 }
 
 } // namespace dom
