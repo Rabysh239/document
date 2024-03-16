@@ -100,8 +100,8 @@ void tape_writer_to_immutable::append_string(const char *c_str, uint32_t str_len
 }
 
 tape_writer_to_mutable::tape_writer_to_mutable(dom::mutable_document &doc)
-        : tape_ptr(doc.tape.get()),
-          current_string_buf(doc.string_buf.get()) {}
+        : tape_ptr(&doc.tape),
+          current_string_buf(&doc.string_buf) {}
 
 uint32_t tape_writer_to_mutable::next_tape_index() noexcept {
   return tape_ptr->size();

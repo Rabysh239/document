@@ -16,9 +16,9 @@ namespace dom {
  */
 class document : public boost::intrusive_ref_counter<document> {
 public:
-  virtual uint64_t &get_tape(size_t json_index) const = 0;
-  virtual uint8_t &get_string_buf(size_t json_index) const = 0;
-  virtual uint8_t *get_string_buf_ptr() const = 0;
+  virtual const uint64_t &get_tape(size_t json_index) const = 0;
+  virtual const uint8_t &get_string_buf(size_t json_index) const = 0;
+  virtual const uint8_t *get_string_buf_ptr() const = 0;
   /**
  * @private Dump the raw tape for debugging.
  *
@@ -55,9 +55,9 @@ public:
   /** @private */
   immutable_document &operator=(const immutable_document &) = delete; // Disallow copying
 
-  uint64_t &get_tape(size_t json_index) const override;
-  uint8_t &get_string_buf(size_t json_index) const override;
-  uint8_t *get_string_buf_ptr() const override;
+  const uint64_t &get_tape(size_t json_index) const override;
+  const uint8_t &get_string_buf(size_t json_index) const override;
+  const uint8_t *get_string_buf_ptr() const override;
 
   /**
    * Get the root element of this document as a JSON array.
@@ -99,13 +99,13 @@ private:
 
 class mutable_document : public document {
 public:
-  uint64_t &get_tape(size_t json_index) const override;
-  uint8_t &get_string_buf(size_t json_index) const override;
-  uint8_t *get_string_buf_ptr() const override;
+  const uint64_t &get_tape(size_t json_index) const override;
+  const uint8_t &get_string_buf(size_t json_index) const override;
+  const uint8_t *get_string_buf_ptr() const override;
   element next_element() const noexcept;
 private:
-  std::unique_ptr<std::vector<uint64_t>> tape{new std::vector<uint64_t>};
-  std::unique_ptr<std::vector<uint8_t>> string_buf{new std::vector<uint8_t>};
+  std::vector<uint64_t> tape;
+  std::vector<uint8_t> string_buf;
   friend class tape_writer_to_mutable;
 }; // class mutable_document
 
