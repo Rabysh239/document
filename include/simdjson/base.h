@@ -50,6 +50,7 @@ template<typename T>
 class atomic_ptr;
 class dom_parser_implementation;
 class escape_json_string;
+template<typename T>
 class tape_ref;
 struct value128;
 enum class tape_type;

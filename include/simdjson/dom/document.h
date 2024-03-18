@@ -14,11 +14,12 @@ namespace dom {
  *
  * This class cannot be copied, only moved, to avoid unintended allocations.
  */
-class document : public boost::intrusive_ref_counter<document> {
+template<typename T>
+class document : public boost::intrusive_ref_counter<document<T>> {
 public:
-  virtual const uint64_t &get_tape(size_t json_index) const = 0;
-  virtual const uint8_t &get_string_buf(size_t json_index) const = 0;
-  virtual const uint8_t *get_string_buf_ptr() const = 0;
+  const uint64_t &get_tape(size_t json_index) const;
+  const uint8_t &get_string_buf(size_t json_index) const;
+  const uint8_t *get_string_buf_ptr() const;
   /**
  * @private Dump the raw tape for debugging.
  *
@@ -26,9 +27,11 @@ public:
  * @return false if the tape is likely wrong (e.g., you did not parse a valid JSON).
  */
   bool dump_raw_tape(std::ostream &os) const noexcept;
+private:
+  const T* self() const;
 }; // class document
 
-class immutable_document : public document {
+class immutable_document : public document<immutable_document> {
 public:
   /**
    * Create a document container with zero capacity.
@@ -55,14 +58,14 @@ public:
   /** @private */
   immutable_document &operator=(const immutable_document &) = delete; // Disallow copying
 
-  const uint64_t &get_tape(size_t json_index) const override;
-  const uint8_t &get_string_buf(size_t json_index) const override;
-  const uint8_t *get_string_buf_ptr() const override;
+  const uint64_t &get_tape_impl(size_t json_index) const;
+  const uint8_t &get_string_buf_impl(size_t json_index) const;
+  const uint8_t *get_string_buf_ptr_impl() const;
 
   /**
    * Get the root element of this document as a JSON array.
    */
-  element root() const noexcept;
+  element<immutable_document> root() const noexcept;
 
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.
@@ -97,12 +100,12 @@ private:
   friend class tape_writer_to_immutable;
 }; // class immutable_document
 
-class mutable_document : public document {
+class mutable_document : public document<mutable_document> {
 public:
-  const uint64_t &get_tape(size_t json_index) const override;
-  const uint8_t &get_string_buf(size_t json_index) const override;
-  const uint8_t *get_string_buf_ptr() const override;
-  element next_element() const noexcept;
+  const uint64_t &get_tape_impl(size_t json_index) const;
+  const uint8_t &get_string_buf_impl(size_t json_index) const;
+  const uint8_t *get_string_buf_ptr_impl() const;
+  element<mutable_document> next_element() const noexcept;
 private:
   std::vector<uint64_t> tape;
   std::vector<uint8_t> string_buf;

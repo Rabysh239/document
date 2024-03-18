@@ -47,20 +47,24 @@ private:
   char delim_;
 };
 
-template<typename T>
-class word_trie_node : public boost::intrusive_ref_counter<word_trie_node<T>> {
+template<typename T, typename K>
+class word_trie_node : public boost::intrusive_ref_counter<word_trie_node<T, K>> {
 public:
   word_trie_node();
 
-  boost::intrusive_ptr<word_trie_node<T>> get_node(std::string_view words);
+  boost::intrusive_ptr<word_trie_node<T, K>> get_node(std::string_view words);
 
-  const word_trie_node<T> *find_node_const(std::string_view words) const;
+  const word_trie_node<T, K> *find_node_const(std::string_view words) const;
 
-  word_trie_node<T> *find_node(std::string_view words);
+  word_trie_node<T, K> *find_node(std::string_view words);
 
-  const T *find(std::string_view words = "") const;
+  const T *get_value_first() const;
+
+  const K *get_value_second() const;
 
   void insert(std::string_view words, const T &value);
+
+  void insert(std::string_view words, const K &value);
 
   bool erase(std::string_view words);
 
@@ -68,17 +72,26 @@ public:
 
 private:
   std::unordered_map<std::string, boost::intrusive_ptr<word_trie_node>> children_;
-  std::unique_ptr<T> value_;
+  union u {
+    std::unique_ptr<T> t_ptr;
+    std::unique_ptr<K> k_ptr;
+
+    u() { nullptr; }
+    ~u() {};
+  } value_;
+  bool is_t;
+
+  word_trie_node<T, K> *find_insert(std::string_view words);
 };
 
-template<typename T>
-word_trie_node<T>::word_trie_node() : value_(nullptr) {}
+template<typename T, typename K>
+word_trie_node<T, K>::word_trie_node() : is_t(false) {}
 
-template<typename T>
-boost::intrusive_ptr<word_trie_node<T>> word_trie_node<T>::get_node(std::string_view words) {
+template<typename T, typename K>
+boost::intrusive_ptr<word_trie_node<T, K>> word_trie_node<T, K>::get_node(std::string_view words) {
   assert(!words.empty());
   auto *current = this;
-  boost::intrusive_ptr<word_trie_node<T>> current_ptr;
+  boost::intrusive_ptr<word_trie_node<T, K>> current_ptr;
   for (auto word_sv: string_splitter(words, '/')) {
     auto word = std::string(word_sv);
     if (current->children_.find(word) == current->children_.end()) {
@@ -90,8 +103,8 @@ boost::intrusive_ptr<word_trie_node<T>> word_trie_node<T>::get_node(std::string_
   return current_ptr;
 }
 
-template<typename T>
-const word_trie_node<T> *word_trie_node<T>::find_node_const(std::string_view words) const {
+template<typename T, typename K>
+const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_view words) const {
   const auto *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
     auto word = std::string(word_sv);
@@ -103,35 +116,42 @@ const word_trie_node<T> *word_trie_node<T>::find_node_const(std::string_view wor
   return current;
 }
 
-template<typename T>
-word_trie_node<T> *word_trie_node<T>::find_node(std::string_view words) {
-  return const_cast<word_trie_node<T> *>(find_node_const(words));
+template<typename T, typename K>
+word_trie_node<T, K> *word_trie_node<T, K>::find_node(std::string_view words) {
+  return const_cast<word_trie_node<T, K> *>(find_node_const(words));
 }
 
-template<typename T>
-const T *word_trie_node<T>::find(std::string_view words) const {
-  auto node = find_node_const(words);
-  if (node == nullptr) {
+template<typename T, typename K>
+const T *word_trie_node<T, K>::get_value_first() const {
+  if (!is_t) {
     return nullptr;
   }
-  return node->value_.get();
+  return value_.t_ptr.get();
 }
 
-template<typename T>
-void word_trie_node<T>::insert(std::string_view words, const T &value) {
-  word_trie_node *current = this;
-  for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::string(word_sv);
-    if (current->children_.find(word) == current->children_.end()) {
-      current->children_[word] = new word_trie_node;
-    }
-    current = current->children_[word].get();
+template<typename T, typename K>
+const K *word_trie_node<T, K>::get_value_second() const {
+  if (is_t) {
+    return nullptr;
   }
-  current->value_ = std::make_unique<T>(value);
+  return value_.k_ptr.get();
 }
 
-template<typename T>
-bool word_trie_node<T>::erase(std::string_view words) {
+template<typename T, typename K>
+void word_trie_node<T, K>::insert(std::string_view words, const T &value) {
+  auto node = find_insert(words);
+  node->is_t = true;
+  node->value_.t_ptr = std::make_unique<T>(value);
+}
+
+template<typename T, typename K>
+void word_trie_node<T, K>::insert(std::string_view words, const K &value) {
+  auto node = find_insert(words);
+  node->value_.k_ptr = std::make_unique<K>(value);
+}
+
+template<typename T, typename K>
+bool word_trie_node<T, K>::erase(std::string_view words) {
   word_trie_node *current = this;
   word_trie_node *prev = nullptr;
   std::string word;
@@ -146,7 +166,21 @@ bool word_trie_node<T>::erase(std::string_view words) {
   return true;
 }
 
-template<typename T>
-size_t word_trie_node<T>::size() const {
+template<typename T, typename K>
+size_t word_trie_node<T, K>::size() const {
   return children_.size();
 }
+
+template<typename T, typename K>
+word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) {
+  word_trie_node *current = this;
+  for (auto word_sv: string_splitter(words, '/')) {
+    auto word = std::string(word_sv);
+    if (current->children_.find(word) == current->children_.end()) {
+      current->children_[word] = new word_trie_node;
+    }
+    current = current->children_[word].get();
+  }
+  return current;
+}
+
