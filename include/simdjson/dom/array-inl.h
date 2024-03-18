@@ -16,35 +16,43 @@ namespace simdjson {
 //
 // simdjson_result<dom::array> inline implementation
 //
-simdjson_inline simdjson_result<dom::array>::simdjson_result() noexcept
-    : internal::simdjson_result_base<dom::array>() {}
-simdjson_inline simdjson_result<dom::array>::simdjson_result(dom::array value) noexcept
-    : internal::simdjson_result_base<dom::array>(std::forward<dom::array>(value)) {}
-simdjson_inline simdjson_result<dom::array>::simdjson_result(error_code error) noexcept
-    : internal::simdjson_result_base<dom::array>(error) {}
+template<typename T>
+simdjson_inline simdjson_result<dom::array<T>>::simdjson_result() noexcept
+    : internal::simdjson_result_base<dom::array<T>>() {}
+template<typename T>
+simdjson_inline simdjson_result<dom::array<T>>::simdjson_result(dom::array<T> value) noexcept
+    : internal::simdjson_result_base<dom::array<T>>(std::forward<dom::array<T>>(value)) {}
+template<typename T>
+simdjson_inline simdjson_result<dom::array<T>>::simdjson_result(error_code error) noexcept
+    : internal::simdjson_result_base<dom::array<T>>(error) {}
 
 #if SIMDJSON_EXCEPTIONS
 
-inline dom::array::iterator simdjson_result<dom::array>::begin() const noexcept(false) {
+template<typename T>
+inline typename dom::array<T>::iterator simdjson_result<dom::array<T>>::begin() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
   return first.begin();
 }
-inline dom::array::iterator simdjson_result<dom::array>::end() const noexcept(false) {
+template<typename T>
+inline typename dom::array<T>::iterator simdjson_result<dom::array<T>>::end() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
   return first.end();
-}
-inline size_t simdjson_result<dom::array>::size() const noexcept(false) {
+}template<typename T>
+
+inline size_t simdjson_result<dom::array<T>>::size() const noexcept(false) {
   if (error()) { throw simdjson_error(error()); }
   return first.size();
 }
 
 #endif // SIMDJSON_EXCEPTIONS
 
-inline simdjson_result<dom::element> simdjson_result<dom::array>::at_pointer(std::string_view json_pointer) const noexcept {
+template<typename T>
+inline simdjson_result<dom::element<T>> simdjson_result<dom::array<T>>::at_pointer(std::string_view json_pointer) const noexcept {
   if (error()) { return error(); }
   return first.at_pointer(json_pointer);
 }
-inline simdjson_result<dom::element> simdjson_result<dom::array>::at(size_t index) const noexcept {
+template<typename T>
+inline simdjson_result<dom::element<T>> simdjson_result<dom::array<T>>::at(size_t index) const noexcept {
   if (error()) { return error(); }
   return first.at(index);
 }
@@ -54,25 +62,32 @@ namespace dom {
 //
 // array inline implementation
 //
-simdjson_inline array::array() noexcept : tape{} {}
-simdjson_inline array::array(const internal::tape_ref &_tape) noexcept : tape{_tape} {}
-inline array::iterator array::begin() const noexcept {
+template<typename T>
+simdjson_inline array<T>::array() noexcept : tape{} {}
+template<typename T>
+simdjson_inline array<T>::array(const internal::tape_ref<T> &_tape) noexcept : tape{_tape} {}
+template<typename T>
+inline typename array<T>::iterator array<T>::begin() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   return internal::tape_ref(tape.doc, tape.json_index + 1);
 }
-inline array::iterator array::end() const noexcept {
+template<typename T>
+inline typename array<T>::iterator array<T>::end() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   return internal::tape_ref(tape.doc, tape.after_element() - 1);
 }
-inline size_t array::size() const noexcept {
+template<typename T>
+inline size_t array<T>::size() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   return tape.scope_count();
 }
-inline size_t array::number_of_slots() const noexcept {
+template<typename T>
+inline size_t array<T>::number_of_slots() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   return tape.matching_brace_index() - tape.json_index;
 }
-inline simdjson_result<element> array::at_pointer(std::string_view json_pointer) const noexcept {
+template<typename T>
+inline simdjson_result<element<T>> array<T>::at_pointer(std::string_view json_pointer) const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   if(json_pointer.empty()) { // an empty string means that we return the current node
       return element(this->tape); // copy the current node
@@ -113,7 +128,8 @@ inline simdjson_result<element> array::at_pointer(std::string_view json_pointer)
   return child;
 }
 
-inline simdjson_result<element> array::at(size_t index) const noexcept {
+template<typename T>
+inline simdjson_result<element<T>> array<T>::at(size_t index) const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   size_t i=0;
   for (auto element : *this) {
@@ -124,37 +140,47 @@ inline simdjson_result<element> array::at(size_t index) const noexcept {
 }
 
 //
-// array::iterator inline implementation
+// array<T>::iterator inline implementation
 //
-simdjson_inline array::iterator::iterator(const internal::tape_ref &_tape) noexcept : tape{_tape} { }
-inline element array::iterator::operator*() const noexcept {
+template<typename T>
+simdjson_inline array<T>::iterator::iterator(const internal::tape_ref<T> &_tape) noexcept : tape{_tape} { }
+template<typename T>
+inline element<T> array<T>::iterator::operator*() const noexcept {
   return element(tape);
 }
-inline array::iterator& array::iterator::operator++() noexcept {
+template<typename T>
+inline typename array<T>::iterator& array<T>::iterator::operator++() noexcept {
   tape.json_index = tape.after_element();
   return *this;
 }
-inline array::iterator array::iterator::operator++(int) noexcept {
-  array::iterator out = *this;
+template<typename T>
+inline typename array<T>::iterator array<T>::iterator::operator++(int) noexcept {
+  array<T>::iterator out = *this;
   ++*this;
   return out;
 }
-inline bool array::iterator::operator!=(const array::iterator& other) const noexcept {
+template<typename T>
+inline bool array<T>::iterator::operator!=(const array<T>::iterator& other) const noexcept {
   return tape.json_index != other.tape.json_index;
 }
-inline bool array::iterator::operator==(const array::iterator& other) const noexcept {
+template<typename T>
+inline bool array<T>::iterator::operator==(const array<T>::iterator& other) const noexcept {
   return tape.json_index == other.tape.json_index;
 }
-inline bool array::iterator::operator<(const array::iterator& other) const noexcept {
+template<typename T>
+inline bool array<T>::iterator::operator<(const array<T>::iterator& other) const noexcept {
   return tape.json_index < other.tape.json_index;
 }
-inline bool array::iterator::operator<=(const array::iterator& other) const noexcept {
+template<typename T>
+inline bool array<T>::iterator::operator<=(const array<T>::iterator& other) const noexcept {
   return tape.json_index <= other.tape.json_index;
 }
-inline bool array::iterator::operator>=(const array::iterator& other) const noexcept {
+template<typename T>
+inline bool array<T>::iterator::operator>=(const array<T>::iterator& other) const noexcept {
   return tape.json_index >= other.tape.json_index;
 }
-inline bool array::iterator::operator>(const array::iterator& other) const noexcept {
+template<typename T>
+inline bool array<T>::iterator::operator>(const array<T>::iterator& other) const noexcept {
   return tape.json_index > other.tape.json_index;
 }
 
@@ -162,16 +188,16 @@ inline bool array::iterator::operator>(const array::iterator& other) const noexc
 
 
 } // namespace simdjson
-
-#include "element-inl.h"
-
-#if defined(__cpp_lib_ranges)
-static_assert(std::ranges::view<simdjson::dom::array>);
-static_assert(std::ranges::sized_range<simdjson::dom::array>);
-#if SIMDJSON_EXCEPTIONS
-static_assert(std::ranges::view<simdjson::simdjson_result<simdjson::dom::array>>);
-static_assert(std::ranges::sized_range<simdjson::simdjson_result<simdjson::dom::array>>);
-#endif // SIMDJSON_EXCEPTIONS
-#endif // defined(__cpp_lib_ranges)
+//
+//#include "element-inl.h"
+//
+//#if defined(__cpp_lib_ranges)
+//static_assert(std::ranges::view<simdjson::dom::array>);
+//static_assert(std::ranges::sized_range<simdjson::dom::array>);
+//#if SIMDJSON_EXCEPTIONS
+//static_assert(std::ranges::view<simdjson::simdjson_result<simdjson::dom::array>>);
+//static_assert(std::ranges::sized_range<simdjson::simdjson_result<simdjson::dom::array>>);
+//#endif // SIMDJSON_EXCEPTIONS
+//#endif // defined(__cpp_lib_ranges)
 
 #endif // SIMDJSON_ARRAY_INL_H

@@ -27,15 +27,20 @@ static constexpr size_t MINIMAL_BATCH_SIZE = 32;
  */
 static constexpr size_t MINIMAL_DOCUMENT_CAPACITY = 32;
 
+template<typename T>
 class array;
+template<typename T>
 class document;
 class immutable_document;
 class mutable_document;
 class tape_writer_to_mutable;
 class tape_writer_to_immutable;
 class document_stream;
+template<typename T>
 class element;
+template<typename T>
 class key_value_pair;
+template<typename T>
 class object;
 class parser;
 
@@ -48,7 +53,6 @@ struct stage1_worker;
 namespace internal {
 
 template<typename T>
-class string_builder;
 class tape_ref;
 
 } // namespace internal

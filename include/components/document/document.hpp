@@ -85,17 +85,26 @@ public:
 
   template<class T>
   bool is_as(std::string_view json_pointer) const {
-    const auto value_ptr = element_ind_->find(json_pointer);
-    return value_ptr != nullptr && value_ptr->is<T>();
+    const auto node_ptr = element_ind_->find_node_const(json_pointer);
+    if (node_ptr == nullptr) {
+      return false;
+    }
+    auto first = node_ptr->get_value_first();
+    return first != nullptr ? first->is<T>() : node_ptr->get_value_second()->is<T>();
   }
 
   template<class T>
   T get_as(std::string_view json_pointer) const {
-    const auto value_ptr = element_ind_->find(json_pointer);
-    if (value_ptr != nullptr && value_ptr->is<T>()) {
-      return value_ptr->get<T>();
+    const auto node_ptr = element_ind_->find_node_const(json_pointer);
+    if (node_ptr == nullptr) {
+      return T();
     }
-    return T();
+    auto first = node_ptr->get_value_first();
+    if (first != nullptr) {
+      return first->is<T>() ? first->get<T>().value() : T();
+    }
+    auto second = node_ptr->get_value_second();
+    return second->is<T>() ? second->get<T>().value() : T();
   }
 //  ::document::impl::dict_iterator_t begin() const;
 //
@@ -130,25 +139,30 @@ public:
 private:
   using immutable_source_ptr = boost::intrusive_ptr<simdjson::dom::immutable_document>;
   using mutable_source_ptr = boost::intrusive_ptr<simdjson::dom::mutable_document>;
-  using word_trie_ptr = boost::intrusive_ptr<word_trie_node<simdjson::dom::element>>;
+  using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
+  using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
+  using word_trie_node_element = word_trie_node<element_from_immutable, element_from_mutable>;
+  using word_trie_ptr = boost::intrusive_ptr<word_trie_node_element>;
 
   explicit document_t(immutable_source_ptr source);
-  document_t(ptr ancestor, word_trie_ptr root_ptr);
+  document_t(ptr ancestor, word_trie_ptr index);
 
   immutable_source_ptr immut_src_ptr_;
   mutable_source_ptr mut_src_ptr_;
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder builder_;
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_;
   word_trie_ptr element_ind_;
   std::vector<ptr> ancestors;
 
-  error_t set_(std::string_view json_pointer, const simdjson::dom::element &value);
+  error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
-  void build_index(word_trie_node<simdjson::dom::element>& node, const simdjson::dom::element &value, std::string_view key);
+  void build_index(word_trie_node_element& node, const element_from_immutable &value, std::string_view key);
 
 //
 //  std::string to_json_dict() const;
 //
 //  std::string to_json_array() const;
+  static bool is_array(const word_trie_node_element &node) ;
+  static bool is_object(const word_trie_node_element &node) ;
 };
 
 //using document_ptr = document_t::ptr;
