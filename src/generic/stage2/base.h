@@ -9,6 +9,7 @@ namespace simdjson {
 namespace SIMDJSON_IMPLEMENTATION {
 namespace stage2 {
 
+template<typename T>
 struct tape_builder;
 
 } // namespace stage2

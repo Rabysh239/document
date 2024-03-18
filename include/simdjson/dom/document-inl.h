@@ -18,7 +18,23 @@ namespace dom {
 // document inline implementation
 //
 
-inline bool document::dump_raw_tape(std::ostream &os) const noexcept {
+template<typename T>
+const uint64_t &document<T>::get_tape(size_t json_index) const {
+  return self()->get_tape_impl(json_index);
+}
+
+template<typename T>
+const uint8_t &document<T>::get_string_buf(size_t json_index) const {
+  return self()->get_string_buf_impl(json_index);
+}
+
+template<typename T>
+const uint8_t *document<T>::get_string_buf_ptr() const {
+  return self()->get_string_buf_ptr_impl();
+}
+
+template<typename T>
+inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
   uint32_t string_length;
   size_t tape_idx = 0;
   uint64_t tape_val = get_tape(tape_idx);
@@ -114,20 +130,25 @@ inline bool document::dump_raw_tape(std::ostream &os) const noexcept {
   return true;
 }
 
-inline const uint64_t &immutable_document::get_tape(size_t json_index) const {
+template<typename T>
+const T *document<T>::self() const {
+  return static_cast<const T*>(this);
+}
+
+inline const uint64_t &immutable_document::get_tape_impl(size_t json_index) const {
   return tape[json_index];
 }
 
-inline const uint8_t &immutable_document::get_string_buf(size_t json_index) const {
+inline const uint8_t &immutable_document::get_string_buf_impl(size_t json_index) const {
   return string_buf[json_index];
 }
 
-inline const uint8_t *immutable_document::get_string_buf_ptr() const {
+inline const uint8_t *immutable_document::get_string_buf_ptr_impl() const {
   return string_buf.get();
 }
 
-inline element immutable_document::root() const noexcept {
-  return element(internal::tape_ref(this, 1));
+inline element<immutable_document> immutable_document::root() const noexcept {
+  return {internal::tape_ref(this, 1)};
 }
 simdjson_warn_unused
 inline size_t immutable_document::capacity() const noexcept {
@@ -166,19 +187,19 @@ inline error_code immutable_document::allocate(size_t capacity) noexcept {
   return SUCCESS;
 }
 
-inline const uint64_t &mutable_document::get_tape(size_t json_index) const {
+inline const uint64_t &mutable_document::get_tape_impl(size_t json_index) const {
   return tape[json_index];
 }
 
-inline const uint8_t &mutable_document::get_string_buf(size_t json_index) const {
+inline const uint8_t &mutable_document::get_string_buf_impl(size_t json_index) const {
   return string_buf[json_index];
 }
 
-inline const uint8_t *mutable_document::get_string_buf_ptr() const {
+inline const uint8_t *mutable_document::get_string_buf_ptr_impl() const {
   return string_buf.data();
 }
 
-inline element mutable_document::next_element() const noexcept {
+inline element<mutable_document> mutable_document::next_element() const noexcept {
   return {internal::tape_ref(this, tape.size())};
 }
 
