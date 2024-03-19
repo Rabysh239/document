@@ -136,20 +136,26 @@ public:
 
   static ptr document_from_json(const std::string &json);
 
+  static ptr merge(ptr &document1, ptr &document2);
+
 private:
+  enum aggregate_strategy {
+    MERGE,
+  };
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
   using word_trie_node_element = word_trie_node<element_from_immutable, element_from_mutable>;
 
   explicit document_t(simdjson::dom::immutable_document &&source);
   document_t(ptr ancestor, word_trie_node_element* index);
+  document_t(ptr ancestor1, ptr ancestor2, aggregate_strategy strategy);
 
   simdjson::dom::immutable_document immut_src_;
   simdjson::dom::mutable_document mut_src_;
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_;
   block_allocator allocator_;
   word_trie_node_element* element_ind_;
-  std::vector<ptr> ancestors;
+  std::vector<ptr> ancestors_;
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
