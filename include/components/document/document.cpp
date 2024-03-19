@@ -37,12 +37,12 @@ bool document_t::is_double(std::string_view json_pointer) const { return is_as<d
 bool document_t::is_string(std::string_view json_pointer) const { return is_as<std::string_view>(json_pointer); }
 
 bool document_t::is_array(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->get_node(json_pointer);
+  const auto node_ptr = element_ind_->find_node(json_pointer);
   return node_ptr != nullptr && is_array(*node_ptr);
 }
 
 bool document_t::is_dict(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->get_node(json_pointer);
+  const auto node_ptr = element_ind_->find_node(json_pointer);
   return node_ptr != nullptr && is_object(*node_ptr);
 }
 
@@ -59,25 +59,23 @@ std::string document_t::get_string(std::string_view json_pointer) const {
 }
 
 document_t::ptr document_t::get_array(std::string_view json_pointer) {
-  const auto node_ptr = element_ind_->get_node(json_pointer);
+  const auto node_ptr = element_ind_->find_node(json_pointer);
   if (node_ptr == nullptr || !is_array(*node_ptr)) {
     return nullptr; // temporarily
   }
   return new document_t(this, node_ptr);
 }
 
-document_t::document_t(document_t::immutable_source_ptr source)
-        : immut_src_ptr_(std::move(source)),
-          mut_src_ptr_(new simdjson::dom::mutable_document),
-          element_ind_(new word_trie_node_element),
-          builder_(*mut_src_ptr_) {
-  build_index(*element_ind_, immut_src_ptr_->root(), "");
+document_t::document_t(simdjson::dom::immutable_document &&source)
+        : immut_src_(std::forward<simdjson::dom::immutable_document>(source)),
+          builder_(mut_src_) {
+  element_ind_ = new(allocator_.allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_);
+  build_index(*element_ind_, immut_src_.root(), "");
 }
 
-document_t::document_t(ptr ancestor, word_trie_ptr index)
-        : mut_src_ptr_(new simdjson::dom::mutable_document),
-          element_ind_(std::move(index)),
-          builder_(*mut_src_ptr_),
+document_t::document_t(ptr ancestor, word_trie_node_element* index)
+        : element_ind_(index),
+          builder_(mut_src_),
           ancestors({std::move(ancestor)}) {}
 
 error_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
@@ -86,7 +84,7 @@ error_t document_t::set_(std::string_view json_pointer, const element_from_mutab
     return error_t::INVALID_JSON_POINTER;
   }
   auto container_json_pointer = json_pointer.substr(0, pos);
-  auto container_node_ptr = element_ind_->get_node(container_json_pointer);
+  auto container_node_ptr = element_ind_->find_node(container_json_pointer);
   if (container_node_ptr == nullptr) {
     return error_t::NO_SUCH_CONTAINER;
   }
@@ -121,14 +119,14 @@ void document_t::build_index(word_trie_node_element &node, const element_from_im
 }
 
 document_t::ptr document_t::document_from_json(const std::string &json) {
-  immutable_source_ptr source = new simdjson::dom::immutable_document;
-  if (source->allocate(json.size()) != simdjson::SUCCESS) {
+  simdjson::dom::immutable_document source;
+  if (source.allocate(json.size()) != simdjson::SUCCESS) {
     return nullptr;
   }
   auto tree = boost::json::parse(json);
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(*source);
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(source);
   walk_document(builder, tree);
-  return new document_t(source);
+  return new document_t(std::move(source));
 }
 
 bool document_t::is_array(const word_trie_node_element &node) {
