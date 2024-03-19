@@ -137,20 +137,18 @@ public:
   static ptr document_from_json(const std::string &json);
 
 private:
-  using immutable_source_ptr = boost::intrusive_ptr<simdjson::dom::immutable_document>;
-  using mutable_source_ptr = boost::intrusive_ptr<simdjson::dom::mutable_document>;
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
   using word_trie_node_element = word_trie_node<element_from_immutable, element_from_mutable>;
-  using word_trie_ptr = boost::intrusive_ptr<word_trie_node_element>;
 
-  explicit document_t(immutable_source_ptr source);
-  document_t(ptr ancestor, word_trie_ptr index);
+  explicit document_t(simdjson::dom::immutable_document &&source);
+  document_t(ptr ancestor, word_trie_node_element* index);
 
-  immutable_source_ptr immut_src_ptr_;
-  mutable_source_ptr mut_src_ptr_;
+  simdjson::dom::immutable_document immut_src_;
+  simdjson::dom::mutable_document mut_src_;
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_;
-  word_trie_ptr element_ind_;
+  block_allocator allocator_;
+  word_trie_node_element* element_ind_;
   std::vector<ptr> ancestors;
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
@@ -187,7 +185,7 @@ private:
 
 template<class T>
 inline error_t document_t::set(std::string_view json_pointer, T value) {
-  auto next_element = mut_src_ptr_->next_element();
+  auto next_element = mut_src_.next_element();
   builder_.build(value);
   return set_(json_pointer, next_element);
 }

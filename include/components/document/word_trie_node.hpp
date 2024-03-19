@@ -4,6 +4,7 @@
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <iostream>
 #include <memory>
+#include "block_allocator.hpp"
 
 class string_split_iterator {
 public:
@@ -48,11 +49,9 @@ private:
 };
 
 template<typename T, typename K>
-class word_trie_node : public boost::intrusive_ref_counter<word_trie_node<T, K>> {
+class word_trie_node {
 public:
-  word_trie_node();
-
-  boost::intrusive_ptr<word_trie_node<T, K>> get_node(std::string_view words);
+  explicit word_trie_node(block_allocator &allocator);
 
   const word_trie_node<T, K> *find_node_const(std::string_view words) const;
 
@@ -71,13 +70,11 @@ public:
   size_t size() const;
 
 private:
-  std::unordered_map<std::string, boost::intrusive_ptr<word_trie_node>> children_;
+  block_allocator &allocator_;
+  std::unordered_map<std::string, word_trie_node*> children_;
   union u {
-    std::unique_ptr<T> t_ptr;
-    std::unique_ptr<K> k_ptr;
-
-    u() { nullptr; }
-    ~u() {};
+    T* t_ptr;
+    K* k_ptr;
   } value_;
   bool is_t;
 
@@ -85,23 +82,7 @@ private:
 };
 
 template<typename T, typename K>
-word_trie_node<T, K>::word_trie_node() : is_t(false) {}
-
-template<typename T, typename K>
-boost::intrusive_ptr<word_trie_node<T, K>> word_trie_node<T, K>::get_node(std::string_view words) {
-  assert(!words.empty());
-  auto *current = this;
-  boost::intrusive_ptr<word_trie_node<T, K>> current_ptr;
-  for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::string(word_sv);
-    if (current->children_.find(word) == current->children_.end()) {
-      return nullptr;
-    }
-    current_ptr = current->children_.at(word);
-    current = current_ptr.get();
-  }
-  return current_ptr;
-}
+word_trie_node<T, K>::word_trie_node(block_allocator &allocator) : allocator_(allocator), is_t(false) {}
 
 template<typename T, typename K>
 const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_view words) const {
@@ -111,7 +92,7 @@ const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_vi
     if (current->children_.find(word) == current->children_.end()) {
       return nullptr;
     }
-    current = current->children_.at(word).get();
+    current = current->children_.at(word);
   }
   return current;
 }
@@ -126,7 +107,7 @@ const T *word_trie_node<T, K>::get_value_first() const {
   if (!is_t) {
     return nullptr;
   }
-  return value_.t_ptr.get();
+  return value_.t_ptr;
 }
 
 template<typename T, typename K>
@@ -134,20 +115,20 @@ const K *word_trie_node<T, K>::get_value_second() const {
   if (is_t) {
     return nullptr;
   }
-  return value_.k_ptr.get();
+  return value_.k_ptr;
 }
 
 template<typename T, typename K>
 void word_trie_node<T, K>::insert(std::string_view words, const T &value) {
   auto node = find_insert(words);
   node->is_t = true;
-  node->value_.t_ptr = std::make_unique<T>(value);
+  node->value_.t_ptr = new(allocator_.allocate(sizeof(T))) T(value);
 }
 
 template<typename T, typename K>
 void word_trie_node<T, K>::insert(std::string_view words, const K &value) {
   auto node = find_insert(words);
-  node->value_.k_ptr = std::make_unique<K>(value);
+  node->value_.k_ptr = new(allocator_.allocate(sizeof(K))) K(value);
 }
 
 template<typename T, typename K>
@@ -157,10 +138,11 @@ bool word_trie_node<T, K>::erase(std::string_view words) {
   std::string word;
   for (auto word_sv: string_splitter(words, '/')) {
     word = std::string(word_sv);
-    if (current->children_.find(word) == current->children_.end()) {
+    auto next = current->children_.find(word);
+    if (next == current->children_.end()) {
       return false;
     }
-    current = current->children_[word].get();
+    current = next->second;
   }
   prev->children_.erase(word);
   return true;
@@ -176,10 +158,12 @@ word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) 
   word_trie_node *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
     auto word = std::string(word_sv);
-    if (current->children_.find(word) == current->children_.end()) {
-      current->children_[word] = new word_trie_node;
+    auto next = current->children_.find(word);
+    if (next == current->children_.end()) {
+      current = (current->children_[word] = new(allocator_.allocate(sizeof(word_trie_node))) word_trie_node(allocator_));
+    } else {
+      current = next->second;
     }
-    current = current->children_[word].get();
   }
   return current;
 }
