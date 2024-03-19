@@ -61,13 +61,15 @@ public:
 
   const K *get_value_second() const;
 
-  void insert(std::string_view words, const T &value);
+  void insert(std::string_view words, const T &value, bool is_merge_priority = false);
 
-  void insert(std::string_view words, const K &value);
+  void insert(std::string_view words, const K &value, bool is_merge_priority = false);
 
   bool erase(std::string_view words);
 
   size_t size() const;
+
+  static word_trie_node<T, K> *merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, block_allocator &allocator);
 
 private:
   block_allocator &allocator_;
@@ -76,13 +78,18 @@ private:
     T* t_ptr;
     K* k_ptr;
   } value_;
-  bool is_t;
+  bool is_t_;
+  bool is_merge_priority_;
 
   word_trie_node<T, K> *find_insert(std::string_view words);
 };
 
 template<typename T, typename K>
-word_trie_node<T, K>::word_trie_node(block_allocator &allocator) : allocator_(allocator), is_t(false) {}
+word_trie_node<T, K>::word_trie_node(block_allocator &allocator)
+        : allocator_(allocator),
+          value_({.k_ptr = nullptr}),
+          is_t_(false),
+          is_merge_priority_(false) {}
 
 template<typename T, typename K>
 const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_view words) const {
@@ -104,7 +111,7 @@ word_trie_node<T, K> *word_trie_node<T, K>::find_node(std::string_view words) {
 
 template<typename T, typename K>
 const T *word_trie_node<T, K>::get_value_first() const {
-  if (!is_t) {
+  if (!is_t_) {
     return nullptr;
   }
   return value_.t_ptr;
@@ -112,23 +119,25 @@ const T *word_trie_node<T, K>::get_value_first() const {
 
 template<typename T, typename K>
 const K *word_trie_node<T, K>::get_value_second() const {
-  if (is_t) {
+  if (is_t_) {
     return nullptr;
   }
   return value_.k_ptr;
 }
 
 template<typename T, typename K>
-void word_trie_node<T, K>::insert(std::string_view words, const T &value) {
+void word_trie_node<T, K>::insert(std::string_view words, const T &value, bool is_merge_priority) {
   auto node = find_insert(words);
-  node->is_t = true;
+  node->is_t_ = true;
   node->value_.t_ptr = new(allocator_.allocate(sizeof(T))) T(value);
+  node->is_merge_priority_ = is_merge_priority;
 }
 
 template<typename T, typename K>
-void word_trie_node<T, K>::insert(std::string_view words, const K &value) {
+void word_trie_node<T, K>::insert(std::string_view words, const K &value, bool is_merge_priority) {
   auto node = find_insert(words);
   node->value_.k_ptr = new(allocator_.allocate(sizeof(K))) K(value);
+  node->is_merge_priority_ = is_merge_priority;
 }
 
 template<typename T, typename K>
@@ -154,6 +163,27 @@ size_t word_trie_node<T, K>::size() const {
 }
 
 template<typename T, typename K>
+word_trie_node<T, K> *word_trie_node<T, K>::merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, block_allocator &allocator) {
+  if (node2->children_.empty() || node2->is_merge_priority_) {
+    return node2;
+  }
+  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(allocator);
+  for (auto &entry : node1->children_) {
+    if (node2->children_.find(entry.first) == node2->children_.end()) {
+      res->children_[entry.first] = entry.second;
+    } else {
+      res->children_[entry.first] = merge(entry.second, node2->children_[entry.first], allocator);
+    }
+  }
+  for (auto &entry : node2->children_) {
+    if (node1->children_.find(entry.first) == node1->children_.end()) {
+      res->children_[entry.first] = entry.second;
+    }
+  }
+  return res;
+}
+
+template<typename T, typename K>
 word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) {
   word_trie_node *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
@@ -161,6 +191,7 @@ word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) 
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
       current = (current->children_[word] = new(allocator_.allocate(sizeof(word_trie_node))) word_trie_node(allocator_));
+      return current;
     } else {
       current = next->second;
     }

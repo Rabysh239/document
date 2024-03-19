@@ -63,20 +63,29 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
   if (node_ptr == nullptr || !is_array(*node_ptr)) {
     return nullptr; // temporarily
   }
-  return new document_t(this, node_ptr);
+  return new document_t({this}, node_ptr);
 }
 
 document_t::document_t(simdjson::dom::immutable_document &&source)
         : immut_src_(std::forward<simdjson::dom::immutable_document>(source)),
-          builder_(mut_src_) {
-  element_ind_ = new(allocator_.allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_);
+          builder_(mut_src_),
+          element_ind_(new(allocator_.allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {
   build_index(*element_ind_, immut_src_.root(), "");
 }
 
 document_t::document_t(ptr ancestor, word_trie_node_element* index)
         : element_ind_(index),
           builder_(mut_src_),
-          ancestors({std::move(ancestor)}) {}
+          ancestors_({std::move(ancestor)}) {}
+
+document_t::document_t(document_t::ptr ancestor1, document_t::ptr ancestor2, document_t::aggregate_strategy strategy)
+        : builder_(mut_src_),
+          ancestors_({std::move(ancestor1), std::move(ancestor2)}) {
+  switch (strategy) {
+    case aggregate_strategy::MERGE:
+      element_ind_ = word_trie_node_element::merge(ancestors_[0]->element_ind_, ancestors_[1]->element_ind_, allocator_);
+  }
+}
 
 error_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
   size_t pos = json_pointer.find_last_of('/');
@@ -103,7 +112,7 @@ error_t document_t::set_(std::string_view json_pointer, const element_from_mutab
 }
 
 void document_t::build_index(word_trie_node_element &node, const element_from_immutable &value, std::string_view key) {
-  node.insert(key, value);
+  node.insert(key, value, value.is_array());
   if (value.is_object()) {
     const auto obj = value.get_object();
     for (auto it = obj.begin(); it != obj.end(); ++it) {
@@ -127,6 +136,10 @@ document_t::ptr document_t::document_from_json(const std::string &json) {
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(source);
   walk_document(builder, tree);
   return new document_t(std::move(source));
+}
+
+document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &document2) {
+  return new document_t(document1, document2, aggregate_strategy::MERGE);
 }
 
 bool document_t::is_array(const word_trie_node_element &node) {
