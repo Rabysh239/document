@@ -4,7 +4,7 @@
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <iostream>
 #include <memory>
-#include "block_allocator.hpp"
+#include <memory_resource>
 
 class string_split_iterator {
 public:
@@ -51,7 +51,9 @@ private:
 template<typename T, typename K>
 class word_trie_node {
 public:
-  explicit word_trie_node(block_allocator &allocator);
+  using allocator_type = std::pmr::synchronized_pool_resource;
+
+  explicit word_trie_node(allocator_type &allocator);
 
   const word_trie_node<T, K> *find_node_const(std::string_view words) const;
 
@@ -69,12 +71,12 @@ public:
 
   size_t size() const;
 
-  static word_trie_node<T, K> *merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, block_allocator &allocator);
+  static word_trie_node<T, K> *merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator);
 
 private:
-  block_allocator &allocator_;
+  allocator_type &allocator_;
   std::unordered_map<std::string, word_trie_node*> children_;
-  union u {
+  union {
     T* t_ptr;
     K* k_ptr;
   } value_;
@@ -85,7 +87,7 @@ private:
 };
 
 template<typename T, typename K>
-word_trie_node<T, K>::word_trie_node(block_allocator &allocator)
+word_trie_node<T, K>::word_trie_node(allocator_type &allocator)
         : allocator_(allocator),
           value_({.k_ptr = nullptr}),
           is_t_(false),
@@ -163,7 +165,7 @@ size_t word_trie_node<T, K>::size() const {
 }
 
 template<typename T, typename K>
-word_trie_node<T, K> *word_trie_node<T, K>::merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, block_allocator &allocator) {
+word_trie_node<T, K> *word_trie_node<T, K>::merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator) {
   if (node2->children_.empty() || node2->is_merge_priority_) {
     return node2;
   }
