@@ -18,6 +18,9 @@ file(GLOB_RECURSE SRC_GENERIC "src/generic/*.h")
 file(GLOB_RECURSE SRC_GENERIC_STAGE2 "src/generic/stage2/*.h")
 file(GLOB_RECURSE SRC_INTERNAL "src/internal/*.cpp")
 
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
+
 add_executable(document ${DOCUMENT_HPP} ${DOCUMENT_CPP} ${SIMDJSON} ${SIMDJSON_DOM} ${SIMDJSON_GENERIC} ${SIMDJSON_INTERNAL} ${SRC} ${SRC_GENERIC} ${SRC_GENERIC_STAGE2} ${SRC_INTERNAL} main.cpp)
 
 target_link_libraries(document ${CONAN_LIBS})
