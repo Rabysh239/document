@@ -4,6 +4,7 @@
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <utility>
+#include <memory_resource>
 //#include <components/document/document_id.hpp>
 #include "../../simdjson/dom/document-inl.h"
 #include "../../simdjson/dom/element-inl.h"
@@ -145,6 +146,7 @@ private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
   using word_trie_node_element = word_trie_node<element_from_immutable, element_from_mutable>;
+  using allocator_type = std::pmr::synchronized_pool_resource;
 
   explicit document_t(simdjson::dom::immutable_document &&source);
   document_t(ptr ancestor, word_trie_node_element* index);
@@ -153,7 +155,7 @@ private:
   simdjson::dom::immutable_document immut_src_;
   simdjson::dom::mutable_document mut_src_;
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_;
-  block_allocator allocator_;
+  allocator_type allocator_;
   word_trie_node_element* element_ind_;
   std::vector<ptr> ancestors_;
 

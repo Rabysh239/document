@@ -17,6 +17,7 @@ namespace dom {
 template<typename T>
 class document : public boost::intrusive_ref_counter<document<T>> {
 public:
+  virtual ~document() = default;
   const uint64_t &get_tape(size_t json_index) const;
   const uint8_t &get_string_buf(size_t json_index) const;
   const uint8_t *get_string_buf_ptr() const;
