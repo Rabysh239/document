@@ -5,6 +5,9 @@
 
 namespace components::document {
 
+document_t::document_t()
+        : element_ind_(new(allocator_.allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {}
+
 std::size_t document_t::count(std::string_view json_pointer) const {
   const auto value_ptr = element_ind_->find_node_const(json_pointer);
   if (value_ptr == nullptr) {
@@ -113,28 +116,13 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
 
 document_t::document_t(simdjson::dom::immutable_document &&source)
         : immut_src_(std::forward<simdjson::dom::immutable_document>(source)),
-          builder_(mut_src_),
           element_ind_(new(allocator_.allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {
   build_index(*element_ind_, immut_src_.root(), "");
 }
 
 document_t::document_t(ptr ancestor, word_trie_node_element* index)
         : element_ind_(index),
-          builder_(mut_src_),
           ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, &allocator_)) {}
-
-document_t::document_t(document_t::ptr ancestor1, document_t::ptr ancestor2, document_t::aggregate_strategy strategy)
-        : builder_(mut_src_),
-          ancestors_(std::pmr::vector<ptr>({std::move(ancestor1), std::move(ancestor2)}, &allocator_)) {
-  switch (strategy) {
-    case aggregate_strategy::MERGE:
-      element_ind_ = word_trie_node_element::merge(ancestors_[0]->element_ind_, ancestors_[1]->element_ind_, allocator_);
-      break;
-    case aggregate_strategy::SPLIT:
-      element_ind_ = word_trie_node_element::split(ancestors_[0]->element_ind_, ancestors_[1]->element_ind_, allocator_);
-      break;
-  }
-}
 
 error_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
   size_t pos = json_pointer.find_last_of('/');
@@ -189,11 +177,19 @@ document_t::ptr document_t::document_from_json(const std::string &json) {
 }
 
 document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &document2) {
-  return new document_t(document1, document2, aggregate_strategy::MERGE);
+  auto res = new document_t();
+  res->ancestors_.push_back(document1);
+  res->ancestors_.push_back(document2);
+  res->element_ind_ = word_trie_node_element::merge(document1->element_ind_, document2->element_ind_, res->allocator_);
+  return res;
 }
 
 document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &document2) {
-  return new document_t(document1, document2, aggregate_strategy::SPLIT);
+  auto res = new document_t();
+  res->ancestors_.push_back(document1);
+  res->ancestors_.push_back(document2);
+  res->element_ind_ = word_trie_node_element::split(document1->element_ind_, document2->element_ind_, res->allocator_);
+  return res;
 }
 
 bool document_t::is_array(const word_trie_node_element &node) {
