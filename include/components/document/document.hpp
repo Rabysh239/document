@@ -13,8 +13,8 @@
 #include "../../../src/generic/stage2/tape_builder.h"
 
 namespace components::document {
-//
-//enum class compare_t { less = -1, equals = 0, more = 1 };
+
+enum class compare_t { less = -1, equals = 0, more = 1 };
 
 enum class error_t {
   SUCCESS,
@@ -108,8 +108,8 @@ public:
     return second->is<T>() ? second->get<T>().value() : T();
   }
 //  ::document::impl::dict_iterator_t begin() const;
-//
-//  compare_t compare(const document_t &other, const std::string &key) const;
+
+  compare_t compare(const document_t &other, std::string_view json_pointer) const;
 //
 //  std::string to_json() const;
 
