@@ -129,8 +129,10 @@ document_t::document_t(document_t::ptr ancestor1, document_t::ptr ancestor2, doc
   switch (strategy) {
     case aggregate_strategy::MERGE:
       element_ind_ = word_trie_node_element::merge(ancestors_[0]->element_ind_, ancestors_[1]->element_ind_, allocator_);
+      break;
     case aggregate_strategy::SPLIT:
       element_ind_ = word_trie_node_element::split(ancestors_[0]->element_ind_, ancestors_[1]->element_ind_, allocator_);
+      break;
   }
 }
 
@@ -145,15 +147,16 @@ error_t document_t::set_(std::string_view json_pointer, const element_from_mutab
     return error_t::NO_SUCH_CONTAINER;
   }
   auto key = json_pointer.substr(pos + 1);
+  auto is_aggregation_terminal = true;
   if (is_object(*container_node_ptr)) {
-    container_node_ptr->insert(key, value, true);
+    container_node_ptr->insert(key, value, is_aggregation_terminal);
   } else if (is_array(*container_node_ptr)) {
     auto index = std::atol(std::string(key).c_str());
     if (index < 0) {
       return error_t::INVALID_INDEX;
     }
     auto correct_index = std::min(size_t(index), container_node_ptr->size());
-    container_node_ptr->insert(std::to_string(correct_index), value);
+    container_node_ptr->insert(std::to_string(correct_index), value, is_aggregation_terminal);
   }
   return error_t::SUCCESS;
 }
