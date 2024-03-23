@@ -74,6 +74,43 @@ document_t::ptr document_t::get_dict(std::string_view json_pointer) {
   return new document_t({this}, node_ptr);
 }
 
+template<class T>
+compare_t equals_(const document_t& doc1, const document_t& doc2, std::string_view json_pointer) {
+  T v1 = doc1.get_as<T>(json_pointer);
+  T v2 = doc2.get_as<T>(json_pointer);
+  if (v1 < v2)
+    return compare_t::less;
+  if (v1 > v2)
+    return compare_t::more;
+  return compare_t::equals;
+}
+
+compare_t document_t::compare(const document_t& other, std::string_view json_pointer) const {
+//  if (is_valid() && !other.is_valid())
+//    return compare_t::less;
+//  if (!is_valid() && other.is_valid())
+//    return compare_t::more;
+//  if (!is_valid() && !other.is_valid())
+//    return compare_t::equals;
+  if (is_exists(json_pointer) && !other.is_exists(json_pointer))
+    return compare_t::less;
+  if (!is_exists(json_pointer) && other.is_exists(json_pointer))
+    return compare_t::more;
+  if (!is_exists(json_pointer) && !other.is_exists(json_pointer))
+    return compare_t::equals;
+  if (is_bool(json_pointer) && other.is_bool(json_pointer))
+    return equals_<bool>(*this, other, json_pointer);
+  if (is_ulong(json_pointer) && other.is_ulong(json_pointer))
+    return equals_<uint64_t>(*this, other, json_pointer);
+  if (is_long(json_pointer) && other.is_long(json_pointer))
+    return equals_<int64_t>(*this, other, json_pointer);
+  if (is_double(json_pointer) && other.is_double(json_pointer))
+    return equals_<double>(*this, other, json_pointer);
+  if (is_string(json_pointer) && other.is_string(json_pointer))
+    return equals_<std::string_view>(*this, other, json_pointer);
+  return compare_t::equals;
+}
+
 document_t::document_t(simdjson::dom::immutable_document &&source)
         : immut_src_(std::forward<simdjson::dom::immutable_document>(source)),
           builder_(mut_src_),
