@@ -45,8 +45,8 @@ int main() {
   std::cout << merged_doc->get_string("/obj/arr/0/hello") << std::endl;
   //split
   auto otter_doc2 = components::document::document_t::document_from_json(json2);
-  auto splat_doc = components::document::document_t::split(otter_doc1, otter_doc2);
-  std::cout << splat_doc->is_exists("/obj/long") << std::endl;
-  std::cout << splat_doc->is_bool("/obj/bool") << std::endl;
+  auto split_doc = components::document::document_t::split(otter_doc1, otter_doc2);
+  std::cout << split_doc->is_exists("/obj/long") << std::endl;
+  std::cout << split_doc->is_bool("/obj/bool") << std::endl;
   return 0;
 }
