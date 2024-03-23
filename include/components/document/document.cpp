@@ -66,6 +66,14 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
   return new document_t({this}, node_ptr);
 }
 
+document_t::ptr document_t::get_dict(std::string_view json_pointer) {
+  const auto node_ptr = element_ind_->find_node(json_pointer);
+  if (node_ptr == nullptr || !is_object(*node_ptr)) {
+    return nullptr; // temporarily
+  }
+  return new document_t({this}, node_ptr);
+}
+
 document_t::document_t(simdjson::dom::immutable_document &&source)
         : immut_src_(std::forward<simdjson::dom::immutable_document>(source)),
           builder_(mut_src_),
@@ -76,14 +84,16 @@ document_t::document_t(simdjson::dom::immutable_document &&source)
 document_t::document_t(ptr ancestor, word_trie_node_element* index)
         : element_ind_(index),
           builder_(mut_src_),
-          ancestors_({std::move(ancestor)}) {}
+          ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, &allocator_)) {}
 
 document_t::document_t(document_t::ptr ancestor1, document_t::ptr ancestor2, document_t::aggregate_strategy strategy)
         : builder_(mut_src_),
-          ancestors_({std::move(ancestor1), std::move(ancestor2)}) {
+          ancestors_(std::pmr::vector<ptr>({std::move(ancestor1), std::move(ancestor2)}, &allocator_)) {
   switch (strategy) {
     case aggregate_strategy::MERGE:
       element_ind_ = word_trie_node_element::merge(ancestors_[0]->element_ind_, ancestors_[1]->element_ind_, allocator_);
+    case aggregate_strategy::SPLIT:
+      element_ind_ = word_trie_node_element::split(ancestors_[0]->element_ind_, ancestors_[1]->element_ind_, allocator_);
   }
 }
 
@@ -99,7 +109,7 @@ error_t document_t::set_(std::string_view json_pointer, const element_from_mutab
   }
   auto key = json_pointer.substr(pos + 1);
   if (is_object(*container_node_ptr)) {
-    container_node_ptr->insert(key, value);
+    container_node_ptr->insert(key, value, true);
   } else if (is_array(*container_node_ptr)) {
     auto index = std::atol(std::string(key).c_str());
     if (index < 0) {
@@ -112,7 +122,7 @@ error_t document_t::set_(std::string_view json_pointer, const element_from_mutab
 }
 
 void document_t::build_index(word_trie_node_element &node, const element_from_immutable &value, std::string_view key) {
-  node.insert(key, value, value.is_array());
+  node.insert(key, value, !value.is_object());
   if (value.is_object()) {
     const auto obj = value.get_object();
     for (auto it = obj.begin(); it != obj.end(); ++it) {
@@ -140,6 +150,10 @@ document_t::ptr document_t::document_from_json(const std::string &json) {
 
 document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &document2) {
   return new document_t(document1, document2, aggregate_strategy::MERGE);
+}
+
+document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &document2) {
+  return new document_t(document1, document2, aggregate_strategy::SPLIT);
 }
 
 bool document_t::is_array(const word_trie_node_element &node) {

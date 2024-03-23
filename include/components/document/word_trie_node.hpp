@@ -73,9 +73,11 @@ public:
 
   static word_trie_node<T, K> *merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator);
 
+  static word_trie_node<T, K> *split(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator);
+
 private:
   allocator_type &allocator_;
-  std::unordered_map<std::string, word_trie_node*> children_;
+  std::pmr::unordered_map<std::pmr::string, word_trie_node *> children_;
   union {
     T* t_ptr;
     K* k_ptr;
@@ -89,15 +91,15 @@ private:
 template<typename T, typename K>
 word_trie_node<T, K>::word_trie_node(allocator_type &allocator)
         : allocator_(allocator),
+          children_(&allocator_),
           value_({.k_ptr = nullptr}),
-          is_t_(false),
-          is_merge_priority_(false) {}
+          is_t_(false) {}
 
 template<typename T, typename K>
 const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_view words) const {
   const auto *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::string(word_sv);
+    auto word = std::pmr::string(word_sv);
     if (current->children_.find(word) == current->children_.end()) {
       return nullptr;
     }
@@ -146,9 +148,9 @@ template<typename T, typename K>
 bool word_trie_node<T, K>::erase(std::string_view words) {
   word_trie_node *current = this;
   word_trie_node *prev = nullptr;
-  std::string word;
+  std::pmr::string word;
   for (auto word_sv: string_splitter(words, '/')) {
-    word = std::string(word_sv);
+    word = word_sv;
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
       return false;
@@ -166,15 +168,16 @@ size_t word_trie_node<T, K>::size() const {
 
 template<typename T, typename K>
 word_trie_node<T, K> *word_trie_node<T, K>::merge(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator) {
-  if (node2->children_.empty() || node2->is_merge_priority_) {
+  if (node2->is_merge_priority_) {
     return node2;
   }
   auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(allocator);
   for (auto &entry : node1->children_) {
-    if (node2->children_.find(entry.first) == node2->children_.end()) {
+    auto next = node2->children_.find(entry.first);
+    if (next == node2->children_.end()) {
       res->children_[entry.first] = entry.second;
     } else {
-      res->children_[entry.first] = merge(entry.second, node2->children_[entry.first], allocator);
+      res->children_[entry.first] = merge(entry.second, next->second, allocator);
     }
   }
   for (auto &entry : node2->children_) {
@@ -186,10 +189,30 @@ word_trie_node<T, K> *word_trie_node<T, K>::merge(word_trie_node<T, K> *node1, w
 }
 
 template<typename T, typename K>
+word_trie_node<T, K> *word_trie_node<T, K>::split(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator) {
+  if (node2->is_merge_priority_) {
+    return nullptr;
+  }
+  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(allocator);
+  for (auto &entry : node1->children_) {
+    auto next = node2->children_.find(entry.first);
+    if (next == node2->children_.end()) {
+      res->children_[entry.first] = entry.second;
+    } else {
+      auto split_res = split(entry.second, next->second, allocator);
+      if (split_res != nullptr) {
+        res->children_[entry.first] = split_res;
+      }
+    }
+  }
+  return res;
+}
+
+template<typename T, typename K>
 word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) {
   word_trie_node *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::string(word_sv);
+    auto word = std::pmr::string(word_sv);
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
       current = (current->children_[word] = new(allocator_.allocate(sizeof(word_trie_node))) word_trie_node(allocator_));
