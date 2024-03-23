@@ -28,6 +28,17 @@ public:
   using ptr = boost::intrusive_ptr<document_t>;
 
   document_t();
+
+  ~document_t() = default;
+
+  document_t(document_t &&other) noexcept = delete;
+
+  document_t(const document_t &) = delete;
+
+  document_t &operator=(document_t &&other) noexcept = delete;
+
+  document_t &operator=(const document_t &) = delete;
+
 //
 //  explicit document_t(bool value);
 //
