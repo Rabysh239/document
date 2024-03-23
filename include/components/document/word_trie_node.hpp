@@ -51,7 +51,7 @@ private:
 template<typename T, typename K>
 class word_trie_node {
 public:
-  using allocator_type = std::pmr::synchronized_pool_resource;
+  using allocator_type = std::pmr::memory_resource;
 
   explicit word_trie_node(allocator_type &allocator);
 
