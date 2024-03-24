@@ -10,6 +10,7 @@
 
 namespace simdjson {
 namespace SIMDJSON_IMPLEMENTATION {
+namespace {
 namespace stage2 {
 
 struct tape_writer {
@@ -109,6 +110,7 @@ simdjson_inline void tape_writer::write(uint64_t &tape_loc, uint64_t val, intern
 }
 
 } // namespace stage2
+} // unnamed namespace
 } // namespace SIMDJSON_IMPLEMENTATION
 } // namespace simdjson
 
