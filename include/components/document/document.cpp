@@ -5,8 +5,13 @@
 
 namespace components::document {
 
-document_t::document_t()
-        : element_ind_(new(allocator_.allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {}
+document_t::document_t(document_t::allocator_type *allocator)
+        : allocator_(allocator),
+          element_ind_(new(allocator_->allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {}
+
+bool document_t::is_valid() const {
+  return allocator_ != nullptr;
+}
 
 std::size_t document_t::count(std::string_view json_pointer) const {
   const auto value_ptr = element_ind_->find_node_const(json_pointer);
@@ -66,7 +71,7 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
   if (node_ptr == nullptr || !is_array(*node_ptr)) {
     return nullptr; // temporarily
   }
-  return new document_t({this}, node_ptr);
+  return new document_t({this}, allocator_, node_ptr);
 }
 
 document_t::ptr document_t::get_dict(std::string_view json_pointer) {
@@ -74,7 +79,7 @@ document_t::ptr document_t::get_dict(std::string_view json_pointer) {
   if (node_ptr == nullptr || !is_object(*node_ptr)) {
     return nullptr; // temporarily
   }
-  return new document_t({this}, node_ptr);
+  return new document_t({this}, allocator_, node_ptr);
 }
 
 template<class T>
@@ -89,12 +94,12 @@ compare_t equals_(const document_t& doc1, const document_t& doc2, std::string_vi
 }
 
 compare_t document_t::compare(const document_t& other, std::string_view json_pointer) const {
-//  if (is_valid() && !other.is_valid())
-//    return compare_t::less;
-//  if (!is_valid() && other.is_valid())
-//    return compare_t::more;
-//  if (!is_valid() && !other.is_valid())
-//    return compare_t::equals;
+  if (is_valid() && !other.is_valid())
+    return compare_t::less;
+  if (!is_valid() && other.is_valid())
+    return compare_t::more;
+  if (!is_valid())
+    return compare_t::equals;
   if (is_exists(json_pointer) && !other.is_exists(json_pointer))
     return compare_t::less;
   if (!is_exists(json_pointer) && other.is_exists(json_pointer))
@@ -114,15 +119,10 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
   return compare_t::equals;
 }
 
-document_t::document_t(simdjson::dom::immutable_document &&source)
-        : immut_src_(std::forward<simdjson::dom::immutable_document>(source)),
-          element_ind_(new(allocator_.allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {
-  build_index(*element_ind_, immut_src_.root(), "");
-}
-
-document_t::document_t(ptr ancestor, word_trie_node_element* index)
-        : element_ind_(index),
-          ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, &allocator_)) {}
+document_t::document_t(ptr ancestor, allocator_type *allocator, word_trie_node_element* index)
+        : allocator_(allocator),
+          element_ind_(index),
+          ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, allocator_)) {}
 
 error_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
   size_t pos = json_pointer.find_last_of('/');
@@ -165,30 +165,31 @@ void document_t::build_index(word_trie_node_element &node, const element_from_im
   }
 }
 
-document_t::ptr document_t::document_from_json(const std::string &json) {
-  simdjson::dom::immutable_document source;
-  if (source.allocate(json.size()) != simdjson::SUCCESS) {
+document_t::ptr document_t::document_from_json(const std::string &json, document_t::allocator_type *allocator) {
+  auto res = new document_t(allocator);
+  if (res->immut_src_.allocate(json.size()) != simdjson::SUCCESS) {
     return nullptr;
   }
   auto tree = boost::json::parse(json);
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(source);
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(res->immut_src_);
   walk_document(builder, tree);
-  return new document_t(std::move(source));
-}
-
-document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &document2) {
-  auto res = new document_t();
-  res->ancestors_.push_back(document1);
-  res->ancestors_.push_back(document2);
-  res->element_ind_ = word_trie_node_element::merge(document1->element_ind_, document2->element_ind_, res->allocator_);
+  build_index(*res->element_ind_, res->immut_src_.root(), "");
   return res;
 }
 
-document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &document2) {
-  auto res = new document_t();
+document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &document2, document_t::allocator_type *allocator) {
+  auto res = new document_t(allocator);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
-  res->element_ind_ = word_trie_node_element::split(document1->element_ind_, document2->element_ind_, res->allocator_);
+  res->element_ind_ = word_trie_node_element::merge(document1->element_ind_, document2->element_ind_, *res->allocator_);
+  return res;
+}
+
+document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &document2, document_t::allocator_type *allocator) {
+  auto res = new document_t(allocator);
+  res->ancestors_.push_back(document1);
+  res->ancestors_.push_back(document2);
+  res->element_ind_ = word_trie_node_element::split(document1->element_ind_, document2->element_ind_, *res->allocator_);
   return res;
 }
 
