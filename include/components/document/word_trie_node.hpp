@@ -53,7 +53,7 @@ class word_trie_node {
 public:
   using allocator_type = std::pmr::memory_resource;
 
-  explicit word_trie_node(allocator_type &allocator);
+  explicit word_trie_node(allocator_type *allocator);
 
   const word_trie_node<T, K> *find_node_const(std::string_view words) const;
 
@@ -76,7 +76,7 @@ public:
   static word_trie_node<T, K> *split(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator);
 
 private:
-  allocator_type &allocator_;
+  allocator_type *allocator_;
   std::pmr::unordered_map<std::pmr::string, word_trie_node *> children_;
   union {
     T* t_ptr;
@@ -89,9 +89,9 @@ private:
 };
 
 template<typename T, typename K>
-word_trie_node<T, K>::word_trie_node(allocator_type &allocator)
+word_trie_node<T, K>::word_trie_node(allocator_type *allocator)
         : allocator_(allocator),
-          children_(&allocator_),
+          children_(allocator_),
           value_({.k_ptr = nullptr}),
           is_t_(false) {}
 
@@ -133,14 +133,14 @@ template<typename T, typename K>
 void word_trie_node<T, K>::insert(std::string_view words, const T &value, bool is_aggregation_terminal) {
   auto node = find_insert(words);
   node->is_t_ = true;
-  node->value_.t_ptr = new(allocator_.allocate(sizeof(T))) T(value);
+  node->value_.t_ptr = new(allocator_->allocate(sizeof(T))) T(value);
   node->is_aggregation_terminal_ = is_aggregation_terminal;
 }
 
 template<typename T, typename K>
 void word_trie_node<T, K>::insert(std::string_view words, const K &value, bool is_aggregation_terminal) {
   auto node = find_insert(words);
-  node->value_.k_ptr = new(allocator_.allocate(sizeof(K))) K(value);
+  node->value_.k_ptr = new(allocator_->allocate(sizeof(K))) K(value);
   node->is_aggregation_terminal_ = is_aggregation_terminal;
 }
 
@@ -171,7 +171,7 @@ word_trie_node<T, K> *word_trie_node<T, K>::merge(word_trie_node<T, K> *node1, w
   if (node2->is_aggregation_terminal_) {
     return node2;
   }
-  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(allocator);
+  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(&allocator);
   for (auto &entry : node1->children_) {
     auto next = node2->children_.find(entry.first);
     if (next == node2->children_.end()) {
@@ -193,7 +193,7 @@ word_trie_node<T, K> *word_trie_node<T, K>::split(word_trie_node<T, K> *node1, w
   if (node2->is_aggregation_terminal_) {
     return nullptr;
   }
-  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(allocator);
+  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(&allocator);
   for (auto &entry : node1->children_) {
     auto next = node2->children_.find(entry.first);
     if (next == node2->children_.end()) {
@@ -215,7 +215,7 @@ word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) 
     auto word = std::pmr::string(word_sv);
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
-      current = (current->children_[word] = new(allocator_.allocate(sizeof(word_trie_node))) word_trie_node(allocator_));
+      current = (current->children_[word] = new(allocator_->allocate(sizeof(word_trie_node))) word_trie_node(allocator_));
       return current;
     } else {
       current = next->second;
