@@ -99,7 +99,7 @@ template<typename T, typename K>
 const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_view words) const {
   const auto *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::pmr::string(word_sv);
+    auto word = std::pmr::string(word_sv, allocator_);
     if (current->children_.find(word) == current->children_.end()) {
       return nullptr;
     }
@@ -212,7 +212,7 @@ template<typename T, typename K>
 word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) {
   word_trie_node *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::pmr::string(word_sv);
+    auto word = std::pmr::string(word_sv, allocator_);
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
       current = (current->children_[word] = new(allocator_->allocate(sizeof(word_trie_node))) word_trie_node(allocator_));
