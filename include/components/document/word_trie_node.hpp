@@ -56,6 +56,16 @@ public:
 
   explicit word_trie_node(allocator_type *allocator);
 
+  ~word_trie_node();
+
+  word_trie_node(word_trie_node &&) noexcept;
+
+  word_trie_node(const word_trie_node &) = delete;
+
+  word_trie_node &operator=(word_trie_node &&) noexcept;
+
+  word_trie_node &operator=(const word_trie_node &) = delete;
+
   const word_trie_node<T, K> *find_node_const(std::string_view words) const;
 
   word_trie_node<T, K> *find_node(std::string_view words);
@@ -108,6 +118,50 @@ word_trie_node<T, K>::word_trie_node(allocator_type *allocator)
           children_(allocator_),
           value_({.k_ptr = nullptr}),
           is_t_(false) {}
+
+template<typename T, typename K>
+word_trie_node<T, K>::~word_trie_node() {
+  auto ptr = is_t_ ? reinterpret_cast<void *>(value_.t_ptr) : reinterpret_cast<void *>(value_.k_ptr);
+  if (ptr != nullptr) {
+    allocator_->deallocate(ptr, is_t_ ? sizeof(T) : sizeof(K));
+  }
+}
+
+template<typename T, typename K>
+word_trie_node<T, K>::word_trie_node(word_trie_node &&other) noexcept
+        : ref_count(std::move(other.ref_count)),
+          allocator_(other.allocator_),
+          children_(std::move(other.children_)),
+          value_(std::move(other.value_)),
+          is_t_(other.is_t_),
+          is_aggregation_terminal_(other.is_aggregation_terminal_) {
+  other.allocator_ = nullptr;
+  if (other.is_t_) {
+    value_.t_ptr = nullptr;
+  } else {
+    value_.k_ptr = nullptr;
+  }
+}
+
+template<typename T, typename K>
+word_trie_node<T, K> &word_trie_node<T, K>::operator=(word_trie_node &&other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+  ref_count = std::move(other.ref_count);
+  allocator_ = other.allocator_;
+  children_ = std::move(other.children_);
+  value_ = std::move(other.value_);
+  is_t_ = other.is_t_;
+  is_aggregation_terminal_ = other.is_aggregation_terminal_;
+  other.allocator_ = nullptr;
+  if (other.is_t_) {
+    value_.t_ptr = nullptr;
+  } else {
+    value_.k_ptr = nullptr;
+  }
+  return *this;
+}
 
 template<typename T, typename K>
 const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_view words) const {
