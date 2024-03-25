@@ -5,8 +5,39 @@
 
 namespace components::document {
 
+document_t::document_t()
+        : allocator_(nullptr),
+          element_ind_(nullptr) {}
+
+document_t::document_t(document_t &&other) noexcept
+        : mut_src_(std::move(other.mut_src_)),
+          immut_src_(std::move(other.immut_src_)),
+          builder_(std::move(other.builder_)),
+          allocator_(other.allocator_),
+          element_ind_(other.element_ind_),
+          ancestors_(std::move(other.ancestors_)) {
+  other.allocator_ = nullptr;
+  other.element_ind_ = nullptr;
+}
+
+document_t &document_t::operator=(document_t &&other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+  mut_src_ = std::move(other.mut_src_);
+  immut_src_ = std::move(other.immut_src_);
+  builder_ = std::move(other.builder_);
+  allocator_ = other.allocator_;
+  element_ind_ = other.element_ind_;
+  ancestors_ = std::move(other.ancestors_);
+  other.allocator_ = nullptr;
+  other.element_ind_ = nullptr;
+  return *this;
+}
+
 document_t::document_t(document_t::allocator_type *allocator)
         : allocator_(allocator),
+          ancestors_(allocator_),
           element_ind_(new(allocator_->allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {}
 
 bool document_t::is_valid() const {
