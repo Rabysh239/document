@@ -28,15 +28,15 @@ public:
   using ptr = boost::intrusive_ptr<document_t>;
   using allocator_type = std::pmr::memory_resource;
 
-  document_t() = default;
+  document_t();
 
   ~document_t() = default;
 
-  document_t(document_t &&) noexcept = default;
+  document_t(document_t &&) noexcept;
 
   document_t(const document_t &) = delete;
 
-  document_t &operator=(document_t &&) noexcept = default;
+  document_t &operator=(document_t &&) noexcept;
 
   document_t &operator=(const document_t &) = delete;
 
@@ -166,7 +166,7 @@ private:
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{mut_src_};
   allocator_type *allocator_;
   word_trie_node_element* element_ind_;
-  std::pmr::vector<ptr> ancestors_{allocator_};
+  std::pmr::vector<ptr> ancestors_;
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
