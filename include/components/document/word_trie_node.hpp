@@ -4,6 +4,10 @@
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <iostream>
 #include <memory>
+#include <memory_resource>
+#include <atomic>
+#include <charconv>
+#include "allocator_intrusive_ref_counter.hpp"
 
 class string_split_iterator {
 public:
@@ -47,67 +51,112 @@ private:
   char delim_;
 };
 
-template<typename T, typename K>
-class word_trie_node : public boost::intrusive_ref_counter<word_trie_node<T, K>> {
+template<typename FirstType, typename SecondType>
+class word_trie_node : public allocator_intrusive_ref_counter {
 public:
-  word_trie_node();
+  using allocator_type = std::pmr::memory_resource;
 
-  boost::intrusive_ptr<word_trie_node<T, K>> get_node(std::string_view words);
+  explicit word_trie_node(allocator_type *allocator);
 
-  const word_trie_node<T, K> *find_node_const(std::string_view words) const;
+  ~word_trie_node() override;
 
-  word_trie_node<T, K> *find_node(std::string_view words);
+  word_trie_node(word_trie_node &&) noexcept;
 
-  const T *get_value_first() const;
+  word_trie_node(const word_trie_node &) = delete;
 
-  const K *get_value_second() const;
+  word_trie_node &operator=(word_trie_node &&) noexcept;
 
-  void insert(std::string_view words, const T &value);
+  word_trie_node &operator=(const word_trie_node &) = delete;
 
-  void insert(std::string_view words, const K &value);
+  const word_trie_node<FirstType, SecondType> *find_node_const(std::string_view words) const;
+
+  word_trie_node<FirstType, SecondType> *find_node(std::string_view words);
+
+  const FirstType *get_value_first() const;
+
+  const SecondType *get_value_second() const;
+
+  void insert(std::string_view words, const FirstType &value, bool is_aggregation_terminal);
+
+  void insert(std::string_view words, const SecondType &value, bool is_aggregation_terminal);
 
   bool erase(std::string_view words);
 
   size_t size() const;
 
+  static word_trie_node<FirstType, SecondType> *merge(word_trie_node<FirstType, SecondType> *node1, word_trie_node<FirstType, SecondType> *node2, allocator_type &allocator);
+
+  static word_trie_node<FirstType, SecondType> *split(word_trie_node<FirstType, SecondType> *node1, word_trie_node<FirstType, SecondType> *node2, allocator_type &allocator);
+
 private:
-  std::unordered_map<std::string, boost::intrusive_ptr<word_trie_node>> children_;
-  union u {
-    std::unique_ptr<T> t_ptr;
-    std::unique_ptr<K> k_ptr;
-
-    u() { nullptr; }
-    ~u() {};
+  allocator_type *allocator_;
+  std::pmr::unordered_map<std::pmr::string, boost::intrusive_ptr<word_trie_node>> children_;
+  union {
+    FirstType* first;
+    SecondType* second;
   } value_;
-  bool is_t;
+  bool is_first_;
+  bool is_aggregation_terminal_;
 
-  word_trie_node<T, K> *find_insert(std::string_view words);
+  word_trie_node<FirstType, SecondType> *find_insert(std::string_view words);
 };
 
-template<typename T, typename K>
-word_trie_node<T, K>::word_trie_node() : is_t(false) {}
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType>::word_trie_node(allocator_type *allocator)
+        : allocator_intrusive_ref_counter(allocator),
+          allocator_(allocator),
+          children_(allocator_),
+          value_({.second = nullptr}),
+          is_first_(false),
+          is_aggregation_terminal_(false) {}
 
-template<typename T, typename K>
-boost::intrusive_ptr<word_trie_node<T, K>> word_trie_node<T, K>::get_node(std::string_view words) {
-  assert(!words.empty());
-  auto *current = this;
-  boost::intrusive_ptr<word_trie_node<T, K>> current_ptr;
-  for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::string(word_sv);
-    if (current->children_.find(word) == current->children_.end()) {
-      return nullptr;
-    }
-    current_ptr = current->children_.at(word);
-    current = current_ptr.get();
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType>::~word_trie_node() {
+  auto ptr = is_first_ ? reinterpret_cast<void *>(value_.first) : reinterpret_cast<void *>(value_.second);
+  if (ptr != nullptr) {
+    allocator_->deallocate(ptr, is_first_ ? sizeof(FirstType) : sizeof(SecondType));
   }
-  return current_ptr;
 }
 
-template<typename T, typename K>
-const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_view words) const {
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType>::word_trie_node(word_trie_node &&other) noexcept
+        : allocator_(other.allocator_),
+          children_(std::move(other.children_)),
+          value_(std::move(other.value_)),
+          is_first_(other.is_first_),
+          is_aggregation_terminal_(other.is_aggregation_terminal_) {
+  other.allocator_ = nullptr;
+  if (other.is_first_) {
+    value_.first = nullptr;
+  } else {
+    value_.second = nullptr;
+  }
+}
+
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType> &word_trie_node<FirstType, SecondType>::operator=(word_trie_node &&other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+  allocator_ = other.allocator_;
+  children_ = std::move(other.children_);
+  value_ = std::move(other.value_);
+  is_first_ = other.is_first_;
+  is_aggregation_terminal_ = other.is_aggregation_terminal_;
+  other.allocator_ = nullptr;
+  if (other.is_first_) {
+    value_.first = nullptr;
+  } else {
+    value_.second = nullptr;
+  }
+  return *this;
+}
+
+template<typename FirstType, typename SecondType>
+const word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::find_node_const(std::string_view words) const {
   const auto *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::string(word_sv);
+    auto word = std::pmr::string(word_sv, allocator_);
     if (current->children_.find(word) == current->children_.end()) {
       return nullptr;
     }
@@ -116,70 +165,118 @@ const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_vi
   return current;
 }
 
-template<typename T, typename K>
-word_trie_node<T, K> *word_trie_node<T, K>::find_node(std::string_view words) {
-  return const_cast<word_trie_node<T, K> *>(find_node_const(words));
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::find_node(std::string_view words) {
+  return const_cast<word_trie_node<FirstType, SecondType> *>(find_node_const(words));
 }
 
-template<typename T, typename K>
-const T *word_trie_node<T, K>::get_value_first() const {
-  if (!is_t) {
+template<typename FirstType, typename SecondType>
+const FirstType *word_trie_node<FirstType, SecondType>::get_value_first() const {
+  if (!is_first_) {
     return nullptr;
   }
-  return value_.t_ptr.get();
+  return value_.first;
 }
 
-template<typename T, typename K>
-const K *word_trie_node<T, K>::get_value_second() const {
-  if (is_t) {
+template<typename FirstType, typename SecondType>
+const SecondType *word_trie_node<FirstType, SecondType>::get_value_second() const {
+  if (is_first_) {
     return nullptr;
   }
-  return value_.k_ptr.get();
+  return value_.second;
 }
 
-template<typename T, typename K>
-void word_trie_node<T, K>::insert(std::string_view words, const T &value) {
+template<typename FirstType, typename SecondType>
+void word_trie_node<FirstType, SecondType>::insert(std::string_view words, const FirstType &value, bool is_aggregation_terminal) {
   auto node = find_insert(words);
-  node->is_t = true;
-  node->value_.t_ptr = std::make_unique<T>(value);
+  node->is_first_ = true;
+  node->value_.first = new(allocator_->allocate(sizeof(FirstType))) FirstType(value);
+  node->is_aggregation_terminal_ = is_aggregation_terminal;
 }
 
-template<typename T, typename K>
-void word_trie_node<T, K>::insert(std::string_view words, const K &value) {
+template<typename FirstType, typename SecondType>
+void word_trie_node<FirstType, SecondType>::insert(std::string_view words, const SecondType &value, bool is_aggregation_terminal) {
   auto node = find_insert(words);
-  node->value_.k_ptr = std::make_unique<K>(value);
+  node->value_.second = new(allocator_->allocate(sizeof(SecondType))) SecondType(value);
+  node->is_aggregation_terminal_ = is_aggregation_terminal;
 }
 
-template<typename T, typename K>
-bool word_trie_node<T, K>::erase(std::string_view words) {
+template<typename FirstType, typename SecondType>
+bool word_trie_node<FirstType, SecondType>::erase(std::string_view words) {
   word_trie_node *current = this;
   word_trie_node *prev = nullptr;
-  std::string word;
+  std::pmr::string word;
   for (auto word_sv: string_splitter(words, '/')) {
-    word = std::string(word_sv);
-    if (current->children_.find(word) == current->children_.end()) {
+    word = word_sv;
+    auto next = current->children_.find(word);
+    if (next == current->children_.end()) {
       return false;
     }
-    current = current->children_[word].get();
+    current = next->second.get();
   }
   prev->children_.erase(word);
   return true;
 }
 
-template<typename T, typename K>
-size_t word_trie_node<T, K>::size() const {
+template<typename FirstType, typename SecondType>
+size_t word_trie_node<FirstType, SecondType>::size() const {
   return children_.size();
 }
 
-template<typename T, typename K>
-word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) {
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::merge(word_trie_node<FirstType, SecondType> *node1, word_trie_node<FirstType, SecondType> *node2, allocator_type &allocator) {
+  if (node2->is_aggregation_terminal_) {
+    return node2;
+  }
+  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(&allocator);
+  for (auto &entry : node1->children_) {
+    auto next = node2->children_.find(entry.first);
+    if (next == node2->children_.end()) {
+      res->children_[entry.first] = entry.second;
+    } else {
+      res->children_[entry.first] = merge(entry.second.get(), next->second.get(), allocator);
+    }
+  }
+  for (auto &entry : node2->children_) {
+    if (node1->children_.find(entry.first) == node1->children_.end()) {
+      res->children_[entry.first] = entry.second;
+    }
+  }
+  return res;
+}
+
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::split(word_trie_node<FirstType, SecondType> *node1, word_trie_node<FirstType, SecondType> *node2, allocator_type &allocator) {
+  if (node2->is_aggregation_terminal_) {
+    return nullptr;
+  }
+  auto res = new(allocator.allocate(sizeof(word_trie_node))) word_trie_node(&allocator);
+  for (auto &entry : node1->children_) {
+    auto next = node2->children_.find(entry.first);
+    if (next == node2->children_.end()) {
+      res->children_[entry.first] = entry.second;
+    } else {
+      auto split_res = split(entry.second.get(), next->second.get(), allocator);
+      if (split_res != nullptr) {
+        res->children_[entry.first] = split_res;
+      }
+    }
+  }
+  return res;
+}
+
+template<typename FirstType, typename SecondType>
+word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::find_insert(std::string_view words) {
   word_trie_node *current = this;
   for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::string(word_sv);
-    if (current->children_.find(word) == current->children_.end()) {
-      current->children_[word] = new word_trie_node;
+    auto word = std::pmr::string(word_sv, allocator_);
+    auto next = current->children_.find(word);
+    if (next == current->children_.end()) {
+      current = (current->children_[word] = new(allocator_->allocate(sizeof(word_trie_node))) word_trie_node(allocator_)).get();
+      return current;
+    } else {
+      current = next->second.get();
     }
-    current = current->children_[word].get();
   }
   return current;
 }

@@ -17,6 +17,7 @@ namespace dom {
 template<typename T>
 class document : public boost::intrusive_ref_counter<document<T>> {
 public:
+  virtual ~document() = default;
   const uint64_t &get_tape(size_t json_index) const;
   const uint8_t &get_string_buf(size_t json_index) const;
   const uint8_t *get_string_buf_ptr() const;
@@ -39,7 +40,7 @@ public:
    * The parser will allocate capacity as needed.
    */
   immutable_document() noexcept = default;
-  ~immutable_document() noexcept = default;
+  ~immutable_document() noexcept override = default;
 
   /**
    * Take another document's buffers.
@@ -102,6 +103,18 @@ private:
 
 class mutable_document : public document<mutable_document> {
 public:
+  mutable_document() noexcept = default;
+
+  ~mutable_document() noexcept override = default;
+
+  mutable_document(mutable_document &&other) noexcept = default;
+
+  mutable_document(const mutable_document &) = delete;
+
+  mutable_document &operator=(mutable_document &&other) noexcept = default;
+
+  mutable_document &operator=(const mutable_document &) = delete;
+
   const uint64_t &get_tape_impl(size_t json_index) const;
   const uint8_t &get_string_buf_impl(size_t json_index) const;
   const uint8_t *get_string_buf_ptr_impl() const;

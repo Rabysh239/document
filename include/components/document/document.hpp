@@ -2,18 +2,19 @@
 
 #include "word_trie_node.hpp"
 #include <boost/smart_ptr/intrusive_ptr.hpp>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <utility>
+#include <memory_resource>
 //#include <components/document/document_id.hpp>
 #include "../../simdjson/dom/document-inl.h"
 #include "../../simdjson/dom/element-inl.h"
 #include "../../simdjson/dom/array-inl.h"
 #include "../../simdjson/dom/object-inl.h"
 #include "../../../src/generic/stage2/tape_builder.h"
+#include "allocator_intrusive_ref_counter.hpp"
 
 namespace components::document {
-//
-//enum class compare_t { less = -1, equals = 0, more = 1 };
+
+enum class compare_t { less = -1, equals = 0, more = 1 };
 
 enum class error_t {
   SUCCESS,
@@ -22,11 +23,24 @@ enum class error_t {
   INVALID_INDEX,
 };
 
-class document_t final : public boost::intrusive_ref_counter<document_t> {
+class document_t final : public allocator_intrusive_ref_counter {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
-//
-//  document_t();
+  using allocator_type = std::pmr::memory_resource;
+
+  document_t();
+
+  ~document_t() override = default;
+
+  document_t(document_t &&) noexcept;
+
+  document_t(const document_t &) = delete;
+
+  document_t &operator=(document_t &&) noexcept;
+
+  document_t &operator=(const document_t &) = delete;
+
+  explicit document_t(allocator_type *);
 //
 //  explicit document_t(bool value);
 //
@@ -46,9 +60,9 @@ public:
 //  bool update(const ptr &update);
 
 //  document_id_t id() const;
-//
-//  bool is_valid() const;
-//
+
+  bool is_valid() const;
+
   std::size_t count(std::string_view json_pointer = "") const;
 
   bool is_exists(std::string_view json_pointer) const;
@@ -81,7 +95,7 @@ public:
 
   ptr get_array(std::string_view json_pointer);
 
-//  ptr get_dict(std::string_view json_pointer) const;
+  ptr get_dict(std::string_view json_pointer);
 
   template<class T>
   bool is_as(std::string_view json_pointer) const {
@@ -107,8 +121,8 @@ public:
     return second->is<T>() ? second->get<T>().value() : T();
   }
 //  ::document::impl::dict_iterator_t begin() const;
-//
-//  compare_t compare(const document_t &other, const std::string &key) const;
+
+  compare_t compare(const document_t &other, std::string_view json_pointer) const;
 //
 //  std::string to_json() const;
 
@@ -134,28 +148,29 @@ public:
 //
 //  explicit operator bool() const;
 
-  static ptr document_from_json(const std::string &json);
+  static ptr document_from_json(const std::string &json, document_t::allocator_type *allocator);
+
+  static ptr merge(ptr &document1, ptr &document2, document_t::allocator_type *allocator);
+
+  static ptr split(ptr &document1, ptr &document2, document_t::allocator_type *allocator);
 
 private:
-  using immutable_source_ptr = boost::intrusive_ptr<simdjson::dom::immutable_document>;
-  using mutable_source_ptr = boost::intrusive_ptr<simdjson::dom::mutable_document>;
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
   using word_trie_node_element = word_trie_node<element_from_immutable, element_from_mutable>;
-  using word_trie_ptr = boost::intrusive_ptr<word_trie_node_element>;
 
-  explicit document_t(immutable_source_ptr source);
-  document_t(ptr ancestor, word_trie_ptr index);
+  document_t(ptr ancestor, allocator_type *allocator, word_trie_node_element* index);
 
-  immutable_source_ptr immut_src_ptr_;
-  mutable_source_ptr mut_src_ptr_;
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_;
-  word_trie_ptr element_ind_;
-  std::vector<ptr> ancestors;
+  simdjson::dom::immutable_document immut_src_;
+  simdjson::dom::mutable_document mut_src_;
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{mut_src_};
+  allocator_type *allocator_;
+  boost::intrusive_ptr<word_trie_node_element> element_ind_;
+  std::pmr::vector<ptr> ancestors_;
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
-  void build_index(word_trie_node_element& node, const element_from_immutable &value, std::string_view key);
+  static void build_index(word_trie_node_element& node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
 
 //
 //  std::string to_json_dict() const;
@@ -187,7 +202,7 @@ private:
 
 template<class T>
 inline error_t document_t::set(std::string_view json_pointer, T value) {
-  auto next_element = mut_src_ptr_->next_element();
+  auto next_element = mut_src_.next_element();
   builder_.build(value);
   return set_(json_pointer, next_element);
 }
@@ -223,5 +238,7 @@ inline error_t document_t::set(std::string_view json_pointer, const std::string 
 //std::string to_string(const document_t &doc);
 //
 //document_t sum(const document_t &value1, const document_t &value2);
+
+std::pmr::string create_pmr_string(size_t number, std::pmr::memory_resource *allocator);
 
 } // namespace components::document

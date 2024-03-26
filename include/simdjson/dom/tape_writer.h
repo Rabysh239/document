@@ -11,6 +11,7 @@ namespace dom {
 template<typename T>
 class tape_writer {
 public:
+  virtual ~tape_writer() = default;
   simdjson_inline uint32_t next_tape_index() noexcept;
 
   /**
