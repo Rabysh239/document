@@ -2,7 +2,6 @@
 
 #include "word_trie_node.hpp"
 #include <boost/smart_ptr/intrusive_ptr.hpp>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <utility>
 #include <memory_resource>
 //#include <components/document/document_id.hpp>
@@ -11,6 +10,7 @@
 #include "../../simdjson/dom/array-inl.h"
 #include "../../simdjson/dom/object-inl.h"
 #include "../../../src/generic/stage2/tape_builder.h"
+#include "allocator_intrusive_ref_counter.hpp"
 
 namespace components::document {
 
@@ -23,14 +23,14 @@ enum class error_t {
   INVALID_INDEX,
 };
 
-class document_t final : public boost::intrusive_ref_counter<document_t> {
+class document_t final : public allocator_intrusive_ref_counter {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
   using allocator_type = std::pmr::memory_resource;
 
   document_t();
 
-  ~document_t() = default;
+  ~document_t() override = default;
 
   document_t(document_t &&) noexcept;
 
@@ -170,7 +170,7 @@ private:
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
-  static void build_index(word_trie_node_element& node, const element_from_immutable &value, std::string_view key);
+  static void build_index(word_trie_node_element& node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
 
 //
 //  std::string to_json_dict() const;
@@ -238,5 +238,7 @@ inline error_t document_t::set(std::string_view json_pointer, const std::string 
 //std::string to_string(const document_t &doc);
 //
 //document_t sum(const document_t &value1, const document_t &value2);
+
+std::pmr::string create_pmr_string(size_t number, std::pmr::memory_resource *allocator);
 
 } // namespace components::document

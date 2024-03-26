@@ -6,6 +6,8 @@
 #include <memory>
 #include <memory_resource>
 #include <atomic>
+#include <charconv>
+#include "allocator_intrusive_ref_counter.hpp"
 
 class string_split_iterator {
 public:
@@ -50,13 +52,13 @@ private:
 };
 
 template<typename T, typename K>
-class word_trie_node {
+class word_trie_node : public allocator_intrusive_ref_counter {
 public:
   using allocator_type = std::pmr::memory_resource;
 
   explicit word_trie_node(allocator_type *allocator);
 
-  ~word_trie_node();
+  ~word_trie_node() override;
 
   word_trie_node(word_trie_node &&) noexcept;
 
@@ -86,20 +88,7 @@ public:
 
   static word_trie_node<T, K> *split(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator);
 
-  friend void intrusive_ptr_add_ref(word_trie_node* p) {
-    p->ref_count.fetch_add(1, std::memory_order_relaxed);
-  }
-
-  friend void intrusive_ptr_release(word_trie_node* p) {
-    if (p->ref_count.fetch_sub(1, std::memory_order_release) == 1) {
-      std::atomic_thread_fence(std::memory_order_acquire);
-      p->~word_trie_node();
-      p->allocator_->deallocate(p, sizeof(word_trie_node));
-    }
-  }
-
 private:
-  std::atomic<int> ref_count{0};
   allocator_type *allocator_;
   std::pmr::unordered_map<std::pmr::string, boost::intrusive_ptr<word_trie_node>> children_;
   union {
@@ -114,7 +103,8 @@ private:
 
 template<typename T, typename K>
 word_trie_node<T, K>::word_trie_node(allocator_type *allocator)
-        : allocator_(allocator),
+        : allocator_intrusive_ref_counter(allocator),
+          allocator_(allocator),
           children_(allocator_),
           value_({.k_ptr = nullptr}),
           is_t_(false),
@@ -130,8 +120,7 @@ word_trie_node<T, K>::~word_trie_node() {
 
 template<typename T, typename K>
 word_trie_node<T, K>::word_trie_node(word_trie_node &&other) noexcept
-        : ref_count(std::move(other.ref_count)),
-          allocator_(other.allocator_),
+        : allocator_(other.allocator_),
           children_(std::move(other.children_)),
           value_(std::move(other.value_)),
           is_t_(other.is_t_),
@@ -149,7 +138,6 @@ word_trie_node<T, K> &word_trie_node<T, K>::operator=(word_trie_node &&other) no
   if (this == &other) {
     return *this;
   }
-  ref_count = std::move(other.ref_count);
   allocator_ = other.allocator_;
   children_ = std::move(other.children_);
   value_ = std::move(other.value_);
