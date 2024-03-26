@@ -14,10 +14,9 @@ document_t::document_t(document_t &&other) noexcept
           immut_src_(std::move(other.immut_src_)),
           builder_(std::move(other.builder_)),
           allocator_(other.allocator_),
-          element_ind_(other.element_ind_),
+          element_ind_(std::move(other.element_ind_)),
           ancestors_(std::move(other.ancestors_)) {
   other.allocator_ = nullptr;
-  other.element_ind_ = nullptr;
 }
 
 document_t &document_t::operator=(document_t &&other) noexcept {
@@ -28,10 +27,9 @@ document_t &document_t::operator=(document_t &&other) noexcept {
   immut_src_ = std::move(other.immut_src_);
   builder_ = std::move(other.builder_);
   allocator_ = other.allocator_;
-  element_ind_ = other.element_ind_;
+  element_ind_ = std::move(other.element_ind_);
   ancestors_ = std::move(other.ancestors_);
   other.allocator_ = nullptr;
-  other.element_ind_ = nullptr;
   return *this;
 }
 
