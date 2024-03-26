@@ -6,11 +6,13 @@
 namespace components::document {
 
 document_t::document_t()
-        : allocator_(nullptr),
+        : allocator_intrusive_ref_counter(nullptr),
+          allocator_(nullptr),
           element_ind_(nullptr) {}
 
 document_t::document_t(document_t &&other) noexcept
-        : mut_src_(std::move(other.mut_src_)),
+        : allocator_intrusive_ref_counter(other.allocator_),
+          mut_src_(std::move(other.mut_src_)),
           immut_src_(std::move(other.immut_src_)),
           builder_(std::move(other.builder_)),
           allocator_(other.allocator_),
@@ -34,7 +36,8 @@ document_t &document_t::operator=(document_t &&other) noexcept {
 }
 
 document_t::document_t(document_t::allocator_type *allocator)
-        : allocator_(allocator),
+        : allocator_intrusive_ref_counter(allocator),
+          allocator_(allocator),
           ancestors_(allocator_),
           element_ind_(new(allocator_->allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {}
 
@@ -100,7 +103,7 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
   if (node_ptr == nullptr || !is_array(*node_ptr)) {
     return nullptr; // temporarily
   }
-  return new document_t({this}, allocator_, node_ptr);
+  return new(allocator_->allocate(sizeof(document_t))) document_t({this}, allocator_, node_ptr);
 }
 
 document_t::ptr document_t::get_dict(std::string_view json_pointer) {
@@ -108,7 +111,7 @@ document_t::ptr document_t::get_dict(std::string_view json_pointer) {
   if (node_ptr == nullptr || !is_object(*node_ptr)) {
     return nullptr; // temporarily
   }
-  return new document_t({this}, allocator_, node_ptr);
+  return new(allocator_->allocate(sizeof(document_t))) document_t({this}, allocator_, node_ptr);
 }
 
 template<class T>
@@ -149,7 +152,8 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
 }
 
 document_t::document_t(ptr ancestor, allocator_type *allocator, word_trie_node_element* index)
-        : allocator_(allocator),
+        : allocator_intrusive_ref_counter(allocator),
+          allocator_(allocator),
           element_ind_(index),
           ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, allocator_)) {}
 
@@ -172,42 +176,42 @@ error_t document_t::set_(std::string_view json_pointer, const element_from_mutab
     if (index < 0) {
       return error_t::INVALID_INDEX;
     }
-    auto correct_index = std::min(size_t(index), container_node_ptr->size());
-    container_node_ptr->insert(std::to_string(correct_index), value, is_aggregation_terminal);
+    size_t correct_index = std::min(size_t(index), container_node_ptr->size());
+    container_node_ptr->insert(create_pmr_string(correct_index, allocator_), value, is_aggregation_terminal);
   }
   return error_t::SUCCESS;
 }
 
-void document_t::build_index(word_trie_node_element &node, const element_from_immutable &value, std::string_view key) {
+void document_t::build_index(word_trie_node_element &node, const element_from_immutable &value, std::string_view key, allocator_type *allocator) {
   node.insert(key, value, !value.is_object());
   if (value.is_object()) {
     const auto obj = value.get_object();
     for (auto it = obj.begin(); it != obj.end(); ++it) {
-      build_index(*node.find_node(key), it.value(), it.key());
+      build_index(*node.find_node(key), it.value(), it.key(), allocator);
     }
   } else if (value.is_array()) {
     const auto arr = value.get_array();
     int i = 0;
     for (auto it: arr) {
-      build_index(*node.find_node(key), it, std::to_string(i++));
+      build_index(*node.find_node(key), it, create_pmr_string(i++, allocator), allocator);
     }
   }
 }
 
 document_t::ptr document_t::document_from_json(const std::string &json, document_t::allocator_type *allocator) {
-  auto res = new document_t(allocator);
+  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator);
   if (res->immut_src_.allocate(json.size()) != simdjson::SUCCESS) {
     return nullptr;
   }
   auto tree = boost::json::parse(json);
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(res->immut_src_);
   walk_document(builder, tree);
-  build_index(*res->element_ind_, res->immut_src_.root(), "");
+  build_index(*res->element_ind_, res->immut_src_.root(), "", res->allocator_);
   return res;
 }
 
 document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &document2, document_t::allocator_type *allocator) {
-  auto res = new document_t(allocator);
+  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
   res->element_ind_ = word_trie_node_element::merge(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
@@ -215,7 +219,7 @@ document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &d
 }
 
 document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &document2, document_t::allocator_type *allocator) {
-  auto res = new document_t(allocator);
+  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
   res->element_ind_ = word_trie_node_element::split(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
@@ -230,5 +234,11 @@ bool document_t::is_array(const word_trie_node_element &node) {
 bool document_t::is_object(const word_trie_node_element &node) {
   auto first = node.get_value_first();
   return first != nullptr ? first->is_object() : node.get_value_second()->is_object();
+}
+
+std::pmr::string create_pmr_string(size_t number, std::pmr::memory_resource *allocator) {
+  std::array<char, 30> buffer{};
+  auto [ptr, ec] = std::to_chars(buffer.data(), buffer.data() + buffer.size(), number);
+  return std::pmr::string(buffer.data(), ptr - buffer.data(), allocator);
 }
 } // namespace components::document
