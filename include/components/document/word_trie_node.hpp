@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <memory_resource>
+#include <atomic>
 
 class string_split_iterator {
 public:
@@ -75,9 +76,22 @@ public:
 
   static word_trie_node<T, K> *split(word_trie_node<T, K> *node1, word_trie_node<T, K> *node2, allocator_type &allocator);
 
+  friend void intrusive_ptr_add_ref(word_trie_node* p) {
+    p->ref_count.fetch_add(1, std::memory_order_relaxed);
+  }
+
+  friend void intrusive_ptr_release(word_trie_node* p) {
+    if (p->ref_count.fetch_sub(1, std::memory_order_release) == 1) {
+      std::atomic_thread_fence(std::memory_order_acquire);
+      p->~word_trie_node();
+      p->allocator_->deallocate(p, sizeof(word_trie_node));
+    }
+  }
+
 private:
+  std::atomic<int> ref_count{0};
   allocator_type *allocator_;
-  std::pmr::unordered_map<std::pmr::string, word_trie_node *> children_;
+  std::pmr::unordered_map<std::pmr::string, boost::intrusive_ptr<word_trie_node>> children_;
   union {
     T* t_ptr;
     K* k_ptr;
@@ -103,7 +117,7 @@ const word_trie_node<T, K> *word_trie_node<T, K>::find_node_const(std::string_vi
     if (current->children_.find(word) == current->children_.end()) {
       return nullptr;
     }
-    current = current->children_.at(word);
+    current = current->children_.at(word).get();
   }
   return current;
 }
@@ -155,7 +169,7 @@ bool word_trie_node<T, K>::erase(std::string_view words) {
     if (next == current->children_.end()) {
       return false;
     }
-    current = next->second;
+    current = next->second.get();
   }
   prev->children_.erase(word);
   return true;
@@ -177,7 +191,7 @@ word_trie_node<T, K> *word_trie_node<T, K>::merge(word_trie_node<T, K> *node1, w
     if (next == node2->children_.end()) {
       res->children_[entry.first] = entry.second;
     } else {
-      res->children_[entry.first] = merge(entry.second, next->second, allocator);
+      res->children_[entry.first] = merge(entry.second.get(), next->second.get(), allocator);
     }
   }
   for (auto &entry : node2->children_) {
@@ -199,7 +213,7 @@ word_trie_node<T, K> *word_trie_node<T, K>::split(word_trie_node<T, K> *node1, w
     if (next == node2->children_.end()) {
       res->children_[entry.first] = entry.second;
     } else {
-      auto split_res = split(entry.second, next->second, allocator);
+      auto split_res = split(entry.second.get(), next->second.get(), allocator);
       if (split_res != nullptr) {
         res->children_[entry.first] = split_res;
       }
@@ -215,10 +229,10 @@ word_trie_node<T, K> *word_trie_node<T, K>::find_insert(std::string_view words) 
     auto word = std::pmr::string(word_sv, allocator_);
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
-      current = (current->children_[word] = new(allocator_->allocate(sizeof(word_trie_node))) word_trie_node(allocator_));
+      current = (current->children_[word] = new(allocator_->allocate(sizeof(word_trie_node))) word_trie_node(allocator_)).get();
       return current;
     } else {
-      current = next->second;
+      current = next->second.get();
     }
   }
   return current;

@@ -165,7 +165,7 @@ private:
   simdjson::dom::mutable_document mut_src_;
   simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{mut_src_};
   allocator_type *allocator_;
-  word_trie_node_element* element_ind_;
+  boost::intrusive_ptr<word_trie_node_element> element_ind_;
   std::pmr::vector<ptr> ancestors_;
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
