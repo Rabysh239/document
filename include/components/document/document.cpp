@@ -212,7 +212,7 @@ document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &d
   auto res = new document_t(allocator);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
-  res->element_ind_ = word_trie_node_element::merge(document1->element_ind_, document2->element_ind_, *res->allocator_);
+  res->element_ind_ = word_trie_node_element::merge(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
   return res;
 }
 
@@ -220,7 +220,7 @@ document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &d
   auto res = new document_t(allocator);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
-  res->element_ind_ = word_trie_node_element::split(document1->element_ind_, document2->element_ind_, *res->allocator_);
+  res->element_ind_ = word_trie_node_element::split(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
   return res;
 }
 
