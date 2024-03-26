@@ -117,7 +117,8 @@ word_trie_node<T, K>::word_trie_node(allocator_type *allocator)
         : allocator_(allocator),
           children_(allocator_),
           value_({.k_ptr = nullptr}),
-          is_t_(false) {}
+          is_t_(false),
+          is_aggregation_terminal_(false) {}
 
 template<typename T, typename K>
 word_trie_node<T, K>::~word_trie_node() {
