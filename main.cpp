@@ -1,35 +1,53 @@
 #include <iostream>
-#include <boost/json/src.hpp>
-#include "include/simdjson/dom/document-inl.h"
-#include "src/generic/stage2/tape_builder.h"
-
-simdjson::simdjson_result<simdjson::dom::element> to_document(simdjson::dom::document &doc, const std::string &json) {
-    auto tree = boost::json::parse(json);
-    simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder::parse_document(doc, tree);
-    return doc.root();
-}
+#include "include/components/document/document.hpp"
 
 int main() {
-    const std::string json = R"(
+  const std::string json = R"(
         {
-            "key0": "hello world",
-            "key1": true,
-            "key2": {
-                "key2_0": 123.4
-            }
+          "obj": {
+            "double": 2.3,
+            "arr": [
+              {
+                "hello": "world"
+              }
+            ]
+          }
+        }
+    )";
+  const std::string json1 = R"(
+        {
+          "obj": {
+            "long": 5,
+            "bool": true
+          }
+        }
+    )";
+  const std::string json2 = R"(
+        {
+          "obj": {
+            "long": 5
+          }
         }
     )";
 
-    simdjson::dom::document doc;
-    doc.allocate(json.size() * 2);
-    auto el = to_document(doc, json);
-    auto obj = el.get_object();
-    std::cout << "size: " << obj.size() << std::endl;
-    std::cout << obj.at_key("key0").is_string() << " " << obj.at_key("key0").get_string() << std::endl;
-    std::cout << obj.at_key("key1").is_bool() << " " << obj.at_key("key1").get_bool() << std::endl;
-    std::cout << obj.at_key("key2").is_object() << std::endl;
-    auto inner_obj = obj.at_key("key2").get_object();
-    std::cout << "size: " << inner_obj.size() << std::endl;
-    std::cout << inner_obj.at_key("key2_0").is_double() << " " << inner_obj.at_key("key2_0").get_double() << std::endl;
-    return 0;
+  std::pmr::synchronized_pool_resource allocator;
+  auto otter_doc = components::document::document_t::document_from_json(json, &allocator);
+  std::cout << otter_doc->is_double("/obj/double") << " " << otter_doc->get_double("/obj/double") << std::endl;
+  long val = 3;
+  otter_doc->set("/obj/long", val);
+  std::cout << otter_doc->get_long("/obj/long") << std::endl;
+  auto otter_doc_arr = otter_doc->get_array("/obj/arr");
+  std::cout << otter_doc_arr->is_string("/0/hello") << " " << otter_doc_arr->get_string("/0/hello") << std::endl;
+  //merge
+  auto otter_doc1 = components::document::document_t::document_from_json(json1, &allocator);
+  auto merged_doc = components::document::document_t::merge(otter_doc, otter_doc1, &allocator);
+  std::cout << merged_doc->get_long("/obj/long") << std::endl;
+  std::cout << merged_doc->is_bool("/obj/bool") << std::endl;
+  std::cout << merged_doc->get_string("/obj/arr/0/hello") << std::endl;
+  //split
+  auto otter_doc2 = components::document::document_t::document_from_json(json2, &allocator);
+  auto split_doc = components::document::document_t::split(otter_doc1, otter_doc2, &allocator);
+  std::cout << split_doc->is_exists("/obj/long") << std::endl;
+  std::cout << split_doc->is_bool("/obj/bool") << std::endl;
+  return 0;
 }

@@ -100,7 +100,7 @@ namespace internal {
  *
  * Gives the option of reading error codes, or throwing an exception by casting to the desired result.
  *
- * This is a base class for implementations that want to add functions to the result type for
+ * This is a base class for implementations that want to build functions to the result type for
  * chaining.
  *
  * Override like:

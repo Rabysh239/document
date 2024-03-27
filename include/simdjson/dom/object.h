@@ -11,6 +11,7 @@ namespace dom {
 /**
  * JSON object.
  */
+template<typename T>
 class object {
 public:
   /** Create a new, invalid object */
@@ -18,7 +19,7 @@ public:
 
   class iterator {
   public:
-    using value_type = const key_value_pair;
+    using value_type = const key_value_pair<T>;
     using difference_type = std::ptrdiff_t;
     using pointer = void;
     using reference = value_type;
@@ -81,15 +82,15 @@ public:
     /**
      * Get the value of this key/value pair.
      */
-    inline element value() const noexcept;
+    inline element<T> value() const noexcept;
 
     iterator() noexcept = default;
     iterator(const iterator&) noexcept = default;
     iterator& operator=(const iterator&) noexcept = default;
   private:
-    simdjson_inline iterator(const internal::tape_ref &tape) noexcept;
+    simdjson_inline iterator(const internal::tape_ref<T> &tape) noexcept;
 
-    internal::tape_ref tape;
+    internal::tape_ref<T> tape;
 
     friend class object;
   };
@@ -127,7 +128,7 @@ public:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    *         - INCORRECT_TYPE if this is not an object
    */
-  inline simdjson_result<element> operator[](std::string_view key) const noexcept;
+  inline simdjson_result<element<T>> operator[](std::string_view key) const noexcept;
 
   /**
    * Get the value associated with the given key.
@@ -144,7 +145,7 @@ public:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    *         - INCORRECT_TYPE if this is not an object
    */
-  inline simdjson_result<element> operator[](const char *key) const noexcept;
+  inline simdjson_result<element<T>> operator[](const char *key) const noexcept;
 
   /**
    * Get the value associated with the given JSON pointer. We use the RFC 6901
@@ -169,7 +170,7 @@ public:
    *         - INCORRECT_TYPE if a non-integer is used to access an array
    *         - INVALID_JSON_POINTER if the JSON pointer is invalid and cannot be parsed
    */
-  inline simdjson_result<element> at_pointer(std::string_view json_pointer) const noexcept;
+  inline simdjson_result<element<T>> at_pointer(std::string_view json_pointer) const noexcept;
 
   /**
    * Get the value associated with the given key.
@@ -185,7 +186,7 @@ public:
    * @return The value associated with this field, or:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    */
-  inline simdjson_result<element> at_key(std::string_view key) const noexcept;
+  inline simdjson_result<element<T>> at_key(std::string_view key) const noexcept;
 
   /**
    * Get the value associated with the given key in a case-insensitive manner.
@@ -198,72 +199,74 @@ public:
    * @return The value associated with this field, or:
    *         - NO_SUCH_FIELD if the field does not exist in the object
    */
-  inline simdjson_result<element> at_key_case_insensitive(std::string_view key) const noexcept;
+  inline simdjson_result<element<T>> at_key_case_insensitive(std::string_view key) const noexcept;
 
 private:
-  simdjson_inline object(const internal::tape_ref &tape) noexcept;
+  simdjson_inline object(const internal::tape_ref<T> &tape) noexcept;
 
-  internal::tape_ref tape;
+  internal::tape_ref<T> tape;
 
-  friend class element;
-  friend struct simdjson_result<element>;
-  template<typename T>
-  friend class simdjson::internal::string_builder;
+  friend class element<T>;
+  friend struct simdjson_result<element<T>>;
 };
 
 /**
  * Key/value pair in an object.
  */
+template<typename T>
 class key_value_pair {
 public:
   /** key in the key-value pair **/
   std::string_view key;
   /** value in the key-value pair **/
-  element value;
+  element<T> value;
 
 private:
-  simdjson_inline key_value_pair(std::string_view _key, element _value) noexcept;
-  friend class object;
+  simdjson_inline key_value_pair(std::string_view _key, element<T> _value) noexcept;
+  friend class object<T>;
 };
 
 } // namespace dom
 
 /** The result of a JSON conversion that may fail. */
-template<>
-struct simdjson_result<dom::object> : public internal::simdjson_result_base<dom::object> {
+template<typename T>
+struct simdjson_result<dom::object<T>> : public internal::simdjson_result_base<dom::object<T>> {
+  using base = internal::simdjson_result_base<dom::object<T>>;
+  using base::error;
+  using base::first;
 public:
   simdjson_inline simdjson_result() noexcept; ///< @private
-  simdjson_inline simdjson_result(dom::object value) noexcept; ///< @private
+  simdjson_inline simdjson_result(dom::object<T> value) noexcept; ///< @private
   simdjson_inline simdjson_result(error_code error) noexcept; ///< @private
 
-  inline simdjson_result<dom::element> operator[](std::string_view key) const noexcept;
-  inline simdjson_result<dom::element> operator[](const char *key) const noexcept;
-  inline simdjson_result<dom::element> at_pointer(std::string_view json_pointer) const noexcept;
-  inline simdjson_result<dom::element> at_key(std::string_view key) const noexcept;
-  inline simdjson_result<dom::element> at_key_case_insensitive(std::string_view key) const noexcept;
+  inline simdjson_result<dom::element<T>> operator[](std::string_view key) const noexcept;
+  inline simdjson_result<dom::element<T>> operator[](const char *key) const noexcept;
+  inline simdjson_result<dom::element<T>> at_pointer(std::string_view json_pointer) const noexcept;
+  inline simdjson_result<dom::element<T>> at_key(std::string_view key) const noexcept;
+  inline simdjson_result<dom::element<T>> at_key_case_insensitive(std::string_view key) const noexcept;
 
 #if SIMDJSON_EXCEPTIONS
-  inline dom::object::iterator begin() const noexcept(false);
-  inline dom::object::iterator end() const noexcept(false);
+  inline typename dom::object<T>::iterator begin() const noexcept(false);
+  inline typename dom::object<T>::iterator end() const noexcept(false);
   inline size_t size() const noexcept(false);
 #endif // SIMDJSON_EXCEPTIONS
 };
 
 } // namespace simdjson
-
-#if defined(__cpp_lib_ranges)
-#include <ranges>
-
-namespace std {
-namespace ranges {
-template<>
-inline constexpr bool enable_view<simdjson::dom::object> = true;
-#if SIMDJSON_EXCEPTIONS
-template<>
-inline constexpr bool enable_view<simdjson::simdjson_result<simdjson::dom::object>> = true;
-#endif // SIMDJSON_EXCEPTIONS
-} // namespace ranges
-} // namespace std
-#endif // defined(__cpp_lib_ranges)
+//
+//#if defined(__cpp_lib_ranges)
+//#include <ranges>
+//
+//namespace std {
+//namespace ranges {
+//template<>
+//inline constexpr bool enable_view<simdjson::dom::object> = true;
+//#if SIMDJSON_EXCEPTIONS
+//template<>
+//inline constexpr bool enable_view<simdjson::simdjson_result<simdjson::dom::object>> = true;
+//#endif // SIMDJSON_EXCEPTIONS
+//} // namespace ranges
+//} // namespace std
+//#endif // defined(__cpp_lib_ranges)
 
 #endif // SIMDJSON_DOM_OBJECT_H

@@ -10,6 +10,7 @@ namespace dom {
 /**
  * JSON array.
  */
+template<typename T>
 class array {
 public:
   /** Create a new, invalid array */
@@ -17,7 +18,7 @@ public:
 
   class iterator {
   public:
-    using value_type = element;
+    using value_type = element<T>;
     using difference_type = std::ptrdiff_t;
     using pointer = void;
     using reference = value_type;
@@ -56,8 +57,8 @@ public:
     iterator(const iterator&) noexcept = default;
     iterator& operator=(const iterator&) noexcept = default;
   private:
-    simdjson_inline iterator(const internal::tape_ref &tape) noexcept;
-    internal::tape_ref tape;
+    simdjson_inline iterator(const internal::tape_ref<T> &tape) noexcept;
+    internal::tape_ref<T> tape;
     friend class array;
   };
 
@@ -106,7 +107,7 @@ public:
    *         - INCORRECT_TYPE if a non-integer is used to access an array
    *         - INVALID_JSON_POINTER if the JSON pointer is invalid and cannot be parsed
    */
-  inline simdjson_result<element> at_pointer(std::string_view json_pointer) const noexcept;
+  inline simdjson_result<element<T>> at_pointer(std::string_view json_pointer) const noexcept;
 
   /**
    * Get the value at the given index. This function has linear-time complexity and
@@ -124,34 +125,35 @@ public:
    * @return The value at the given index, or:
    *         - INDEX_OUT_OF_BOUNDS if the array index is larger than an array length
    */
-  inline simdjson_result<element> at(size_t index) const noexcept;
+  inline simdjson_result<element<T>> at(size_t index) const noexcept;
 
 private:
-  simdjson_inline array(const internal::tape_ref &tape) noexcept;
-  internal::tape_ref tape;
-  friend class element;
-  friend struct simdjson_result<element>;
-  template<typename T>
-  friend class simdjson::internal::string_builder;
+  simdjson_inline array(const internal::tape_ref<T> &tape) noexcept;
+  internal::tape_ref<T> tape;
+  friend class element<T>;
+  friend struct simdjson_result<element<T>>;
 };
 
 
 } // namespace dom
 
 /** The result of a JSON conversion that may fail. */
-template<>
-struct simdjson_result<dom::array> : public internal::simdjson_result_base<dom::array> {
+template<typename T>
+struct simdjson_result<dom::array<T>> : public internal::simdjson_result_base<dom::array<T>> {
+  using base = internal::simdjson_result_base<dom::array<T>>;
+  using base::error;
+  using base::first;
 public:
   simdjson_inline simdjson_result() noexcept; ///< @private
-  simdjson_inline simdjson_result(dom::array value) noexcept; ///< @private
+  simdjson_inline simdjson_result(dom::array<T> value) noexcept; ///< @private
   simdjson_inline simdjson_result(error_code error) noexcept; ///< @private
 
-  inline simdjson_result<dom::element> at_pointer(std::string_view json_pointer) const noexcept;
-  inline simdjson_result<dom::element> at(size_t index) const noexcept;
+  inline simdjson_result<dom::element<T>> at_pointer(std::string_view json_pointer) const noexcept;
+  inline simdjson_result<dom::element<T>> at(size_t index) const noexcept;
 
 #if SIMDJSON_EXCEPTIONS
-  inline dom::array::iterator begin() const noexcept(false);
-  inline dom::array::iterator end() const noexcept(false);
+  inline typename dom::array<T>::iterator begin() const noexcept(false);
+  inline typename dom::array<T>::iterator end() const noexcept(false);
   inline size_t size() const noexcept(false);
 #endif // SIMDJSON_EXCEPTIONS
 };
@@ -159,20 +161,20 @@ public:
 
 
 } // namespace simdjson
-
-#if defined(__cpp_lib_ranges)
-#include <ranges>
-
-namespace std {
-namespace ranges {
-template<>
-inline constexpr bool enable_view<simdjson::dom::array> = true;
-#if SIMDJSON_EXCEPTIONS
-template<>
-inline constexpr bool enable_view<simdjson::simdjson_result<simdjson::dom::array>> = true;
-#endif // SIMDJSON_EXCEPTIONS
-} // namespace ranges
-} // namespace std
-#endif // defined(__cpp_lib_ranges)
+//
+//#if defined(__cpp_lib_ranges)
+//#include <ranges>
+//
+//namespace std {
+//namespace ranges {
+//template<>
+//inline constexpr bool enable_view<simdjson::dom::array> = true;
+//#if SIMDJSON_EXCEPTIONS
+//template<>
+//inline constexpr bool enable_view<simdjson::simdjson_result<simdjson::dom::array>> = true;
+//#endif // SIMDJSON_EXCEPTIONS
+//} // namespace ranges
+//} // namespace std
+//#endif // defined(__cpp_lib_ranges)
 
 #endif // SIMDJSON_DOM_ARRAY_H
