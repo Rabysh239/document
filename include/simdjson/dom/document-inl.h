@@ -173,9 +173,10 @@ inline error_code immutable_document::allocate(size_t capacity) noexcept {
   // a document with only zero-length strings... could have capacity/3 string
   // and we would need capacity/3 * 5 bytes on the string buffer
   size_t string_capacity = SIMDJSON_ROUNDUP_N(5 * capacity / 3 + SIMDJSON_PADDING, 64);
-  string_buf.reset( new (std::nothrow) uint8_t[string_capacity]);
-  tape.reset(new (std::nothrow) uint64_t[tape_capacity]);
-  if(!(string_buf && tape)) {
+  try {
+    string_buf = std::move(allocator_make_unique_ptr<uint8_t>(allocator_, string_capacity));
+    tape = std::move(allocator_make_unique_ptr<uint64_t>(allocator_, tape_capacity));
+  } catch (std::bad_alloc &) {
     allocated_capacity = 0;
     string_buf.reset();
     tape.reset();
@@ -185,6 +186,56 @@ inline error_code immutable_document::allocate(size_t capacity) noexcept {
   // so the next line is pessimistic.
   allocated_capacity = capacity;
   return SUCCESS;
+}
+
+inline immutable_document::immutable_document() noexcept
+        : allocator_(nullptr) {}
+
+inline immutable_document::immutable_document(immutable_document::allocator_type *allocator) noexcept
+        : allocator_(allocator) {}
+
+inline immutable_document::immutable_document(immutable_document &&other) noexcept
+        : allocator_(other.allocator_),
+          tape(std::move(other.tape)),
+          string_buf(std::move(other.string_buf)) {
+  other.allocator_ = nullptr;
+}
+
+inline immutable_document &immutable_document::operator=(immutable_document &&other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+  allocator_ = other.allocator_;
+  tape = std::move(other.tape);
+  string_buf = std::move(other.string_buf);
+  other.allocator_ = nullptr;
+  return *this;
+}
+
+inline mutable_document::mutable_document() noexcept
+        : allocator_(nullptr) {}
+
+inline mutable_document::mutable_document(mutable_document::allocator_type *allocator) noexcept
+        : allocator_(allocator),
+          tape(allocator),
+          string_buf(allocator) {}
+
+inline mutable_document::mutable_document(mutable_document &&other) noexcept
+        : allocator_(other.allocator_),
+          tape(std::move(other.tape)),
+          string_buf(std::move(other.string_buf)) {
+  other.allocator_ = nullptr;
+}
+
+inline mutable_document &mutable_document::operator=(mutable_document &&other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+  allocator_ = other.allocator_;
+  tape = std::move(other.tape);
+  string_buf = std::move(other.string_buf);
+  other.allocator_ = nullptr;
+  return *this;
 }
 
 inline const uint64_t &mutable_document::get_tape_impl(size_t json_index) const {
@@ -201,6 +252,16 @@ inline const uint8_t *mutable_document::get_string_buf_ptr_impl() const {
 
 inline element<mutable_document> mutable_document::next_element() const noexcept {
   return {internal::tape_ref(this, tape.size())};
+}
+
+template<typename T>
+std::unique_ptr<T[], std::function<void(T*)>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n) {
+  T* array = new(allocator->allocate(n * sizeof(T))) T[n];
+  auto deleter = [allocator, n](T *p) {
+    std::destroy_n(p, n);
+    allocator->deallocate(p, n * sizeof(T));
+  };
+  return {array, deleter};
 }
 
 } // namespace dom
