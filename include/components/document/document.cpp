@@ -13,8 +13,8 @@ document_t::document_t()
 document_t::document_t(document_t &&other) noexcept
         : allocator_intrusive_ref_counter(other.allocator_),
           allocator_(other.allocator_),
-          mut_src_(std::move(other.mut_src_)),
           immut_src_(std::move(other.immut_src_)),
+          mut_src_(std::move(other.mut_src_)),
           builder_(std::move(other.builder_)),
           element_ind_(std::move(other.element_ind_)),
           ancestors_(std::move(other.ancestors_)) {

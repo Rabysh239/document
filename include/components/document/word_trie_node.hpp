@@ -2,6 +2,7 @@
 
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
+#include <absl/container/flat_hash_map.h>
 #include <iostream>
 #include <memory>
 #include <memory_resource>
@@ -51,6 +52,34 @@ private:
   char delim_;
 };
 
+struct string_view_hash {
+  using is_transparent = void;
+
+  size_t operator()(const std::pmr::string& s) const {
+    return absl::Hash<std::pmr::string>{}(s);
+  }
+
+  size_t operator()(std::string_view sv) const {
+    return absl::Hash<std::string_view>{}(sv);
+  }
+};
+
+struct string_view_eq {
+  using is_transparent = void;
+
+  bool operator()(const std::pmr::string &lhs, const std::pmr::string &rhs) const {
+    return lhs == rhs;
+  }
+
+  bool operator()(const std::pmr::string &lhs, std::string_view rhs) const {
+    return lhs == rhs;
+  }
+
+  bool operator()(std::string_view lhs, const std::pmr::string &rhs) const {
+    return lhs == rhs;
+  }
+};
+
 template<typename FirstType, typename SecondType>
 class word_trie_node : public allocator_intrusive_ref_counter {
 public:
@@ -90,7 +119,12 @@ public:
 
 private:
   allocator_type *allocator_;
-  std::pmr::unordered_map<std::pmr::string, boost::intrusive_ptr<word_trie_node>> children_;
+  absl::flat_hash_map<
+          std::pmr::string,
+          boost::intrusive_ptr<word_trie_node>,
+          string_view_hash, string_view_eq,
+          std::pmr::polymorphic_allocator<std::pair<const std::pmr::string, boost::intrusive_ptr<word_trie_node>>>
+  > children_;
   union {
     FirstType* first;
     SecondType* second;
@@ -161,8 +195,7 @@ word_trie_node<FirstType, SecondType> &word_trie_node<FirstType, SecondType>::op
 template<typename FirstType, typename SecondType>
 const word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::find_node_const(std::string_view words) const {
   const auto *current = this;
-  for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::pmr::string(word_sv, allocator_);
+  for (auto word: string_splitter(words, '/')) {
     if (current->children_.find(word) == current->children_.end()) {
       return nullptr;
     }
@@ -211,16 +244,16 @@ template<typename FirstType, typename SecondType>
 bool word_trie_node<FirstType, SecondType>::erase(std::string_view words) {
   word_trie_node *current = this;
   word_trie_node *prev = nullptr;
-  std::pmr::string word;
-  for (auto word_sv: string_splitter(words, '/')) {
-    word = word_sv;
+  std::string_view word_s;
+  for (auto word: string_splitter(words, '/')) {
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
       return false;
     }
     current = next->second.get();
+    word_s = word;
   }
-  prev->children_.erase(word);
+  prev->children_.erase(word_s);
   return true;
 }
 
@@ -274,8 +307,7 @@ word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::sp
 template<typename FirstType, typename SecondType>
 word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::find_insert(std::string_view words) {
   word_trie_node *current = this;
-  for (auto word_sv: string_splitter(words, '/')) {
-    auto word = std::pmr::string(word_sv, allocator_);
+  for (auto word: string_splitter(words, '/')) {
     auto next = current->children_.find(word);
     if (next == current->children_.end()) {
       current = (current->children_[word] = new(allocator_->allocate(sizeof(word_trie_node))) word_trie_node(allocator_)).get();
