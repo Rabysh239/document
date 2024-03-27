@@ -34,12 +34,15 @@ private:
 
 class immutable_document : public document<immutable_document> {
 public:
+  using allocator_type = std::pmr::memory_resource;
   /**
    * Create a document container with zero capacity.
    *
    * The parser will allocate capacity as needed.
    */
-  immutable_document() noexcept = default;
+  immutable_document() noexcept;
+
+  explicit immutable_document(allocator_type *) noexcept;
   ~immutable_document() noexcept override = default;
 
   /**
@@ -47,7 +50,7 @@ public:
    *
    * @param other The document to take. Its capacity is zeroed and it is invalidated.
    */
-  immutable_document(immutable_document &&other) noexcept = default;
+  immutable_document(immutable_document &&other) noexcept;
   /** @private */
   immutable_document(const immutable_document &) = delete; // Disallow copying
   /**
@@ -55,7 +58,7 @@ public:
    *
    * @param other The document to take. Its capacity is zeroed.
    */
-  immutable_document &operator=(immutable_document &&other) noexcept = default;
+  immutable_document &operator=(immutable_document &&other) noexcept;
   /** @private */
   immutable_document &operator=(const immutable_document &) = delete; // Disallow copying
 
@@ -88,14 +91,15 @@ public:
 
 
 private:
+  allocator_type *allocator_;
   /** @private Structural values. */
-  std::unique_ptr<uint64_t[]> tape{};
+  std::unique_ptr<uint64_t[], std::function<void(uint64_t *)>> tape{};
 
   /** @private String values.
    *
    * Should be at least byte_capacity.
    */
-  std::unique_ptr<uint8_t[]> string_buf{};
+  std::unique_ptr<uint8_t[], std::function<void(uint8_t *)>> string_buf{};
   size_t allocated_capacity{0};
   friend class parser;
   friend class tape_writer_to_immutable;
@@ -103,15 +107,19 @@ private:
 
 class mutable_document : public document<mutable_document> {
 public:
-  mutable_document() noexcept = default;
+  using allocator_type = std::pmr::memory_resource;
+
+  mutable_document() noexcept;
+
+  explicit mutable_document(allocator_type *) noexcept;
 
   ~mutable_document() noexcept override = default;
 
-  mutable_document(mutable_document &&other) noexcept = default;
+  mutable_document(mutable_document &&other) noexcept;
 
   mutable_document(const mutable_document &) = delete;
 
-  mutable_document &operator=(mutable_document &&other) noexcept = default;
+  mutable_document &operator=(mutable_document &&other) noexcept;
 
   mutable_document &operator=(const mutable_document &) = delete;
 
@@ -120,10 +128,14 @@ public:
   const uint8_t *get_string_buf_ptr_impl() const;
   element<mutable_document> next_element() const noexcept;
 private:
-  std::vector<uint64_t> tape;
-  std::vector<uint8_t> string_buf;
+  allocator_type *allocator_;
+  std::pmr::vector<uint64_t> tape{};
+  std::pmr::vector<uint8_t> string_buf{};
   friend class tape_writer_to_mutable;
 }; // class mutable_document
+
+template<typename T>
+std::unique_ptr<T[], std::function<void(T*)>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n);
 
 } // namespace dom
 } // namespace simdjson

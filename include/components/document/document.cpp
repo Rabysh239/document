@@ -12,10 +12,10 @@ document_t::document_t()
 
 document_t::document_t(document_t &&other) noexcept
         : allocator_intrusive_ref_counter(other.allocator_),
+          allocator_(other.allocator_),
           mut_src_(std::move(other.mut_src_)),
           immut_src_(std::move(other.immut_src_)),
           builder_(std::move(other.builder_)),
-          allocator_(other.allocator_),
           element_ind_(std::move(other.element_ind_)),
           ancestors_(std::move(other.ancestors_)) {
   other.allocator_ = nullptr;
@@ -38,6 +38,9 @@ document_t &document_t::operator=(document_t &&other) noexcept {
 document_t::document_t(document_t::allocator_type *allocator)
         : allocator_intrusive_ref_counter(allocator),
           allocator_(allocator),
+          immut_src_(allocator_),
+          mut_src_(allocator_),
+          builder_(allocator_, mut_src_),
           ancestors_(allocator_),
           element_ind_(new(allocator_->allocate(sizeof(word_trie_node_element))) word_trie_node_element(allocator_)) {}
 
@@ -154,6 +157,9 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
 document_t::document_t(ptr ancestor, allocator_type *allocator, word_trie_node_element* index)
         : allocator_intrusive_ref_counter(allocator),
           allocator_(allocator),
+          immut_src_(allocator_),
+          mut_src_(allocator_),
+          builder_(allocator_, mut_src_),
           element_ind_(index),
           ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, allocator_)) {}
 
@@ -204,7 +210,7 @@ document_t::ptr document_t::document_from_json(const std::string &json, document
     return nullptr;
   }
   auto tree = boost::json::parse(json);
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(res->immut_src_);
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, res->immut_src_);
   walk_document(builder, tree);
   build_index(*res->element_ind_, res->immut_src_.root(), "", res->allocator_);
   return res;

@@ -17,8 +17,21 @@ namespace stage2 {
 
 template<typename K>
 struct tape_builder {
-  simdjson_inline explicit tape_builder(dom::immutable_document &doc) noexcept;
-  simdjson_inline explicit tape_builder(dom::mutable_document &doc) noexcept;
+  using allocator_type = std::pmr::memory_resource;
+
+  simdjson_inline tape_builder() noexcept;
+  simdjson_inline tape_builder(allocator_type *allocator, dom::immutable_document &doc) noexcept;
+  simdjson_inline tape_builder(allocator_type *allocator, dom::mutable_document &doc) noexcept;
+
+  simdjson_inline ~tape_builder();
+
+  simdjson_inline tape_builder(tape_builder &&) noexcept;
+
+  simdjson_inline tape_builder(const tape_builder &) = delete;
+
+  simdjson_inline tape_builder &operator=(tape_builder &&) noexcept;
+
+  simdjson_inline tape_builder &operator=(const tape_builder &) = delete;
 
   simdjson_inline uint32_t start_container() noexcept;
 
@@ -44,7 +57,8 @@ struct tape_builder {
   simdjson_inline void build(bool value) noexcept;
   simdjson_inline void visit_null_atom() noexcept;
 private:
-  std::unique_ptr<dom::tape_writer<K>> tape_;
+  allocator_type *allocator_;
+  dom::tape_writer<K> *tape_;
 
   simdjson_inline void end_container(uint32_t start_tape_index, uint32_t count, internal::tape_type start, internal::tape_type end) noexcept;
   simdjson_inline void empty_container(internal::tape_type start, internal::tape_type end) noexcept;
@@ -67,7 +81,41 @@ private:
    */
   template<typename T>
   simdjson_inline void append2(uint64_t val, T val2, internal::tape_type t) noexcept;
-}; // struct tape_builder
+};
+
+template<typename K>
+tape_builder<K>::tape_builder() noexcept
+        : tape_(nullptr),
+          allocator_(nullptr) {}
+
+template<typename K>
+tape_builder<K>::~tape_builder() {
+  if (tape_ != nullptr) {
+    tape_->~tape_writer();
+    allocator_->deallocate(tape_, sizeof(dom::tape_writer<K>));
+  }
+}
+
+template<typename K>
+tape_builder<K>::tape_builder(tape_builder &&other) noexcept
+        : allocator_(other.allocator_),
+          tape_(other.tape_) {
+  other.allocator_ = nullptr;
+  other.tape_ = nullptr;
+}
+
+template<typename K>
+tape_builder<K> &tape_builder<K>::operator=(tape_builder &&other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+  allocator_ = other.allocator_;
+  tape_ = other.tape_;
+  other.allocator_ = nullptr;
+  other.tape_ = nullptr;
+  return *this;
+}
+// struct tape_builder
 
 template<typename K>
 simdjson_inline void tape_builder<K>::visit_empty_object() noexcept {
@@ -94,12 +142,16 @@ simdjson_inline void tape_builder<K>::visit_document_end() noexcept {
 }
 
 template<typename K>
-simdjson_inline tape_builder<K>::tape_builder(dom::immutable_document &doc) noexcept
-: tape_(new simdjson::dom::tape_writer_to_immutable(doc)) {}
+simdjson_inline tape_builder<K>::tape_builder(allocator_type *allocator, dom::immutable_document &doc) noexcept
+        : allocator_(allocator),
+          tape_(new(allocator_->allocate(sizeof(simdjson::dom::tape_writer_to_immutable)))
+                        simdjson::dom::tape_writer_to_immutable(doc)) {}
 
 template<typename K>
-simdjson_inline tape_builder<K>::tape_builder(dom::mutable_document &doc) noexcept
-        : tape_(new simdjson::dom::tape_writer_to_mutable(doc)) {}
+simdjson_inline tape_builder<K>::tape_builder(allocator_type *allocator, dom::mutable_document &doc) noexcept
+        : allocator_(allocator),
+          tape_(new(allocator_->allocate(sizeof(simdjson::dom::tape_writer_to_mutable)))
+                        simdjson::dom::tape_writer_to_mutable(doc)) {}
 
 template<typename K>
 simdjson_inline void tape_builder<K>::build(char const* c_str, size_t size) noexcept {
@@ -110,7 +162,7 @@ simdjson_inline void tape_builder<K>::build(char const* c_str, size_t size) noex
 
 template<typename K>
 simdjson_inline void tape_builder<K>::build(std::string_view value) noexcept {
-  build(std::string(value).c_str(), value.size());
+  build(std::pmr::string(value, allocator_).c_str(), value.size());
 }
 
 template<typename K>

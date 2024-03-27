@@ -161,12 +161,12 @@ private:
 
   document_t(ptr ancestor, allocator_type *allocator, word_trie_node_element* index);
 
-  simdjson::dom::immutable_document immut_src_;
-  simdjson::dom::mutable_document mut_src_;
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{mut_src_};
   allocator_type *allocator_;
+  simdjson::dom::immutable_document immut_src_{};
+  simdjson::dom::mutable_document mut_src_{};
+  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{};
   boost::intrusive_ptr<word_trie_node_element> element_ind_;
-  std::pmr::vector<ptr> ancestors_;
+  std::pmr::vector<ptr> ancestors_{};
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
