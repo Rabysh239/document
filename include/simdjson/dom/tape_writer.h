@@ -102,8 +102,8 @@ public:
   simdjson_inline uint64_t next_string_buf_index_impl() noexcept;
   simdjson_inline void append_string_impl(const char *c_str, uint32_t str_length) noexcept;
 private:
-  std::vector<uint64_t> *tape_ptr;
-  std::vector<uint8_t> *current_string_buf;
+  std::pmr::vector<uint64_t> *tape_ptr;
+  std::pmr::vector<uint8_t> *current_string_buf;
 }; // class tape_writer_to_mutable
 
 simdjson_inline tape_writer_to_immutable::tape_writer_to_immutable(dom::immutable_document &doc)

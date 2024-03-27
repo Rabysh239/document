@@ -114,7 +114,13 @@ template<typename FirstType, typename SecondType>
 word_trie_node<FirstType, SecondType>::~word_trie_node() {
   auto ptr = is_first_ ? reinterpret_cast<void *>(value_.first) : reinterpret_cast<void *>(value_.second);
   if (ptr != nullptr) {
-    allocator_->deallocate(ptr, is_first_ ? sizeof(FirstType) : sizeof(SecondType));
+    if (is_first_) {
+      value_.first->~FirstType();
+      allocator_->deallocate(ptr, sizeof(FirstType));
+    } else {
+      value_.second->~SecondType();
+      allocator_->deallocate(ptr, sizeof(SecondType));
+    }
   }
 }
 
