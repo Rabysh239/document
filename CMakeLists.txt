@@ -18,6 +18,24 @@ file(GLOB_RECURSE SRC_GENERIC "src/generic/*.h")
 file(GLOB_RECURSE SRC_GENERIC_STAGE2 "src/generic/stage2/*.h")
 file(GLOB_RECURSE SRC_INTERNAL "src/internal/*.cpp")
 
+add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+
+        -Wcast-align
+        -Wcast-qual
+        -Wconversion
+        -Wctor-dtor-privacy
+        -Wenum-compare
+        -Wfloat-equal
+        -Wnon-virtual-dtor
+        -Wold-style-cast
+        -Woverloaded-virtual
+        -Wredundant-decls
+        -Wsign-conversion
+        -Wsign-promo
+)
 add_compile_options(-fno-omit-frame-pointer)
 add_compile_options(-fsanitize=address)
 add_link_options(-fsanitize=address)
