@@ -1,12 +1,12 @@
 #ifndef SIMDJSON_OBJECT_INL_H
 #define SIMDJSON_OBJECT_INL_H
 
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/object.h"
-#include "../../simdjson/dom/document.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/object.h>
+#include <simdjson/dom/document.h>
 
-#include "../../simdjson/dom/element-inl.h"
-#include "../../simdjson/error-inl.h"
+#include <simdjson/dom/element-inl.h>
+#include <simdjson/error-inl.h>
 
 #include <cstring>
 

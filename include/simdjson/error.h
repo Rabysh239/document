@@ -1,7 +1,7 @@
 #ifndef SIMDJSON_ERROR_H
 #define SIMDJSON_ERROR_H
 
-#include "../simdjson/base.h"
+#include <simdjson/base.h>
 
 #include <string>
 #include <ostream>

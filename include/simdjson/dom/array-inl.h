@@ -3,11 +3,11 @@
 
 #include <utility>
 
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/array.h"
-#include "../../simdjson/dom/element.h"
-#include "../../simdjson/error-inl.h"
-#include "../../simdjson/internal/tape_ref-inl.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/array.h>
+#include <simdjson/dom/element.h>
+#include <simdjson/error-inl.h>
+#include <simdjson/internal/tape_ref-inl.h>
 
 #include <limits>
 

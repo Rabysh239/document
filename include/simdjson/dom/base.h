@@ -1,12 +1,7 @@
 #ifndef SIMDJSON_DOM_BASE_H
 #define SIMDJSON_DOM_BASE_H
 
-#include "../../simdjson/base.h"
-#include "../../components/document/document.hpp"
-
-namespace components::document {
-class document_t;
-}
+#include <simdjson/base.h>
 
 namespace simdjson {
 
@@ -40,7 +35,6 @@ class immutable_document;
 class mutable_document;
 class tape_writer_to_mutable;
 class tape_writer_to_immutable;
-class document_stream;
 template<typename T>
 class element;
 template<typename T>

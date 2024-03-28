@@ -1,9 +1,9 @@
 #ifndef SIMDJSON_DOM_OBJECT_H
 #define SIMDJSON_DOM_OBJECT_H
 
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/element.h"
-#include "../../simdjson/internal/tape_ref.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/element.h>
+#include <simdjson/internal/tape_ref.h>
 
 namespace simdjson {
 namespace dom {

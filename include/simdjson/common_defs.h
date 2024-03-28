@@ -2,8 +2,8 @@
 #define SIMDJSON_COMMON_DEFS_H
 
 #include <cassert>
-#include "../simdjson/compiler_check.h"
-#include "../simdjson/portability.h"
+#include <simdjson/compiler_check.h>
+#include <simdjson/portability.h>
 
 namespace simdjson {
 namespace internal {

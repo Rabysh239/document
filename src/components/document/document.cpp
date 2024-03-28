@@ -1,7 +1,7 @@
 #include "document.hpp"
 #include <boost/json/src.hpp>
 #include <utility>
-#include "../../../src/generic/stage2/json_iterator.h"
+#include <simdjson/json_iterator.h>
 
 namespace components::document {
 
@@ -210,7 +210,7 @@ document_t::ptr document_t::document_from_json(const std::string &json, document
     return nullptr;
   }
   auto tree = boost::json::parse(json);
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, res->immut_src_);
+  simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, res->immut_src_);
   walk_document(builder, tree);
   build_index(*res->element_ind_, res->immut_src_.root(), "", res->allocator_);
   return res;

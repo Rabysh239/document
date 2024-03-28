@@ -1,8 +1,8 @@
 #ifndef SIMDJSON_DOM_ELEMENT_H
 #define SIMDJSON_DOM_ELEMENT_H
 
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/array.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/array.h>
 
 namespace simdjson {
 namespace dom {
