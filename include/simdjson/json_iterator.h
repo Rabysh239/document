@@ -1,15 +1,12 @@
-#ifndef SIMDJSON_SRC_GENERIC_STAGE2_JSON_ITERATOR_H
+#ifndef SIMDJSON_JSON_ITERATOR_H
 
 #ifndef SIMDJSON_CONDITIONAL_INCLUDE
-#define SIMDJSON_SRC_GENERIC_STAGE2_JSON_ITERATOR_H
-#include "../../generic/stage2/base.h"
+#define SIMDJSON_JSON_ITERATOR_H
+#include <simdjson/base.h>
 #include <boost/json/src.hpp>
 #endif // SIMDJSON_CONDITIONAL_INCLUDE
 
 namespace simdjson {
-namespace SIMDJSON_IMPLEMENTATION {
-
-namespace stage2 {
 
 template<typename V>
 simdjson_inline void walk_document(V &visitor, const boost::json::value &value) noexcept {
@@ -71,8 +68,6 @@ simdjson_inline void visit_primitive(V &visitor, const boost::json::value &value
   }
 }
 
-} // namespace stage2
-} // namespace SIMDJSON_IMPLEMENTATION
 } // namespace simdjson
 
-#endif // SIMDJSON_SRC_GENERIC_STAGE2_JSON_ITERATOR_H
+#endif // SIMDJSON_JSON_ITERATOR_H
