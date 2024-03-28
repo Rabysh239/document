@@ -196,10 +196,11 @@ template<typename FirstType, typename SecondType>
 const word_trie_node<FirstType, SecondType> *word_trie_node<FirstType, SecondType>::find_node_const(std::string_view words) const {
   const auto *current = this;
   for (auto word: string_splitter(words, '/')) {
-    if (current->children_.find(word) == current->children_.end()) {
+    auto next = current->children_.find(word);
+    if (next == current->children_.end()) {
       return nullptr;
     }
-    current = current->children_.at(word).get();
+    current = next->second.get();
   }
   return current;
 }
