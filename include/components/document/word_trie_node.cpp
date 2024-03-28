@@ -3,7 +3,7 @@
 string_split_iterator::string_split_iterator(std::string_view str, char delim, bool end)
         : str_(str), delim_(delim), end_(end) {
   if (!end_) {
-    if (str_[0] == delim) {
+    if (!str_.empty() && str_[0] == delim) {
       str_.remove_prefix(1);
     }
     ++(*this);
