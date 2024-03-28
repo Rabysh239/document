@@ -5,10 +5,10 @@
 #ifndef SIMDJSON_BASE_H
 #define SIMDJSON_BASE_H
 
-#include "../simdjson/common_defs.h"
-#include "../simdjson/compiler_check.h"
-#include "../simdjson/error.h"
-#include "../simdjson/portability.h"
+#include <simdjson/common_defs.h>
+#include <simdjson/compiler_check.h>
+#include <simdjson/error.h>
+#include <simdjson/portability.h>
 
 /**
  * @brief The top level simdjson namespace, containing everything the library provides.
@@ -39,20 +39,13 @@ constexpr size_t DEFAULT_MAX_DEPTH = 1024;
 
 SIMDJSON_POP_DISABLE_UNUSED_WARNINGS
 
-class implementation;
-struct padded_string;
-class padded_string_view;
 enum class stage1_mode;
 
 namespace internal {
 
-template<typename T>
-class atomic_ptr;
-class dom_parser_implementation;
 class escape_json_string;
 template<typename T>
 class tape_ref;
-struct value128;
 enum class tape_type;
 
 } // namespace internal

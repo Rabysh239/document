@@ -5,12 +5,12 @@
 #include <utility>
 #include <memory_resource>
 //#include <components/document/document_id.hpp>
-#include "../../simdjson/dom/document-inl.h"
-#include "../../simdjson/dom/element-inl.h"
-#include "../../simdjson/dom/array-inl.h"
-#include "../../simdjson/dom/object-inl.h"
-#include "../../../src/generic/stage2/tape_builder.h"
-#include "allocator_intrusive_ref_counter.hpp"
+#include <simdjson/dom/document-inl.h>
+#include <simdjson/dom/element-inl.h>
+#include <simdjson/dom/array-inl.h>
+#include <simdjson/dom/object-inl.h>
+#include <simdjson/tape_builder.h>
+#include <allocator_intrusive_ref_counter.hpp>
 
 namespace components::document {
 
@@ -164,7 +164,7 @@ private:
   allocator_type *allocator_;
   simdjson::dom::immutable_document immut_src_{};
   simdjson::dom::mutable_document mut_src_{};
-  simdjson::SIMDJSON_IMPLEMENTATION::stage2::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{};
+  simdjson::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{};
   boost::intrusive_ptr<word_trie_node_element> element_ind_;
   std::pmr::vector<ptr> ancestors_{};
 

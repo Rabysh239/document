@@ -1,19 +1,17 @@
-#ifndef SIMDJSON_SRC_GENERIC_STAGE2_TAPE_BUILDER_H
+#ifndef SIMDJSON_TAPE_BUILDER_H
 
 #ifndef SIMDJSON_CONDITIONAL_INCLUDE
-#define SIMDJSON_SRC_GENERIC_STAGE2_TAPE_BUILDER_H
+#define SIMDJSON_TAPE_BUILDER_H
 #include <utility>
 
-#include "../../generic/stage2/base.h"
-#include "../../../include/simdjson/dom/document.h"
-#include "../../../include/simdjson/dom/tape_writer.h"
+#include <simdjson/base.h>
+#include <simdjson/dom/document.h>
+#include <simdjson/dom/tape_writer.h>
 
 #endif // SIMDJSON_CONDITIONAL_INCLUDE
 
 
 namespace simdjson {
-namespace SIMDJSON_IMPLEMENTATION {
-namespace stage2 {
 
 template<typename K>
 struct tape_builder {
@@ -235,8 +233,6 @@ simdjson_inline void tape_builder<K>::write(uint32_t tape_index, uint64_t val, i
   tape_->write(tape_index, val | ((uint64_t(char(t))) << 56));
 }
 
-} // namespace stage2
-} // namespace SIMDJSON_IMPLEMENTATION
 } // namespace simdjson
 
-#endif // SIMDJSON_SRC_GENERIC_STAGE2_TAPE_BUILDER_H
+#endif // SIMDJSON_TAPE_BUILDER_H

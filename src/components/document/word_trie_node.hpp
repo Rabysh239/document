@@ -8,7 +8,7 @@
 #include <memory_resource>
 #include <atomic>
 #include <charconv>
-#include "allocator_intrusive_ref_counter.hpp"
+#include <allocator_intrusive_ref_counter.hpp>
 
 class string_split_iterator {
 public:

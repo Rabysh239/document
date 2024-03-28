@@ -2,8 +2,8 @@
 
 #include <cstring>
 #include <vector>
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/document.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/document.h>
 
 namespace simdjson {
 namespace dom {

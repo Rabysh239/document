@@ -1,5 +1,5 @@
 #include <iostream>
-#include "include/components/document/document.hpp"
+#include "src/components/document/document.hpp"
 
 int main() {
   const std::string json = R"(

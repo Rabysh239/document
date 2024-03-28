@@ -1,7 +1,7 @@
 #ifndef SIMDJSON_INTERNAL_TAPE_REF_H
 #define SIMDJSON_INTERNAL_TAPE_REF_H
 
-#include "../../simdjson/base.h"
+#include <simdjson/base.h>
 
 namespace simdjson {
 namespace dom {

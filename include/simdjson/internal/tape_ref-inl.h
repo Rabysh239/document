@@ -1,9 +1,9 @@
 #ifndef SIMDJSON_TAPE_REF_INL_H
 #define SIMDJSON_TAPE_REF_INL_H
 
-#include "../../simdjson/dom/document.h"
-#include "../../simdjson/internal/tape_ref.h"
-#include "../../simdjson/internal/tape_type.h"
+#include <simdjson/dom/document.h>
+#include <simdjson/internal/tape_ref.h>
+#include <simdjson/internal/tape_type.h>
 
 #include <cstring>
 

@@ -1,14 +1,14 @@
 #ifndef SIMDJSON_ELEMENT_INL_H
 #define SIMDJSON_ELEMENT_INL_H
 
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/element.h"
-#include "../../simdjson/dom/document.h"
-#include "../../simdjson/dom/object.h"
-#include "../../simdjson/internal/tape_type.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/element.h>
+#include <simdjson/dom/document.h>
+#include <simdjson/dom/object.h>
+#include <simdjson/internal/tape_type.h>
 
-#include "../../simdjson/dom/object-inl.h"
-#include "../../simdjson/error-inl.h"
+#include <simdjson/dom/object-inl.h>
+#include <simdjson/error-inl.h>
 
 #include <ostream>
 #include <limits>

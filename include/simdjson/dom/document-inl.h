@@ -3,11 +3,11 @@
 
 // Inline implementations go in here.
 
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/document.h"
-#include "../../simdjson/dom/element-inl.h"
-#include "../../simdjson/internal/tape_ref-inl.h"
-#include "../../simdjson/internal/jsonformatutils.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/document.h>
+#include <simdjson/dom/element-inl.h>
+#include <simdjson/internal/tape_ref-inl.h>
+#include <simdjson/internal/jsonformatutils.h>
 
 #include <cstring>
 
@@ -122,7 +122,7 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         return false;
     }
   }
-  tape_val = get_tape(++tape_idx);
+  tape_val = get_tape(tape_idx);
   payload = tape_val & internal::JSON_VALUE_MASK;
   type = uint8_t(tape_val >> 56);
   os << tape_idx << " : " << type << "\t// pointing to " << payload

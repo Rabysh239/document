@@ -1,7 +1,7 @@
 #ifndef SIMDJSON_DOM_DOCUMENT_H
 #define SIMDJSON_DOM_DOCUMENT_H
 
-#include "../../simdjson/dom/base.h"
+#include <simdjson/dom/base.h>
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 
 #include <memory>
@@ -101,7 +101,6 @@ private:
    */
   std::unique_ptr<uint8_t[], std::function<void(uint8_t *)>> string_buf{};
   size_t allocated_capacity{0};
-  friend class parser;
   friend class tape_writer_to_immutable;
 }; // class immutable_document
 
