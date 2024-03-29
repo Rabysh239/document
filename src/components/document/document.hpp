@@ -172,9 +172,10 @@ private:
   std::pmr::vector<ptr> ancestors_{};
   bool is_root_;
 
-  error_t process_json_pointer_set(
+  error_t find_container_key(
           std::string_view json_pointer,
-          const std::function<void(json_trie_node_element *, std::string_view)> &value_inserter
+          json_trie_node_element *&container,
+          std::pmr::string &key
   );
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);

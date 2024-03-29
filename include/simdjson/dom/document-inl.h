@@ -14,6 +14,36 @@
 namespace simdjson {
 namespace dom {
 
+template<typename T>
+array_deleter<T>::array_deleter()
+        : allocator_(nullptr), n_(0) {}
+
+template<typename T>
+array_deleter<T>::array_deleter(std::pmr::memory_resource *allocator, size_t n)
+        : allocator_(allocator), n_(n) {}
+
+template<typename T>
+array_deleter<T>::array_deleter(array_deleter &&other) noexcept
+        : allocator_(other.allocator_),
+          n_(other.n_) {
+  other.allocator_ = nullptr;
+}
+
+template<typename T>
+array_deleter<T> &array_deleter<T>::operator=(array_deleter &&other) noexcept {
+  allocator_ = other.allocator_;
+  n_ = other.n_;
+  other.allocator_ = nullptr;
+}
+
+template<typename T>
+void array_deleter<T>::operator()(T *p) {
+  if (allocator_ != nullptr) {
+    std::destroy_n(p, n_);
+    allocator_->deallocate(p, n_ * sizeof(T));
+  }
+}
+
 //
 // document inline implementation
 //
@@ -255,13 +285,9 @@ inline element<mutable_document> mutable_document::next_element() const noexcept
 }
 
 template<typename T>
-std::unique_ptr<T[], std::function<void(T*)>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n) {
+std::unique_ptr<T[], array_deleter<T>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n) {
   T* array = new(allocator->allocate(n * sizeof(T))) T[n];
-  auto deleter = [allocator, n](T *p) {
-    std::destroy_n(p, n);
-    allocator->deallocate(p, n * sizeof(T));
-  };
-  return {array, deleter};
+  return {array, array_deleter<T>(allocator, n)};
 }
 
 } // namespace dom
