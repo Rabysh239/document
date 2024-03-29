@@ -5,6 +5,7 @@ include(FetchContent)
 set( ${PROJECT_NAME}_SOURCES
         generaty.cpp
         test_document_json.cpp
+        test_document_t.cpp
 )
 
 FetchContent_Declare(
