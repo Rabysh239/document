@@ -188,50 +188,59 @@ document_t::document_t(ptr ancestor, allocator_type *allocator, json_trie_node_e
           is_root_(false) {}
 
 error_t document_t::set_array(std::string_view json_pointer) {
-  return process_json_pointer_set(json_pointer, [](json_trie_node_element *container, std::string_view key) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer, container, key);
+  if (res == error_t::SUCCESS) {
     container->insert_array(key);
-  });
+  }
+  return res;
 }
 
 error_t document_t::set_dict(std::string_view json_pointer) {
-  return process_json_pointer_set(json_pointer, [](json_trie_node_element *container, std::string_view key) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer, container, key);
+  if (res == error_t::SUCCESS) {
     container->insert_object(key);
-  });
+  }
+  return res;
 }
 
 error_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
-  return process_json_pointer_set(json_pointer, [&value](json_trie_node_element *container, std::string_view key) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer, container, key);
+  if (res == error_t::SUCCESS) {
     container->insert(key, value);
-  });
+  }
+  return res;
 }
 
-error_t document_t::process_json_pointer_set(
+error_t document_t::find_container_key(
         std::string_view json_pointer,
-        const std::function<void(json_trie_node_element *, std::string_view)>& value_inserter
+        json_trie_node_element *&container,
+        std::pmr::string &key
 ) {
   size_t pos = json_pointer.find_last_of('/');
-  json_trie_node_element *container_node_ptr;
-  std::string_view key;
   if (pos == std::string::npos) {
-    container_node_ptr = element_ind_.get();
+    container = element_ind_.get();
     key = json_pointer;
   } else {
     auto container_json_pointer = json_pointer.substr(0, pos);
-    container_node_ptr = element_ind_->find_node(container_json_pointer);;
+    container = element_ind_->find_node(container_json_pointer);
     key = json_pointer.substr(pos + 1);
   }
-  if (container_node_ptr == nullptr) {
+  if (container == nullptr || container->is_terminal()) {
     return error_t::NO_SUCH_CONTAINER;
   }
-  if (is_object(*container_node_ptr)) {
-    value_inserter(container_node_ptr, key);
-  } else if (is_array(*container_node_ptr)) {
+  if (is_array(*container)) {
     auto index = std::atol(std::pmr::string(key, allocator_).c_str());
     if (index < 0) {
       return error_t::INVALID_INDEX;
     }
-    size_t correct_index = std::min(size_t(index), container_node_ptr->size());
-    value_inserter(container_node_ptr, create_pmr_string(correct_index, allocator_));
+    size_t correct_index = std::min(size_t(index), container->size());
+    key = create_pmr_string(correct_index, allocator_);
   }
   return error_t::SUCCESS;
 }
@@ -321,7 +330,7 @@ std::pmr::string value_to_string(T *value, std::pmr::memory_resource *allocator)
 }
 
 std::pmr::string document_t::to_json() const {
-  return element_ind_->to_json(value_to_string<element_from_immutable>, value_to_string<element_from_mutable>);
+  return element_ind_->to_json(&value_to_string<element_from_immutable>, &value_to_string<element_from_mutable>);
 }
 
 std::pmr::string serialize_document(const document_ptr &document) { return document->to_json(); }
