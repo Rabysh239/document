@@ -8,41 +8,64 @@ namespace components::document {
 document_t::document_t()
         : allocator_intrusive_ref_counter(nullptr),
           allocator_(nullptr),
-          element_ind_(nullptr) {}
+          immut_src_(nullptr),
+          mut_src_(nullptr),
+          element_ind_(nullptr),
+          is_root_(false) {}
+
+document_t::~document_t() {
+  if (is_root_) {
+    mut_src_->~mutable_document();
+    allocator_->deallocate(mut_src_, sizeof(simdjson::dom::mutable_document));
+    if (immut_src_ != nullptr) {
+      immut_src_->~immutable_document();
+      allocator_->deallocate(immut_src_, sizeof(simdjson::dom::immutable_document));
+    }
+  }
+}
 
 document_t::document_t(document_t &&other) noexcept
         : allocator_intrusive_ref_counter(other.allocator_),
           allocator_(other.allocator_),
-          immut_src_(std::move(other.immut_src_)),
-          mut_src_(std::move(other.mut_src_)),
+          immut_src_(other.immut_src_),
+          mut_src_(other.mut_src_),
           builder_(std::move(other.builder_)),
           element_ind_(std::move(other.element_ind_)),
-          ancestors_(std::move(other.ancestors_)) {
+          ancestors_(std::move(other.ancestors_)),
+          is_root_(other.is_root_) {
   other.allocator_ = nullptr;
+  other.mut_src_ = nullptr;
+  other.immut_src_ = nullptr;
+  other.is_root_ = false;
 }
 
 document_t &document_t::operator=(document_t &&other) noexcept {
   if (this == &other) {
     return *this;
   }
-  mut_src_ = std::move(other.mut_src_);
-  immut_src_ = std::move(other.immut_src_);
+  mut_src_ = other.mut_src_;
+  immut_src_ = other.immut_src_;
   builder_ = std::move(other.builder_);
   allocator_ = other.allocator_;
   element_ind_ = std::move(other.element_ind_);
   ancestors_ = std::move(other.ancestors_);
+  is_root_ = other.is_root_;
   other.allocator_ = nullptr;
+  other.mut_src_ = nullptr;
+  other.immut_src_ = nullptr;
+  other.is_root_ = false;
   return *this;
 }
 
-document_t::document_t(document_t::allocator_type *allocator)
+document_t::document_t(document_t::allocator_type *allocator, bool is_root)
         : allocator_intrusive_ref_counter(allocator),
           allocator_(allocator),
-          immut_src_(allocator_),
-          mut_src_(allocator_),
-          builder_(allocator_, mut_src_),
-          element_ind_(new(allocator_->allocate(sizeof(json_trie_node_element))) json_trie_node_element(allocator_)),
-          ancestors_(allocator_) {}
+          immut_src_(nullptr),
+          mut_src_(is_root ? new(allocator_->allocate(sizeof(simdjson::dom::mutable_document))) simdjson::dom::mutable_document(allocator_) : nullptr),
+          builder_(allocator_, *mut_src_),
+          element_ind_(is_root ? new(allocator_->allocate(sizeof(json_trie_node_element))) json_trie_node_element(allocator_) : nullptr),
+          ancestors_(allocator_),
+          is_root_(is_root) {}
 
 bool document_t::is_valid() const {
   return allocator_ != nullptr;
@@ -157,11 +180,12 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
 document_t::document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index)
         : allocator_intrusive_ref_counter(allocator),
           allocator_(allocator),
-          immut_src_(allocator_),
-          mut_src_(allocator_),
-          builder_(allocator_, mut_src_),
+          immut_src_(nullptr),
+          mut_src_(ancestor->mut_src_),
+          builder_(allocator_, *mut_src_),
           element_ind_(index),
-          ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, allocator_)) {}
+          ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, allocator_)),
+          is_root_(false) {}
 
 error_t document_t::set_array(std::string_view json_pointer) {
   return process_json_pointer_set(json_pointer, [](json_trie_node_element *container, std::string_view key) {
@@ -169,7 +193,7 @@ error_t document_t::set_array(std::string_view json_pointer) {
   });
 }
 
-error_t document_t::set_object(std::string_view json_pointer) {
+error_t document_t::set_dict(std::string_view json_pointer) {
   return process_json_pointer_set(json_pointer, [](json_trie_node_element *container, std::string_view key) {
     container->insert_object(key);
   });
@@ -186,15 +210,19 @@ error_t document_t::process_json_pointer_set(
         const std::function<void(json_trie_node_element *, std::string_view)>& value_inserter
 ) {
   size_t pos = json_pointer.find_last_of('/');
+  json_trie_node_element *container_node_ptr;
+  std::string_view key;
   if (pos == std::string::npos) {
-    return error_t::INVALID_JSON_POINTER;
+    container_node_ptr = element_ind_.get();
+    key = json_pointer;
+  } else {
+    auto container_json_pointer = json_pointer.substr(0, pos);
+    container_node_ptr = element_ind_->find_node(container_json_pointer);;
+    key = json_pointer.substr(pos + 1);
   }
-  auto container_json_pointer = json_pointer.substr(0, pos);
-  auto container_node_ptr = element_ind_->find_node(container_json_pointer);
   if (container_node_ptr == nullptr) {
     return error_t::NO_SUCH_CONTAINER;
   }
-  auto key = json_pointer.substr(pos + 1);
   if (is_object(*container_node_ptr)) {
     value_inserter(container_node_ptr, key);
   } else if (is_array(*container_node_ptr)) {
@@ -229,20 +257,22 @@ void document_t::build_index(json_trie_node_element &node, const element_from_im
 
 document_t::ptr document_t::document_from_json(const std::string &json, document_t::allocator_type *allocator) {
   auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator);
-  if (res->immut_src_.allocate(json.size()) != simdjson::SUCCESS) {
+  res->immut_src_ = new(allocator->allocate(sizeof(simdjson::dom::immutable_document))) simdjson::dom::immutable_document(allocator);
+  if (res->immut_src_->allocate(json.size()) != simdjson::SUCCESS) {
     return nullptr;
   }
   auto tree = boost::json::parse(json);
-  simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, res->immut_src_);
+  simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, *res->immut_src_);
   walk_document(builder, tree);
-  for (auto &it : res->immut_src_.root().get_object()) {
+  for (auto &it : res->immut_src_->root().get_object()) {
     build_index(*res->element_ind_, it.value, it.key, allocator);
   }
   return res;
 }
 
 document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &document2, document_t::allocator_type *allocator) {
-  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator);
+  auto is_root = false;
+  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator, is_root);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
   res->element_ind_ = json_trie_node_element::merge(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
@@ -250,7 +280,8 @@ document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &d
 }
 
 document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &document2, document_t::allocator_type *allocator) {
-  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator);
+  auto is_root = false;
+  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator, is_root);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
   res->element_ind_ = json_trie_node_element::split(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
@@ -304,5 +335,9 @@ std::pmr::string create_pmr_string(T value, std::pmr::memory_resource *allocator
   std::array<char, sizeof(T)> buffer{};
   auto [ptr, ec] = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
   return std::pmr::string(buffer.data(), ptr - buffer.data(), allocator);
+}
+
+document_ptr make_document(document_t::allocator_type *allocator) {
+  return new(allocator->allocate(sizeof(components::document::document_t))) components::document::document_t(allocator);
 }
 } // namespace components::document
