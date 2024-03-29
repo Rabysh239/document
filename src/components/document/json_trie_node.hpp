@@ -125,8 +125,8 @@ public:
   bool is_terminal() const;
 
   std::pmr::string to_json(
-          std::function<std::pmr::string(FirstType *, allocator_type *)>,
-          std::function<std::pmr::string(SecondType *, allocator_type *)>
+          std::pmr::string (*)(FirstType *, std::pmr::memory_resource *),
+          std::pmr::string (*)(SecondType *, std::pmr::memory_resource *)
   ) const;
 
   static json_trie_node<FirstType, SecondType> *merge(json_trie_node<FirstType, SecondType> *node1, json_trie_node<FirstType, SecondType> *node2, allocator_type &allocator);
@@ -159,13 +159,13 @@ private:
   json_type type_;
 
   std::pmr::string to_json_object(
-          std::function<std::pmr::string(FirstType *, allocator_type *)>,
-          std::function<std::pmr::string(SecondType *, allocator_type *)>
+          std::pmr::string (*)(FirstType *, std::pmr::memory_resource *),
+          std::pmr::string (*)(SecondType *, std::pmr::memory_resource *)
   ) const;
 
   std::pmr::string to_json_array(
-          std::function<std::pmr::string(FirstType *, allocator_type *)>,
-          std::function<std::pmr::string(SecondType *, allocator_type *)>
+          std::pmr::string (*)(FirstType *, std::pmr::memory_resource *),
+          std::pmr::string (*)(SecondType *, std::pmr::memory_resource *)
   ) const;
 };
 
@@ -335,9 +335,10 @@ bool json_trie_node<FirstType, SecondType>::is_terminal() const {
 }
 
 template<typename FirstType, typename SecondType>
-std::pmr::string json_trie_node<FirstType, SecondType>::to_json(
-        std::function<std::pmr::string(FirstType *, allocator_type *)> to_json_first,
-        std::function<std::pmr::string(SecondType *, allocator_type *)> to_json_second
+std::pmr::string
+json_trie_node<FirstType, SecondType>::to_json(
+        std::pmr::string (*to_json_first)(FirstType *, std::pmr::memory_resource *),
+        std::pmr::string (*to_json_second)(SecondType *, std::pmr::memory_resource *)
 ) const {
   if (is_object()) {
     return to_json_object(to_json_first, to_json_second);
@@ -392,8 +393,8 @@ json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::sp
 
 template<typename FirstType, typename SecondType>
 std::pmr::string json_trie_node<FirstType, SecondType>::to_json_object(
-        std::function<std::pmr::string(FirstType *, allocator_type *)> to_json_first,
-        std::function<std::pmr::string(SecondType *, allocator_type *)> to_json_second
+        std::pmr::string (*to_json_first)(FirstType *, std::pmr::memory_resource *),
+        std::pmr::string (*to_json_second)(SecondType *, std::pmr::memory_resource *)
 ) const {
   std::pmr::string res(allocator_);
   res.append("{");
@@ -409,8 +410,8 @@ std::pmr::string json_trie_node<FirstType, SecondType>::to_json_object(
 
 template<typename FirstType, typename SecondType>
 std::pmr::string json_trie_node<FirstType, SecondType>::to_json_array(
-        std::function<std::pmr::string(FirstType *, allocator_type *)> to_json_first,
-        std::function<std::pmr::string(SecondType *, allocator_type *)> to_json_second
+        std::pmr::string (*to_json_first)(FirstType *, std::pmr::memory_resource *),
+        std::pmr::string (*to_json_second)(SecondType *, std::pmr::memory_resource *)
 ) const {
   json_trie_node<FirstType, SecondType> *temp_arr[size()];
   for (auto &it : children_) {

@@ -9,6 +9,30 @@
 namespace simdjson {
 namespace dom {
 
+template<typename T>
+class array_deleter {
+public:
+  array_deleter();
+
+  array_deleter(std::pmr::memory_resource *allocator, size_t n);
+
+  ~array_deleter() = default;
+
+  array_deleter(array_deleter &&other) noexcept;
+
+  array_deleter(const array_deleter &) = delete;
+
+  array_deleter &operator=(array_deleter &&other) noexcept;
+
+  array_deleter &operator=(const array_deleter &) = delete;
+
+  void operator()(T* p);
+
+private:
+  std::pmr::memory_resource *allocator_;
+  size_t n_;
+};
+
 /**
  * A parsed JSON document.
  *
@@ -93,13 +117,13 @@ public:
 private:
   allocator_type *allocator_;
   /** @private Structural values. */
-  std::unique_ptr<uint64_t[], std::function<void(uint64_t *)>> tape{};
+  std::unique_ptr<uint64_t[], array_deleter<uint64_t>> tape{};
 
   /** @private String values.
    *
    * Should be at least byte_capacity.
    */
-  std::unique_ptr<uint8_t[], std::function<void(uint8_t *)>> string_buf{};
+  std::unique_ptr<uint8_t[], array_deleter<uint8_t>> string_buf{};
   size_t allocated_capacity{0};
   friend class tape_writer_to_immutable;
 }; // class immutable_document
@@ -134,7 +158,7 @@ private:
 }; // class mutable_document
 
 template<typename T>
-std::unique_ptr<T[], std::function<void(T*)>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n);
+std::unique_ptr<T[], array_deleter<T>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n);
 
 } // namespace dom
 } // namespace simdjson
