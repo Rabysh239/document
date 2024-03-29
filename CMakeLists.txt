@@ -7,14 +7,13 @@ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 
 conan_basic_setup()
 
-file(GLOB_RECURSE DOCUMENT_HPP "src/components/document/*.hpp")
-file(GLOB_RECURSE DOCUMENT_CPP "src/components/document/*.cpp")
-file(GLOB_RECURSE SIMDJSON "include/simdjson/*.h")
-file(GLOB_RECURSE SIMDJSON_DOM "include/simdjson/dom/*.h")
-file(GLOB_RECURSE SIMDJSON_GENERIC "include/simdjson/generic/*.h")
-file(GLOB_RECURSE SIMDJSON_INTERNAL "include/simdjson/internal/*.h")
-file(GLOB_RECURSE SRC "src/*.h")
-file(GLOB_RECURSE SRC_INTERNAL "src/internal/*.cpp")
+set( ${PROJECT_NAME}_SOURCES
+        generaty.cpp
+        test_document_json.cpp
+)
+
+file(GLOB_RECURSE DOCUMENT_SOURCES "src/components/document/*.cpp")
+file(GLOB_RECURSE INTERNAL_SOURCES "src/internal/*.cpp")
 
 add_compile_options(-g)
 add_compile_options(
@@ -36,11 +35,24 @@ add_compile_options(
         -Wsign-promo
 )
 add_compile_options(-fno-omit-frame-pointer)
-#add_compile_options(-fsanitize=address)
-#add_link_options(-fsanitize=address)
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
 
-add_executable(document ${DOCUMENT_HPP} ${DOCUMENT_CPP} ${SIMDJSON} ${SIMDJSON_DOM} ${SIMDJSON_GENERIC} ${SIMDJSON_INTERNAL} ${SRC} ${SRC_GENERIC} ${SRC_GENERIC_STAGE2} ${SRC_INTERNAL} main.cpp)
+add_library(
+        document_library
+        ${DOCUMENT_SOURCES}
+        ${INTERNAL_SOURCES}
+)
 
-target_include_directories(document PUBLIC "${CMAKE_SOURCE_DIR}/include/")
+target_include_directories(document_library PUBLIC "${CMAKE_SOURCE_DIR}/include/")
 
-target_link_libraries(document ${CONAN_LIBS})
+target_link_libraries(document_library ${CONAN_LIBS})
+
+add_subdirectory(test)
+
+add_executable(${PROJECT_NAME} main.cpp)
+
+target_link_libraries(
+        ${PROJECT_NAME} PRIVATE
+        document_library
+)
