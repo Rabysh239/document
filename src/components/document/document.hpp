@@ -18,7 +18,6 @@ enum class compare_t { less = -1, equals = 0, more = 1 };
 
 enum class error_t {
   SUCCESS,
-  INVALID_JSON_POINTER,
   NO_SUCH_CONTAINER,
   INVALID_INDEX,
 };
@@ -30,7 +29,7 @@ public:
 
   document_t();
 
-  ~document_t() override = default;
+  ~document_t() override;
 
   document_t(document_t &&) noexcept;
 
@@ -40,7 +39,7 @@ public:
 
   document_t &operator=(const document_t &) = delete;
 
-  explicit document_t(allocator_type *);
+  explicit document_t(allocator_type *, bool = true);
 //
 //  explicit document_t(bool value);
 //
@@ -59,7 +58,7 @@ public:
 
   error_t set_array(std::string_view json_pointer);
 
-  error_t set_object(std::string_view json_pointer);
+  error_t set_dict(std::string_view json_pointer);
 //
 //  bool update(const ptr &update);
 
@@ -166,11 +165,12 @@ private:
   document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index);
 
   allocator_type *allocator_;
-  simdjson::dom::immutable_document immut_src_{};
-  simdjson::dom::mutable_document mut_src_{};
+  simdjson::dom::immutable_document *immut_src_;
+  simdjson::dom::mutable_document *mut_src_;
   simdjson::tape_builder<simdjson::dom::tape_writer_to_mutable> builder_{};
   boost::intrusive_ptr<json_trie_node_element> element_ind_;
   std::pmr::vector<ptr> ancestors_{};
+  bool is_root_;
 
   error_t process_json_pointer_set(
           std::string_view json_pointer,
@@ -186,8 +186,8 @@ private:
 };
 
 using document_ptr = document_t::ptr;
-//
-//document_ptr make_document();
+
+document_ptr make_document(document_t::allocator_type *allocator);
 //
 //document_ptr make_document(const ::document::impl::dict_t *dict);
 //
@@ -204,7 +204,7 @@ using document_ptr = document_t::ptr;
 
 template<class T>
 inline error_t document_t::set(std::string_view json_pointer, T value) {
-  auto next_element = mut_src_.next_element();
+  auto next_element = mut_src_->next_element();
   builder_.build(value);
   return set_(json_pointer, next_element);
 }
@@ -233,7 +233,7 @@ inline error_t document_t::set(std::string_view json_pointer, const std::string 
 
 std::pmr::string serialize_document(const document_ptr &document);
 
-document_ptr deserialize_document(const std::string &text);
+document_ptr deserialize_document(const std::string &text, document_t::allocator_type *allocator);
 //
 //bool is_equals_documents(const document_ptr &doc1, const document_ptr &doc2);
 //
