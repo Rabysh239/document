@@ -2,10 +2,13 @@
 
 #include <memory_resource>
 #include <atomic>
+#include <mr_utils.hpp>
 
 class allocator_intrusive_ref_counter {
 public:
   explicit allocator_intrusive_ref_counter(std::pmr::memory_resource *allocator);
+
+  virtual ~allocator_intrusive_ref_counter() = default;
 
   allocator_intrusive_ref_counter(const allocator_intrusive_ref_counter &) = delete;
 
@@ -18,9 +21,6 @@ public:
   friend void intrusive_ptr_add_ref(allocator_intrusive_ref_counter* p);
 
   friend void intrusive_ptr_release(allocator_intrusive_ref_counter* p);
-
-protected:
-  virtual ~allocator_intrusive_ref_counter() = default;
 
 private:
   std::atomic<std::size_t> ref_count_;
@@ -38,7 +38,6 @@ inline void intrusive_ptr_add_ref(allocator_intrusive_ref_counter *p) {
 inline void intrusive_ptr_release(allocator_intrusive_ref_counter *p) {
   if (p->ref_count_.fetch_sub(1, std::memory_order_release) == 1) {
     std::atomic_thread_fence(std::memory_order_acquire);
-    p->~allocator_intrusive_ref_counter();
-    p->allocator_->deallocate(p, sizeof(*p));
+    mr_delete(p->allocator_, p);
   }
 }

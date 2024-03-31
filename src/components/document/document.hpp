@@ -59,8 +59,8 @@ public:
   error_t set_array(std::string_view json_pointer);
 
   error_t set_dict(std::string_view json_pointer);
-//
-//  bool update(const ptr &update);
+
+  error_t set_deleter(std::string_view json_pointer);
 
 //  document_id_t id() const;
 
@@ -154,8 +154,6 @@ public:
   static ptr document_from_json(const std::string &json, document_t::allocator_type *allocator);
 
   static ptr merge(ptr &document1, ptr &document2, document_t::allocator_type *allocator);
-
-  static ptr split(ptr &document1, ptr &document2, document_t::allocator_type *allocator);
 
 private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
