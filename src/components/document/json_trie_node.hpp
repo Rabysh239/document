@@ -9,6 +9,7 @@
 #include <atomic>
 #include <charconv>
 #include <allocator_intrusive_ref_counter.hpp>
+#include <mr_utils.hpp>
 #include <sstream>
 
 class string_split_iterator {
@@ -114,6 +115,8 @@ public:
 
   void insert_object(std::string_view key);
 
+  void insert_deleter(std::string_view key);
+
   bool erase(std::string_view json_pointer);
 
   size_t size() const;
@@ -124,20 +127,25 @@ public:
 
   bool is_terminal() const;
 
+  bool is_deleter() const;
+
   std::pmr::string to_json(
           std::pmr::string (*)(FirstType *, std::pmr::memory_resource *),
           std::pmr::string (*)(SecondType *, std::pmr::memory_resource *)
   ) const;
 
-  static json_trie_node<FirstType, SecondType> *merge(json_trie_node<FirstType, SecondType> *node1, json_trie_node<FirstType, SecondType> *node2, allocator_type &allocator);
-
-  static json_trie_node<FirstType, SecondType> *split(json_trie_node<FirstType, SecondType> *node1, json_trie_node<FirstType, SecondType> *node2, allocator_type &allocator);
+  static json_trie_node<FirstType, SecondType> *merge(
+          json_trie_node<FirstType, SecondType> *node1,
+          json_trie_node<FirstType, SecondType> *node2,
+          allocator_type &allocator
+  );
 
 private:
   enum json_type {
     OBJECT,
     ARRAY,
     TERMINAL,
+    DELETER,
   };
 
   union value_type {
@@ -189,15 +197,10 @@ json_trie_node<FirstType, SecondType>::json_trie_node(
 
 template<typename FirstType, typename SecondType>
 json_trie_node<FirstType, SecondType>::~json_trie_node() {
-  auto ptr = is_first_ ? reinterpret_cast<void *>(value_.first) : reinterpret_cast<void *>(value_.second);
-  if (ptr != nullptr) {
-    if (is_first_) {
-      value_.first->~FirstType();
-      allocator_->deallocate(ptr, sizeof(FirstType));
-    } else {
-      value_.second->~SecondType();
-      allocator_->deallocate(ptr, sizeof(SecondType));
-    }
+  if (is_first_) {
+    mr_delete(allocator_, value_.first);
+  } else {
+    mr_delete(allocator_, value_.second);
   }
 }
 
@@ -217,7 +220,8 @@ json_trie_node<FirstType, SecondType>::json_trie_node(json_trie_node &&other) no
 }
 
 template<typename FirstType, typename SecondType>
-json_trie_node<FirstType, SecondType> &json_trie_node<FirstType, SecondType>::operator=(json_trie_node &&other) noexcept {
+json_trie_node<FirstType, SecondType> &
+json_trie_node<FirstType, SecondType>::operator=(json_trie_node &&other) noexcept {
   if (this == &other) {
     return *this;
   }
@@ -236,7 +240,8 @@ json_trie_node<FirstType, SecondType> &json_trie_node<FirstType, SecondType>::op
 }
 
 template<typename FirstType, typename SecondType>
-const json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::find_node_const(std::string_view json_pointer) const {
+const json_trie_node<FirstType, SecondType> *
+json_trie_node<FirstType, SecondType>::find_node_const(std::string_view json_pointer) const {
   const auto *current = this;
   for (auto word: string_splitter(json_pointer, '/')) {
     auto next = current->children_.find(word);
@@ -273,28 +278,40 @@ template<typename FirstType, typename SecondType>
 void json_trie_node<FirstType, SecondType>::insert(std::string_view key, const FirstType &value) {
   auto node_value = new(allocator_->allocate(sizeof(FirstType))) FirstType(value);
   auto is_first = true;
-  children_[key] = new(allocator_->allocate(sizeof(json_trie_node))) json_trie_node(allocator_, {.first = node_value}, is_first, TERMINAL);
+  children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
+          json_trie_node(allocator_, {.first = node_value}, is_first, TERMINAL);
 }
 
 template<typename FirstType, typename SecondType>
 void json_trie_node<FirstType, SecondType>::insert(std::string_view key, const SecondType &value) {
   auto node_value = new(allocator_->allocate(sizeof(SecondType))) SecondType(value);
   auto is_first = false;
-  children_[key] = new(allocator_->allocate(sizeof(json_trie_node))) json_trie_node(allocator_, {.second = node_value}, is_first, TERMINAL);
+  children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
+          json_trie_node(allocator_, {.second = node_value}, is_first, TERMINAL);
 }
 
 template<typename FirstType, typename SecondType>
 void json_trie_node<FirstType, SecondType>::insert_array(std::string_view key) {
   auto node_value = nullptr;
   auto is_first = false;
-  children_[key] = new(allocator_->allocate(sizeof(json_trie_node))) json_trie_node(allocator_, {.second = node_value}, is_first, ARRAY);
+  children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
+          json_trie_node(allocator_, {.second = node_value}, is_first, ARRAY);
 }
 
 template<typename FirstType, typename SecondType>
 void json_trie_node<FirstType, SecondType>::insert_object(std::string_view key) {
   auto node_value = nullptr;
   auto is_first = false;
-  children_[key] = new(allocator_->allocate(sizeof(json_trie_node))) json_trie_node(allocator_, {.second = node_value}, is_first, OBJECT);
+  children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
+          json_trie_node(allocator_, {.second = node_value}, is_first, OBJECT);
+}
+
+template<typename FirstType, typename SecondType>
+void json_trie_node<FirstType, SecondType>::insert_deleter(std::string_view key) {
+  auto node_value = nullptr;
+  auto is_first = false;
+  children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
+          json_trie_node(allocator_, {.second = node_value}, is_first, DELETER);
 }
 
 template<typename FirstType, typename SecondType>
@@ -335,6 +352,11 @@ bool json_trie_node<FirstType, SecondType>::is_terminal() const {
 }
 
 template<typename FirstType, typename SecondType>
+bool json_trie_node<FirstType, SecondType>::is_deleter() const {
+  return type_ == DELETER;
+}
+
+template<typename FirstType, typename SecondType>
 std::pmr::string
 json_trie_node<FirstType, SecondType>::to_json(
         std::pmr::string (*to_json_first)(FirstType *, std::pmr::memory_resource *),
@@ -350,42 +372,30 @@ json_trie_node<FirstType, SecondType>::to_json(
 }
 
 template<typename FirstType, typename SecondType>
-json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::merge(json_trie_node<FirstType, SecondType> *node1, json_trie_node<FirstType, SecondType> *node2, allocator_type &allocator) {
+json_trie_node<FirstType, SecondType> *
+json_trie_node<FirstType, SecondType>::merge(
+        json_trie_node<FirstType, SecondType> *node1,
+        json_trie_node<FirstType, SecondType> *node2,
+        allocator_type &allocator
+) {
   if (!node2->is_object()) {
     return node2;
   }
   auto res = new(allocator.allocate(sizeof(json_trie_node))) json_trie_node(&allocator);
-  for (auto &entry : node1->children_) {
-    auto next = node2->children_.find(entry.first);
-    if (next == node2->children_.end()) {
-      res->children_[entry.first] = entry.second;
+  for (auto &it : node2->children_) {
+    if (it.second->is_deleter()) {
+      continue;
+    }
+    auto next = node1->children_.find(it.first);
+    if (next == node1->children_.end()) {
+      res->children_[it.first] = it.second;
     } else {
-      res->children_[entry.first] = merge(entry.second.get(), next->second.get(), allocator);
+      res->children_[it.first] = merge(next->second.get(), it.second.get(), allocator);
     }
   }
-  for (auto &entry : node2->children_) {
-    if (node1->children_.find(entry.first) == node1->children_.end()) {
-      res->children_[entry.first] = entry.second;
-    }
-  }
-  return res;
-}
-
-template<typename FirstType, typename SecondType>
-json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::split(json_trie_node<FirstType, SecondType> *node1, json_trie_node<FirstType, SecondType> *node2, allocator_type &allocator) {
-  if (!node2->is_object()) {
-    return nullptr;
-  }
-  auto res = new(allocator.allocate(sizeof(json_trie_node))) json_trie_node(&allocator);
   for (auto &entry : node1->children_) {
-    auto next = node2->children_.find(entry.first);
-    if (next == node2->children_.end()) {
+    if (node2->children_.find(entry.first) == node2->children_.end()) {
       res->children_[entry.first] = entry.second;
-    } else {
-      auto split_res = split(entry.second.get(), next->second.get(), allocator);
-      if (split_res != nullptr) {
-        res->children_[entry.first] = split_res;
-      }
     }
   }
   return res;

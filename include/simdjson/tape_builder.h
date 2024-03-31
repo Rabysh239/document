@@ -88,10 +88,7 @@ tape_builder<K>::tape_builder() noexcept
 
 template<typename K>
 tape_builder<K>::~tape_builder() {
-  if (tape_ != nullptr) {
-    tape_->~tape_writer();
-    allocator_->deallocate(tape_, sizeof(dom::tape_writer<K>));
-  }
+  mr_delete(allocator_, tape_);
 }
 
 template<typename K>
