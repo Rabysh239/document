@@ -15,12 +15,8 @@ document_t::document_t()
 
 document_t::~document_t() {
   if (is_root_) {
-    mut_src_->~mutable_document();
-    allocator_->deallocate(mut_src_, sizeof(simdjson::dom::mutable_document));
-    if (immut_src_ != nullptr) {
-      immut_src_->~immutable_document();
-      allocator_->deallocate(immut_src_, sizeof(simdjson::dom::immutable_document));
-    }
+    mr_delete(allocator_, mut_src_);
+    mr_delete(allocator_, immut_src_);
   }
 }
 
@@ -207,6 +203,16 @@ error_t document_t::set_dict(std::string_view json_pointer) {
   return res;
 }
 
+error_t document_t::set_deleter(std::string_view json_pointer) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer, container, key);
+  if (res == error_t::SUCCESS) {
+    container->insert_deleter(key);
+  }
+  return res;
+}
+
 error_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
   json_trie_node_element *container;
   std::pmr::string key(allocator_);
@@ -285,15 +291,6 @@ document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &d
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
   res->element_ind_ = json_trie_node_element::merge(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
-  return res;
-}
-
-document_t::ptr document_t::split(document_t::ptr &document1, document_t::ptr &document2, document_t::allocator_type *allocator) {
-  auto is_root = false;
-  auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator, is_root);
-  res->ancestors_.push_back(document1);
-  res->ancestors_.push_back(document2);
-  res->element_ind_ = json_trie_node_element::split(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
   return res;
 }
 

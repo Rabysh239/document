@@ -22,13 +22,6 @@ int main() {
           }
         }
     )";
-  const std::string json2 = R"(
-        {
-          "obj": {
-            "long": 5
-          }
-        }
-    )";
 
   std::pmr::synchronized_pool_resource allocator;
   auto otter_doc = components::document::document_t::document_from_json(json, &allocator);
@@ -43,9 +36,5 @@ int main() {
   auto otter_doc1 = components::document::document_t::document_from_json(json1, &allocator);
   auto merged_doc = components::document::document_t::merge(otter_doc, otter_doc1, &allocator);
   std::cout << merged_doc->to_json() << std::endl;
-  //split
-  auto otter_doc2 = components::document::document_t::document_from_json(json2, &allocator);
-  auto split_doc = components::document::document_t::split(otter_doc1, otter_doc2, &allocator);
-  std::cout << split_doc->to_json() << std::endl;
   return 0;
 }

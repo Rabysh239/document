@@ -57,9 +57,73 @@ TEST_CASE("document_t::set") {
   REQUIRE(doc->get_string(key) == value);
 }
 
-//TODO
-//TEST_CASE("document_view::update") {
-//}
+TEST_CASE("document_t::merge") {
+  auto target = R"(
+{
+  "_id": "000000000000000000000001",
+  "title": "Goodbye!",
+  "author" : {
+    "givenName" : "John",
+    "familyName" : "Doe"
+  },
+  "tags":[ "example", "sample" ],
+  "content": "This will be unchanged"
+}
+  )";
+
+  auto patch = R"(
+{
+  "title": "Hello!",
+  "phoneNumber": "+01-123-456-7890",
+  "author": {},
+  "tags": [ "example" ]
+}
+  )";
+  auto allocator = std::pmr::new_delete_resource();
+  auto target_doc = document_t::document_from_json(target, allocator);
+  auto patch_doc = document_t::document_from_json(patch, allocator);
+
+  patch_doc->set_deleter("author/familyName");
+
+  auto res = document_t::merge(target_doc, patch_doc, allocator);
+
+  REQUIRE(res->is_exists());
+  REQUIRE(res->count() == 6);
+
+  REQUIRE(res->is_exists("_id"));
+  REQUIRE(res->is_string("_id"));
+  REQUIRE(res->get_string("_id") == "000000000000000000000001");
+
+  REQUIRE(res->is_exists("title"));
+  REQUIRE(res->is_string("title"));
+  REQUIRE(res->get_string("title") == "Hello!");
+
+  REQUIRE(res->is_exists("author"));
+  REQUIRE(res->is_dict("author"));
+  REQUIRE(res->count("author") == 1);
+
+  REQUIRE(res->is_exists("author/givenName"));
+  REQUIRE(res->is_string("author/givenName"));
+  REQUIRE(res->get_string("author/givenName") == "John");
+
+  REQUIRE_FALSE(res->is_exists("author/familyName"));
+
+  REQUIRE(res->is_exists("tags"));
+  REQUIRE(res->is_array("tags"));
+  REQUIRE(res->count("tags") == 1);
+
+  REQUIRE(res->is_exists("tags/0"));
+  REQUIRE(res->is_string("tags/0"));
+  REQUIRE(res->get_string("tags/0") == "example");
+
+  REQUIRE(res->is_exists("content"));
+  REQUIRE(res->is_string("content"));
+  REQUIRE(res->get_string("content") == "This will be unchanged");
+
+  REQUIRE(res->is_exists("phoneNumber"));
+  REQUIRE(res->is_string("phoneNumber"));
+  REQUIRE(res->get_string("phoneNumber") == "+01-123-456-7890");
+}
 
 TEST_CASE("document_t::value from json") {
   auto json = R"(
@@ -77,7 +141,7 @@ TEST_CASE("document_t::value from json") {
     "three": false
   }
 }
-    )";
+  )";
   auto allocator = std::pmr::new_delete_resource();
   auto doc = document_t::document_from_json(json, allocator);
 
