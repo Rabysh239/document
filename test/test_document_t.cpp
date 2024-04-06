@@ -2,6 +2,7 @@
 #include "generaty.hpp"
 
 using components::document::document_t;
+using components::document::error_code_t;
 
 TEST_CASE("document_t::is/get value") {
   auto allocator = std::pmr::new_delete_resource();
@@ -63,6 +64,7 @@ TEST_CASE("document_t::set doc") {
   "number": 2
 }
   )";
+
   auto allocator = std::pmr::new_delete_resource();
 
   auto doc = gen_doc(1, allocator);
@@ -242,4 +244,136 @@ TEST_CASE("document_t::is_equals_documents fail when different values") {
   doc2->set("number", int64_t_other_value);
 
   REQUIRE_FALSE(document_t::is_equals_documents(doc1, doc2));
+}
+
+TEST_CASE("document_t::remove") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "baz": "qux",
+  "foo": "bar"
+}
+  )";
+  auto res_json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": "bar"
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(res_json, allocator);
+
+  REQUIRE(doc->remove("baz") == error_code_t::SUCCESS);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
+
+TEST_CASE("document_t::remove fail when no element") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "baz": "qux",
+  "foo": "bar"
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(json, allocator);
+
+  REQUIRE(doc->remove("bar") == error_code_t::NO_SUCH_ELEMENT);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
+
+TEST_CASE("document_t::remove fail when removing array element") {
+  auto json = R"(
+{ "foo": [ "bar", "qux", "baz" ] }
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(json, allocator);
+
+  REQUIRE(doc->remove("foo/1") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
+
+TEST_CASE("document_t::move") {
+  auto json = R"(
+{
+  "foo": {
+    "bar": "baz",
+    "waldo": "fred"
+  },
+  "qux": {
+    "corge": "grault"
+  }
+}
+  )";
+  auto res_json = R"(
+{
+  "foo": {
+    "bar": "baz"
+  },
+  "qux": {
+    "corge": "grault",
+    "thud": "fred"
+  }
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(res_json, allocator);
+
+  REQUIRE(doc->move("foo/waldo", "qux/thud") == error_code_t::SUCCESS);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
+
+TEST_CASE("document_t::move fail when no element") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": {
+    "bar": "baz",
+    "waldo": "fred"
+  },
+  "qux": {
+    "corge": "grault"
+  }
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(json, allocator);
+
+  REQUIRE(doc->move("foo/wald", "qux/thud") == error_code_t::NO_SUCH_ELEMENT);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
+
+TEST_CASE("document_t::move fail when moving array element") {
+  auto json = R"(
+{ "foo": [ "all", "grass", "cows", "eat" ] }
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(json, allocator);
+
+  REQUIRE(doc->move("foo/1", "foo/3") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }

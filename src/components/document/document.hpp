@@ -16,9 +16,11 @@ namespace components::document {
 
 enum class compare_t { less = -1, equals = 0, more = 1 };
 
-enum class error_t {
+enum class error_code_t {
   SUCCESS,
   NO_SUCH_CONTAINER,
+  NOT_APPLICABLE_TO_ARRAY,
+  NO_SUCH_ELEMENT,
   INVALID_INDEX,
 };
 
@@ -54,13 +56,17 @@ public:
 //  explicit document_t(std::string_view value);
 
   template<class T>
-  error_t set(std::string_view json_pointer, T value);
+  error_code_t set(std::string_view json_pointer, T value);
 
-  error_t set_array(std::string_view json_pointer);
+  error_code_t set_array(std::string_view json_pointer);
 
-  error_t set_dict(std::string_view json_pointer);
+  error_code_t set_dict(std::string_view json_pointer);
 
-  error_t set_deleter(std::string_view json_pointer);
+  error_code_t set_deleter(std::string_view json_pointer);
+
+  error_code_t remove(std::string_view json_pointer);
+
+  error_code_t move(std::string_view json_pointer_from, std::string_view json_pointer_to);
 
 //  document_id_t id() const;
 
@@ -172,15 +178,17 @@ private:
   std::pmr::vector<ptr> ancestors_{};
   bool is_root_;
 
-  error_t find_container_key(
+  error_code_t find_container_key(
           std::string_view json_pointer,
           json_trie_node_element *&container,
           std::pmr::string &key
   );
 
-  error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
+  error_code_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
-  error_t set_(std::string_view json_pointer, ptr &value);
+  error_code_t set_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &&value);
+
+  error_code_t remove_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &node);
 
   static void build_index(json_trie_node_element& node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
 
@@ -206,14 +214,14 @@ document_ptr make_document(document_t::allocator_type *allocator);
 //document_id_t get_document_id(const document_ptr &document);
 
 template<class T>
-inline error_t document_t::set(std::string_view json_pointer, T value) {
+inline error_code_t document_t::set(std::string_view json_pointer, T value) {
   auto next_element = mut_src_->next_element();
   builder_.build(value);
   return set_(json_pointer, next_element);
 }
 
 template<>
-inline error_t document_t::set(std::string_view json_pointer, const std::string &value) {
+inline error_code_t document_t::set(std::string_view json_pointer, const std::string &value) {
   return set(json_pointer, std::string_view(value));
 }
 
@@ -223,9 +231,10 @@ inline error_t document_t::set(std::string_view json_pointer, const std::string 
 //}
 
 template<>
-inline error_t document_t::set(std::string_view json_pointer, document_ptr value) {
+inline error_code_t document_t::set(std::string_view json_pointer, document_ptr value) {
   ancestors_.push_back(value);
-  set_(json_pointer, value);
+  auto copy = value->element_ind_;
+  set_(json_pointer, std::move(copy));
 }
 //
 //template<class T>
