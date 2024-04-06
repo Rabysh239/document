@@ -155,6 +155,8 @@ public:
 
   static ptr merge(ptr &document1, ptr &document2, document_t::allocator_type *allocator);
 
+  static bool is_equals_documents(const ptr &doc1, const ptr &doc2);
+
 private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
@@ -233,8 +235,6 @@ inline error_t document_t::set(std::string_view json_pointer, const std::string 
 std::pmr::string serialize_document(const document_ptr &document);
 
 document_ptr deserialize_document(const std::string &text, document_t::allocator_type *allocator);
-//
-//bool is_equals_documents(const document_ptr &doc1, const document_ptr &doc2);
 //
 //std::string to_string(const document_t &doc);
 //
