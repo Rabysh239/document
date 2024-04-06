@@ -24,6 +24,12 @@ enum class error_code_t {
   INVALID_INDEX,
 };
 
+enum class special_type {
+  OBJECT,
+  ARRAY,
+  DELETER,
+};
+
 class document_t final : public allocator_intrusive_ref_counter {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
@@ -167,6 +173,7 @@ private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
   using json_trie_node_element = json_trie_node<element_from_immutable, element_from_mutable>;
+  using inserter_ptr = void(*)(json_trie_node_element *, std::string_view key);
 
   document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index);
 
@@ -178,6 +185,12 @@ private:
   std::pmr::vector<ptr> ancestors_{};
   bool is_root_;
 
+  constexpr static inserter_ptr inserters[] {
+          +[](json_trie_node_element *container, std::string_view key) { container->insert_object(key); },
+          +[](json_trie_node_element *container, std::string_view key) { container->insert_array(key); },
+          +[](json_trie_node_element *container, std::string_view key) { container->insert_deleter(key); },
+  };
+
   error_code_t find_container_key(
           std::string_view json_pointer,
           json_trie_node_element *&container,
@@ -187,6 +200,8 @@ private:
   error_code_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
   error_code_t set_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &&value);
+
+  error_code_t set_(std::string_view json_pointer, special_type value);
 
   error_code_t remove_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &node);
 
@@ -225,10 +240,10 @@ inline error_code_t document_t::set(std::string_view json_pointer, const std::st
   return set(json_pointer, std::string_view(value));
 }
 
-//template<>
-//inline void document_t::set(const std::string &key, document_const_value_t value) {
-//  set_(key, value);
-//}
+template<>
+inline error_code_t document_t::set(std::string_view json_pointer, special_type value) {
+  return set_(json_pointer, value);
+}
 
 template<>
 inline error_code_t document_t::set(std::string_view json_pointer, document_ptr value) {
