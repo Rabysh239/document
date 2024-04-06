@@ -111,6 +111,8 @@ public:
 
   void insert(std::string_view key, const SecondType &value);
 
+  void insert(std::string_view key, boost::intrusive_ptr<json_trie_node> value);
+
   void insert_array(std::string_view key);
 
   void insert_object(std::string_view key);
@@ -320,6 +322,11 @@ void json_trie_node<FirstType, SecondType>::insert_deleter(std::string_view key)
   auto is_first = false;
   children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
           json_trie_node(allocator_, {.second = node_value}, is_first, DELETER);
+}
+
+template<typename FirstType, typename SecondType>
+void json_trie_node<FirstType, SecondType>::insert(std::string_view key, boost::intrusive_ptr<json_trie_node> value) {
+  children_[key] = std::move(value);
 }
 
 template<typename FirstType, typename SecondType>

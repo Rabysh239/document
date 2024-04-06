@@ -57,30 +57,34 @@ TEST_CASE("document_t::set") {
   REQUIRE(doc->get_string(key) == value);
 }
 
-TEST_CASE("document_t::value from json") {
+TEST_CASE("document_t::set doc") {
   auto json = R"(
 {
-  "_id": "000000000000000000000001",
-  "count": 1,
-  "countBool": true,
-  "countDouble": 1.1,
-  "countStr": "1",
-  "countArray": [1, 2, 3, 4, 5],
-  "countDict": {
-    "even": false,
-    "five": false,
-    "odd": true,
-    "three": false
-  }
+  "number": 2
 }
   )";
   auto allocator = std::pmr::new_delete_resource();
-  auto doc = document_t::document_from_json(json, allocator);
 
-  REQUIRE(doc->is_exists());
-  REQUIRE(doc->is_exists("count"));
-  REQUIRE(doc->is_long("count"));
-  REQUIRE(doc->get_long("count") == 1);
+  auto doc = gen_doc(1, allocator);
+  auto nestedDoc = document_t::document_from_json(json, allocator);
+
+  std::string_view key("nestedDoc");
+  doc->set(key, nestedDoc);
+
+  int64_t value = 3;
+  doc->set("nestedDoc/other_number", value);
+
+  REQUIRE(doc->is_exists("nestedDoc"));
+  REQUIRE(doc->is_dict("nestedDoc"));
+  REQUIRE(doc->count("nestedDoc") == 2);
+
+  REQUIRE(doc->is_exists("nestedDoc/number"));
+  REQUIRE(doc->is_long("nestedDoc/number"));
+  REQUIRE(doc->get_long("nestedDoc/number") == 2);
+
+  REQUIRE(doc->is_exists("nestedDoc/other_number"));
+  REQUIRE(doc->is_long("nestedDoc/other_number"));
+  REQUIRE(doc->get_long("nestedDoc/other_number") == 3);
 }
 
 TEST_CASE("document_t::merge") {
