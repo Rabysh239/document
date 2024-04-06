@@ -140,6 +140,14 @@ public:
           allocator_type &allocator
   );
 
+  static bool equals(
+          json_trie_node<FirstType, SecondType> *node1,
+          json_trie_node<FirstType, SecondType> *node2,
+          bool (*)(FirstType *, FirstType *),
+          bool (*)(SecondType *, SecondType *),
+          bool (*)(FirstType *, SecondType *)
+  );
+
 private:
   enum json_type {
     OBJECT,
@@ -399,6 +407,50 @@ json_trie_node<FirstType, SecondType>::merge(
     }
   }
   return res;
+}
+
+template<typename FirstType, typename SecondType>
+bool json_trie_node<FirstType, SecondType>::equals(
+        json_trie_node<FirstType, SecondType> *node1,
+        json_trie_node<FirstType, SecondType> *node2,
+        bool (* first_equals_first)(FirstType *, FirstType *),
+        bool (* second_equals_second)(SecondType *, SecondType *),
+        bool (* first_equals_second)(FirstType *, SecondType *)
+) {
+  if (node1->type_ != node2->type_) {
+    return false;
+  }
+  if (node1->is_terminal() || node1->is_deleter()) {
+    if (node1->is_first_ == node2->is_first_) {
+      if (node1->is_first_) {
+        return first_equals_first(node1->value_.first, node2->value_.first);
+      }
+      return second_equals_second(node1->value_.second, node2->value_.second);
+    }
+    if (node1->is_first_) {
+      return first_equals_second(node1->value_.first, node2->value_.second);
+    }
+    return first_equals_second(node2->value_.first, node1->value_.second);
+  }
+  if (node1->size() != node2->size()) {
+    return false;
+  }
+  for (auto &it: node1->children_) {
+    auto next_node2 = node2->children_.find(it.first);
+    if (
+            next_node2 == node2->children_.end() ||
+            !equals(
+                    it.second.get(),
+                    next_node2->second.get(),
+                    first_equals_first,
+                    second_equals_second,
+                    first_equals_second
+            )
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 template<typename FirstType, typename SecondType>
