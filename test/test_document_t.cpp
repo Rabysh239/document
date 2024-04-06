@@ -57,6 +57,32 @@ TEST_CASE("document_t::set") {
   REQUIRE(doc->get_string(key) == value);
 }
 
+TEST_CASE("document_t::value from json") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "count": 1,
+  "countBool": true,
+  "countDouble": 1.1,
+  "countStr": "1",
+  "countArray": [1, 2, 3, 4, 5],
+  "countDict": {
+    "even": false,
+    "five": false,
+    "odd": true,
+    "three": false
+  }
+}
+  )";
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = document_t::document_from_json(json, allocator);
+
+  REQUIRE(doc->is_exists());
+  REQUIRE(doc->is_exists("count"));
+  REQUIRE(doc->is_long("count"));
+  REQUIRE(doc->get_long("count") == 1);
+}
+
 TEST_CASE("document_t::merge") {
   auto target = R"(
 {
@@ -125,7 +151,7 @@ TEST_CASE("document_t::merge") {
   REQUIRE(res->get_string("phoneNumber") == "+01-123-456-7890");
 }
 
-TEST_CASE("document_t::value from json") {
+TEST_CASE("document_t::is_equals_documents") {
   auto json = R"(
 {
   "_id": "000000000000000000000001",
@@ -142,11 +168,74 @@ TEST_CASE("document_t::value from json") {
   }
 }
   )";
-  auto allocator = std::pmr::new_delete_resource();
-  auto doc = document_t::document_from_json(json, allocator);
 
-  REQUIRE(doc->is_exists());
-  REQUIRE(doc->is_exists("count"));
-  REQUIRE(doc->is_long("count"));
-  REQUIRE(doc->get_long("count") == 1);
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc1 = document_t::document_from_json(json, allocator);
+  auto doc2 = document_t::document_from_json(json, allocator);
+
+  int64_t int64_t_value = 2;
+  doc1->set("number", int64_t_value);
+  doc2->set("number", int64_t_value);
+
+  REQUIRE(document_t::is_equals_documents(doc1, doc2));
+}
+
+TEST_CASE("document_t::is_equals_documents fail when different types") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "count": 1,
+  "countBool": true,
+  "countDouble": 1.1,
+  "countStr": "1",
+  "countArray": [1, 2, 3, 4, 5],
+  "countDict": {
+    "even": false,
+    "five": false,
+    "odd": true,
+    "three": false
+  }
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc1 = document_t::document_from_json(json, allocator);
+  auto doc2 = document_t::document_from_json(json, allocator);
+
+  int64_t int64_t_value = 2;
+  uint64_t uint64_t_value = 2;
+  doc1->set("number", int64_t_value);
+  doc2->set("number", uint64_t_value);
+
+  REQUIRE_FALSE(document_t::is_equals_documents(doc1, doc2));
+}
+
+TEST_CASE("document_t::is_equals_documents fail when different values") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "count": 1,
+  "countBool": true,
+  "countDouble": 1.1,
+  "countStr": "1",
+  "countArray": [1, 2, 3, 4, 5],
+  "countDict": {
+    "even": false,
+    "five": false,
+    "odd": true,
+    "three": false
+  }
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc1 = document_t::document_from_json(json, allocator);
+  auto doc2 = document_t::document_from_json(json, allocator);
+
+  int64_t int64_t_value = 2;
+  int64_t int64_t_other_value = 3;
+  doc1->set("number", int64_t_value);
+  doc2->set("number", int64_t_other_value);
+
+  REQUIRE_FALSE(document_t::is_equals_documents(doc1, doc2));
 }

@@ -2,6 +2,7 @@
 #include <boost/json/src.hpp>
 #include <utility>
 #include <simdjson/json_iterator.h>
+#include "varint.hpp"
 
 namespace components::document {
 
@@ -294,6 +295,39 @@ document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &d
   return res;
 }
 
+template<typename T, typename K>
+bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K> *value2) {
+  if (value1->type() != value2->type()) {
+    return false;
+  }
+  if (value1->is_bool()) {
+    return value1->get_bool().value() == value2->get_bool().value();
+  }
+  if (value1->is_uint64()) {
+    return value1->get_uint64().value() == value2->get_uint64().value();
+  }
+  if (value1->is_int64()) {
+    return value1->get_int64().value() == value2->get_int64().value();
+  }
+  if (value1->is_double()) {
+    return is_equals(value1->get_double().value(), value2->get_double().value());
+  }
+  if (value1->is_string()) {
+    return value1->get_string().value() == value2->get_string().value();
+  }
+  return false;
+}
+
+bool document_t::is_equals_documents(const document_ptr &doc1, const document_ptr &doc2) {
+  return json_trie_node_element::equals(
+          doc1->element_ind_.get(),
+          doc2->element_ind_.get(),
+          &is_equals_value<simdjson::dom::immutable_document, simdjson::dom::immutable_document>,
+          &is_equals_value<simdjson::dom::mutable_document, simdjson::dom::mutable_document>,
+          &is_equals_value<simdjson::dom::immutable_document, simdjson::dom::mutable_document>
+  );
+}
+
 bool document_t::is_array(const json_trie_node_element &node) {
   return node.is_array();
 }
@@ -303,7 +337,7 @@ bool document_t::is_object(const json_trie_node_element &node) {
 }
 
 template<typename T>
-std::pmr::string value_to_string(T *value, std::pmr::memory_resource *allocator) {
+std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::memory_resource *allocator) {
   if (value->is_bool()) {
     std::pmr::string tmp(allocator);
     if(value->get_bool()) {
@@ -327,7 +361,7 @@ std::pmr::string value_to_string(T *value, std::pmr::memory_resource *allocator)
 }
 
 std::pmr::string document_t::to_json() const {
-  return element_ind_->to_json(&value_to_string<element_from_immutable>, &value_to_string<element_from_mutable>);
+  return element_ind_->to_json(&value_to_string<simdjson::dom::immutable_document>, &value_to_string<simdjson::dom::mutable_document>);
 }
 
 std::pmr::string serialize_document(const document_ptr &document) { return document->to_json(); }
