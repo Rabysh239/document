@@ -111,7 +111,7 @@ public:
 
   void insert(std::string_view key, const SecondType &value);
 
-  void insert(std::string_view key, boost::intrusive_ptr<json_trie_node> value);
+  void insert(std::string_view key, boost::intrusive_ptr<json_trie_node> &&value);
 
   void insert_array(std::string_view key);
 
@@ -119,7 +119,7 @@ public:
 
   void insert_deleter(std::string_view key);
 
-  bool erase(std::string_view json_pointer);
+  boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> erase(std::string_view json_pointer);
 
   size_t size() const;
 
@@ -325,25 +325,19 @@ void json_trie_node<FirstType, SecondType>::insert_deleter(std::string_view key)
 }
 
 template<typename FirstType, typename SecondType>
-void json_trie_node<FirstType, SecondType>::insert(std::string_view key, boost::intrusive_ptr<json_trie_node> value) {
-  children_[key] = std::move(value);
+void json_trie_node<FirstType, SecondType>::insert(std::string_view key, boost::intrusive_ptr<json_trie_node> &&value) {
+  children_[key] = std::forward<boost::intrusive_ptr<json_trie_node>>(value);
 }
 
 template<typename FirstType, typename SecondType>
-bool json_trie_node<FirstType, SecondType>::erase(std::string_view json_pointer) {
-  json_trie_node *current = this;
-  json_trie_node *prev = nullptr;
-  std::string_view word_s;
-  for (auto word: string_splitter(json_pointer, '/')) {
-    auto next = current->children_.find(word);
-    if (next == current->children_.end()) {
-      return false;
-    }
-    current = next->second.get();
-    word_s = word;
+boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> json_trie_node<FirstType, SecondType>::erase(std::string_view key) {
+  auto found = children_.find(key);
+  if (found == children_.end()) {
+    return nullptr;
   }
-  prev->children_.erase(word_s);
-  return true;
+  auto copy = found->second;
+  children_.erase(found);
+  return copy;
 }
 
 template<typename FirstType, typename SecondType>

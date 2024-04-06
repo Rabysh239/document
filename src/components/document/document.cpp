@@ -184,57 +184,88 @@ document_t::document_t(ptr ancestor, allocator_type *allocator, json_trie_node_e
           ancestors_(std::pmr::vector<ptr>({std::move(ancestor)}, allocator_)),
           is_root_(false) {}
 
-error_t document_t::set_array(std::string_view json_pointer) {
+error_code_t document_t::set_array(std::string_view json_pointer) {
   json_trie_node_element *container;
   std::pmr::string key(allocator_);
   auto res = find_container_key(json_pointer, container, key);
-  if (res == error_t::SUCCESS) {
+  if (res == error_code_t::SUCCESS) {
     container->insert_array(key);
   }
   return res;
 }
 
-error_t document_t::set_dict(std::string_view json_pointer) {
+error_code_t document_t::set_dict(std::string_view json_pointer) {
   json_trie_node_element *container;
   std::pmr::string key(allocator_);
   auto res = find_container_key(json_pointer, container, key);
-  if (res == error_t::SUCCESS) {
+  if (res == error_code_t::SUCCESS) {
     container->insert_object(key);
   }
   return res;
 }
 
-error_t document_t::set_deleter(std::string_view json_pointer) {
+error_code_t document_t::set_deleter(std::string_view json_pointer) {
   json_trie_node_element *container;
   std::pmr::string key(allocator_);
   auto res = find_container_key(json_pointer, container, key);
-  if (res == error_t::SUCCESS) {
+  if (res == error_code_t::SUCCESS) {
     container->insert_deleter(key);
   }
   return res;
 }
 
-error_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
+error_code_t document_t::remove(std::string_view json_pointer) {
+  boost::intrusive_ptr<json_trie_node_element> ignored;
+  return remove_(json_pointer, ignored);
+}
+
+error_code_t document_t::move(std::string_view json_pointer_from, std::string_view json_pointer_to) {
+  boost::intrusive_ptr<json_trie_node_element> value;
+  auto res = remove_(json_pointer_from, value);
+  if (res != error_code_t::SUCCESS) {
+    return res;
+  }
+  return set_(json_pointer_to, std::move(value));
+}
+
+error_code_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
   json_trie_node_element *container;
   std::pmr::string key(allocator_);
   auto res = find_container_key(json_pointer, container, key);
-  if (res == error_t::SUCCESS) {
+  if (res == error_code_t::SUCCESS) {
     container->insert(key, value);
   }
   return res;
 }
 
-error_t document_t::set_(std::string_view json_pointer, ptr &value) {
+error_code_t document_t::set_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &&value) {
   json_trie_node_element *container;
   std::pmr::string key(allocator_);
   auto res = find_container_key(json_pointer, container, key);
-  if (res == error_t::SUCCESS) {
-    container->insert(key, value->element_ind_);
+  if (res == error_code_t::SUCCESS) {
+    container->insert(key, std::forward<boost::intrusive_ptr<json_trie_node_element>>(value));
   }
   return res;
 }
 
-error_t document_t::find_container_key(
+error_code_t document_t::remove_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &node) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer, container, key);
+  if (res != error_code_t::SUCCESS) {
+    return res;
+  }
+  if (container->is_array()) {
+    return error_code_t::NOT_APPLICABLE_TO_ARRAY;
+  }
+  node = container->erase(key);
+  if (node == nullptr) {
+    return error_code_t::NO_SUCH_ELEMENT;
+  }
+  return error_code_t::SUCCESS;
+}
+
+error_code_t document_t::find_container_key(
         std::string_view json_pointer,
         json_trie_node_element *&container,
         std::pmr::string &key
@@ -249,17 +280,17 @@ error_t document_t::find_container_key(
     key = json_pointer.substr(pos + 1);
   }
   if (container == nullptr || container->is_terminal()) {
-    return error_t::NO_SUCH_CONTAINER;
+    return error_code_t::NO_SUCH_CONTAINER;
   }
   if (is_array(*container)) {
     auto index = std::atol(std::pmr::string(key, allocator_).c_str());
     if (index < 0) {
-      return error_t::INVALID_INDEX;
+      return error_code_t::INVALID_INDEX;
     }
     size_t correct_index = std::min(size_t(index), container->size());
     key = create_pmr_string(correct_index, allocator_);
   }
-  return error_t::SUCCESS;
+  return error_code_t::SUCCESS;
 }
 
 void document_t::build_index(json_trie_node_element &node, const element_from_immutable &value, std::string_view key, allocator_type *allocator) {
