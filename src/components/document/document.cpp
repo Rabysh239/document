@@ -185,33 +185,15 @@ document_t::document_t(ptr ancestor, allocator_type *allocator, json_trie_node_e
           is_root_(false) {}
 
 error_code_t document_t::set_array(std::string_view json_pointer) {
-  json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer, container, key);
-  if (res == error_code_t::SUCCESS) {
-    container->insert_array(key);
-  }
-  return res;
+  return set_(json_pointer, special_type::ARRAY);
 }
 
 error_code_t document_t::set_dict(std::string_view json_pointer) {
-  json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer, container, key);
-  if (res == error_code_t::SUCCESS) {
-    container->insert_object(key);
-  }
-  return res;
+  return set_(json_pointer, special_type::OBJECT);
 }
 
 error_code_t document_t::set_deleter(std::string_view json_pointer) {
-  json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer, container, key);
-  if (res == error_code_t::SUCCESS) {
-    container->insert_deleter(key);
-  }
-  return res;
+  return set_(json_pointer, special_type::DELETER);
 }
 
 error_code_t document_t::remove(std::string_view json_pointer) {
@@ -244,6 +226,16 @@ error_code_t document_t::set_(std::string_view json_pointer, boost::intrusive_pt
   auto res = find_container_key(json_pointer, container, key);
   if (res == error_code_t::SUCCESS) {
     container->insert(key, std::forward<boost::intrusive_ptr<json_trie_node_element>>(value));
+  }
+  return res;
+}
+
+error_code_t document_t::set_(std::string_view json_pointer, special_type value) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer, container, key);
+  if (res == error_code_t::SUCCESS) {
+    inserters[static_cast<int>(value)](container, key);
   }
   return res;
 }
