@@ -3,7 +3,33 @@
 
 using namespace components::document;
 
-TEST_CASE("document::json") {
+TEST_CASE("document_t::value from json") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "count": 1,
+  "countBool": true,
+  "countDouble": 1.1,
+  "countStr": "1",
+  "countArray": [1, 2, 3, 4, 5],
+  "countDict": {
+    "even": false,
+    "five": false,
+    "odd": true,
+    "three": false
+  }
+}
+  )";
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = document_t::document_from_json(json, allocator);
+
+  REQUIRE(doc->is_exists());
+  REQUIRE(doc->is_exists("count"));
+  REQUIRE(doc->is_long("count"));
+  REQUIRE(doc->get_long("count") == 1);
+}
+
+TEST_CASE("document_t::json") {
   auto allocator = std::pmr::new_delete_resource();
   auto doc = gen_doc(1, allocator);
   auto json = doc->to_json();
@@ -16,7 +42,7 @@ TEST_CASE("document::json") {
   REQUIRE(doc->get_dict("countDict")->get_bool("odd") == doc2->get_dict("countDict")->get_bool("odd"));
 }
 
-TEST_CASE("document::serialize") {
+TEST_CASE("document_t::serialize") {
   auto allocator = std::pmr::new_delete_resource();
   auto doc1 = gen_doc(1, allocator);
   auto ser1 = serialize_document(doc1);

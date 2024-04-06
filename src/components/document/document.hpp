@@ -180,6 +180,8 @@ private:
 
   error_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
+  error_t set_(std::string_view json_pointer, ptr &value);
+
   static void build_index(json_trie_node_element& node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
 
   static bool is_array(const json_trie_node_element &node);
@@ -219,11 +221,12 @@ inline error_t document_t::set(std::string_view json_pointer, const std::string 
 //inline void document_t::set(const std::string &key, document_const_value_t value) {
 //  set_(key, value);
 //}
-//
-//template<>
-//inline void document_t::set(const std::string &key, document_ptr value) {
-//  set_(key, value->value_);
-//}
+
+template<>
+inline error_t document_t::set(std::string_view json_pointer, document_ptr value) {
+  ancestors_.push_back(value);
+  set_(json_pointer, value);
+}
 //
 //template<class T>
 //document_ptr make_document(const std::string &key, T value) {
