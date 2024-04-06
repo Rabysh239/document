@@ -224,6 +224,16 @@ error_t document_t::set_(std::string_view json_pointer, const element_from_mutab
   return res;
 }
 
+error_t document_t::set_(std::string_view json_pointer, ptr &value) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer, container, key);
+  if (res == error_t::SUCCESS) {
+    container->insert(key, value->element_ind_);
+  }
+  return res;
+}
+
 error_t document_t::find_container_key(
         std::string_view json_pointer,
         json_trie_node_element *&container,
