@@ -292,7 +292,10 @@ TEST_CASE("document_t::remove fail when no element") {
 
 TEST_CASE("document_t::remove fail when removing array element") {
   auto json = R"(
-{ "foo": [ "bar", "qux", "baz" ] }
+{
+  "_id": "000000000000000000000001",
+  "foo": [ "bar", "qux", "baz" ]
+}
   )";
 
   auto allocator = std::pmr::new_delete_resource();
@@ -308,6 +311,7 @@ TEST_CASE("document_t::remove fail when removing array element") {
 TEST_CASE("document_t::move") {
   auto json = R"(
 {
+  "_id": "000000000000000000000001",
   "foo": {
     "bar": "baz",
     "waldo": "fred"
@@ -319,6 +323,7 @@ TEST_CASE("document_t::move") {
   )";
   auto res_json = R"(
 {
+  "_id": "000000000000000000000001",
   "foo": {
     "bar": "baz"
   },
@@ -365,7 +370,10 @@ TEST_CASE("document_t::move fail when no element") {
 
 TEST_CASE("document_t::move fail when moving array element") {
   auto json = R"(
-{ "foo": [ "all", "grass", "cows", "eat" ] }
+{
+  "_id": "000000000000000000000001",
+  "foo": [ "bar", "qux", "baz" ]
+}
   )";
 
   auto allocator = std::pmr::new_delete_resource();
