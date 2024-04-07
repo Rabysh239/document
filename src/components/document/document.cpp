@@ -51,7 +51,7 @@ bool document_t::is_valid() const {
 }
 
 std::size_t document_t::count(std::string_view json_pointer) const {
-  const auto value_ptr = element_ind_->find_node_const(json_pointer);
+  const auto value_ptr = element_ind_->find_node_const(json_pointer).first;
   if (value_ptr == nullptr) {
     return 0;
   }
@@ -59,11 +59,11 @@ std::size_t document_t::count(std::string_view json_pointer) const {
 }
 
 bool document_t::is_exists(std::string_view json_pointer) const {
-  return element_ind_->find_node_const(json_pointer) != nullptr;
+  return element_ind_->find_node_const(json_pointer).first != nullptr;
 }
 
 bool document_t::is_null(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->find_node_const(json_pointer);
+  const auto node_ptr = element_ind_->find_node_const(json_pointer).first;
   if (node_ptr == nullptr) {
     return false;
   }
@@ -82,12 +82,12 @@ bool document_t::is_double(std::string_view json_pointer) const { return is_as<d
 bool document_t::is_string(std::string_view json_pointer) const { return is_as<std::string_view>(json_pointer); }
 
 bool document_t::is_array(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->find_node(json_pointer);
+  const auto node_ptr = element_ind_->find_node(json_pointer).first;
   return node_ptr != nullptr && is_array(*node_ptr);
 }
 
 bool document_t::is_dict(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->find_node(json_pointer);
+  const auto node_ptr = element_ind_->find_node(json_pointer).first;
   return node_ptr != nullptr && is_object(*node_ptr);
 }
 
@@ -104,7 +104,7 @@ std::pmr::string document_t::get_string(std::string_view json_pointer) const {
 }
 
 document_t::ptr document_t::get_array(std::string_view json_pointer) {
-  const auto node_ptr = element_ind_->find_node(json_pointer);
+  const auto node_ptr = element_ind_->find_node(json_pointer).first;
   if (node_ptr == nullptr || !is_array(*node_ptr)) {
     return nullptr; // temporarily
   }
@@ -112,7 +112,7 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
 }
 
 document_t::ptr document_t::get_dict(std::string_view json_pointer) {
-  const auto node_ptr = element_ind_->find_node(json_pointer);
+  const auto node_ptr = element_ind_->find_node(json_pointer).first;
   if (node_ptr == nullptr || !is_object(*node_ptr)) {
     return nullptr; // temporarily
   }
@@ -260,11 +260,14 @@ error_code_t document_t::find_container_key(
 ) {
   size_t pos = json_pointer.find_last_of('/');
   if (pos == std::string::npos) {
-    container = element_ind_.get();
-    key = json_pointer;
+    return error_code_t::INVALID_JSON_POINTER;
   } else {
     auto container_json_pointer = json_pointer.substr(0, pos);
-    container = element_ind_->find_node(container_json_pointer);
+    auto node_error = element_ind_->find_node(container_json_pointer);
+    if (node_error.second) {
+      return error_code_t::INVALID_JSON_POINTER;
+    }
+    container = node_error.first;
     key = json_pointer.substr(pos + 1);
   }
   if (container == nullptr || container->is_terminal()) {
@@ -281,22 +284,22 @@ error_code_t document_t::find_container_key(
   return error_code_t::SUCCESS;
 }
 
-void document_t::build_index(json_trie_node_element &node, const element_from_immutable &value, std::string_view key, allocator_type *allocator) {
+void document_t::build_index(json_trie_node_element *node, const element_from_immutable &value, std::string_view key, allocator_type *allocator) {
   if (value.is_object()) {
-    node.insert_object(key);
+    auto next = node->insert_object(key);
     const auto obj = value.get_object();
     for (auto &it : obj) {
-      build_index(*node.find_node(key), it.value, it.key, allocator);
+      build_index(next, it.value, it.key, allocator);
     }
   } else if (value.is_array()) {
-    node.insert_array(key);
+    auto next = node->insert_array(key);
     const auto arr = value.get_array();
     int i = 0;
     for (auto it: arr) {
-      build_index(*node.find_node(key), it, create_pmr_string(i++, allocator), allocator);
+      build_index(next, it, create_pmr_string(i++, allocator), allocator);
     }
   } else {
-    node.insert(key, value);
+    node->insert(key, value);
   }
 }
 
@@ -310,7 +313,7 @@ document_t::ptr document_t::document_from_json(const std::string &json, document
   simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, *res->immut_src_);
   walk_document(builder, tree);
   for (auto &it : res->immut_src_->root().get_object()) {
-    build_index(*res->element_ind_, it.value, it.key, allocator);
+    build_index(res->element_ind_.get(), it.value, it.key, allocator);
   }
   return res;
 }

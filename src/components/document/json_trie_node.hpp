@@ -99,9 +99,9 @@ public:
 
   json_trie_node &operator=(const json_trie_node &) = delete;
 
-  const json_trie_node<FirstType, SecondType> *find_node_const(std::string_view json_pointer) const;
+  std::pair<const json_trie_node<FirstType, SecondType> *, bool> find_node_const(std::string_view json_pointer) const;
 
-  json_trie_node<FirstType, SecondType> *find_node(std::string_view json_pointer);
+  std::pair<json_trie_node<FirstType, SecondType> *, bool> find_node(std::string_view json_pointer);
 
   const FirstType *get_value_first() const;
 
@@ -113,9 +113,9 @@ public:
 
   void insert(std::string_view key, boost::intrusive_ptr<json_trie_node> &&value);
 
-  void insert_array(std::string_view key);
+  json_trie_node<FirstType, SecondType> *insert_array(std::string_view key);
 
-  void insert_object(std::string_view key);
+  json_trie_node<FirstType, SecondType> *insert_object(std::string_view key);
 
   void insert_deleter(std::string_view key);
 
@@ -153,6 +153,12 @@ public:
   );
 
 private:
+  using map_type = absl::flat_hash_map<
+          std::pmr::string,
+          boost::intrusive_ptr<json_trie_node>,
+          string_view_hash, string_view_eq,
+          std::pmr::polymorphic_allocator<std::pair<const std::pmr::string, boost::intrusive_ptr<json_trie_node>>>
+  >;
   enum json_type {
     OBJECT,
     ARRAY,
@@ -168,12 +174,7 @@ private:
   explicit json_trie_node(allocator_type *allocator, value_type value, bool is_first, json_type type);
 
   allocator_type *allocator_;
-  absl::flat_hash_map<
-          std::pmr::string,
-          boost::intrusive_ptr<json_trie_node>,
-          string_view_hash, string_view_eq,
-          std::pmr::polymorphic_allocator<std::pair<const std::pmr::string, boost::intrusive_ptr<json_trie_node>>>
-  > children_;
+  map_type children_;
   value_type value_;
   bool is_first_;
   json_type type_;
@@ -248,22 +249,44 @@ json_trie_node<FirstType, SecondType>::json_trie_node(const json_trie_node &othe
 }
 
 template<typename FirstType, typename SecondType>
-const json_trie_node<FirstType, SecondType> *
+std::pair<const json_trie_node<FirstType, SecondType> *, bool>
 json_trie_node<FirstType, SecondType>::find_node_const(std::string_view json_pointer) const {
   const auto *current = this;
   for (auto word: string_splitter(json_pointer, '/')) {
-    auto next = current->children_.find(word);
+    typename map_type::const_iterator next;
+    size_t escape = word.find('~');
+    if (escape != std::string_view::npos) {
+      std::string unescaped(word);
+      do {
+        switch (unescaped[escape+1]) {
+          case '0':
+            unescaped.replace(escape, 2, "~");
+            break;
+          case '1':
+            unescaped.replace(escape, 2, "/");
+            break;
+          default:
+            return {nullptr, true};
+        }
+        escape = unescaped.find('~', escape+1);
+      } while (escape != std::string::npos);
+      next = current->children_.find(unescaped);
+    } else {
+      next = current->children_.find(word);
+    }
     if (next == current->children_.end()) {
-      return nullptr;
+      return {nullptr, false};
     }
     current = next->second.get();
   }
-  return current;
+  return {current, false};
 }
 
 template<typename FirstType, typename SecondType>
-json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::find_node(std::string_view json_pointer) {
-  return const_cast<json_trie_node<FirstType, SecondType> *>(find_node_const(json_pointer));
+std::pair<json_trie_node<FirstType, SecondType> *, bool>
+json_trie_node<FirstType, SecondType>::find_node(std::string_view json_pointer) {
+  auto node_error = find_node_const(json_pointer);
+  return {const_cast<json_trie_node<FirstType, SecondType> *>(node_error.first), node_error.second};
 }
 
 template<typename FirstType, typename SecondType>
@@ -299,19 +322,19 @@ void json_trie_node<FirstType, SecondType>::insert(std::string_view key, const S
 }
 
 template<typename FirstType, typename SecondType>
-void json_trie_node<FirstType, SecondType>::insert_array(std::string_view key) {
+json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::insert_array(std::string_view key) {
   auto node_value = nullptr;
   auto is_first = false;
-  children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
-          json_trie_node(allocator_, {.second = node_value}, is_first, ARRAY);
+  return (children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
+          json_trie_node(allocator_, {.second = node_value}, is_first, ARRAY)).get();
 }
 
 template<typename FirstType, typename SecondType>
-void json_trie_node<FirstType, SecondType>::insert_object(std::string_view key) {
+json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::insert_object(std::string_view key) {
   auto node_value = nullptr;
   auto is_first = false;
-  children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
-          json_trie_node(allocator_, {.second = node_value}, is_first, OBJECT);
+  return (children_[key] = new(allocator_->allocate(sizeof(json_trie_node)))
+          json_trie_node(allocator_, {.second = node_value}, is_first, OBJECT)).get();
 }
 
 template<typename FirstType, typename SecondType>
