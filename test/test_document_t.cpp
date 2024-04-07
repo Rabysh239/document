@@ -11,38 +11,38 @@ TEST_CASE("document_t::is/get value") {
   REQUIRE(doc->is_exists());
   REQUIRE(doc->is_dict());
 
-  REQUIRE(doc->is_exists("count"));
-  REQUIRE(doc->is_long("count"));
-  REQUIRE(doc->get_ulong("count") == 1);
+  REQUIRE(doc->is_exists("/count"));
+  REQUIRE(doc->is_long("/count"));
+  REQUIRE(doc->get_ulong("/count") == 1);
 
-  REQUIRE(doc->is_exists("countStr"));
-  REQUIRE(doc->is_string("countStr"));
-  REQUIRE(doc->get_string("countStr") == "1");
+  REQUIRE(doc->is_exists("/countStr"));
+  REQUIRE(doc->is_string("/countStr"));
+  REQUIRE(doc->get_string("/countStr") == "1");
 
-  REQUIRE(doc->is_exists("countArray"));
-  REQUIRE(doc->is_array("countArray"));
+  REQUIRE(doc->is_exists("/countArray"));
+  REQUIRE(doc->is_array("/countArray"));
 
-  REQUIRE(doc->is_exists("countDict"));
-  REQUIRE(doc->is_dict("countDict"));
+  REQUIRE(doc->is_exists("/countDict"));
+  REQUIRE(doc->is_dict("/countDict"));
 
-  REQUIRE(doc->is_exists("countArray/1"));
-  REQUIRE(doc->is_long("countArray/1"));
-  REQUIRE(doc->get_ulong("countArray/1") == 2);
+  REQUIRE(doc->is_exists("/countArray/1"));
+  REQUIRE(doc->is_long("/countArray/1"));
+  REQUIRE(doc->get_ulong("/countArray/1") == 2);
 
-  REQUIRE(doc->is_exists("countDict/even"));
-  REQUIRE(doc->is_bool("countDict/even"));
-  REQUIRE(doc->get_bool("countDict/even") == false);
+  REQUIRE(doc->is_exists("/countDict/even"));
+  REQUIRE(doc->is_bool("/countDict/even"));
+  REQUIRE(doc->get_bool("/countDict/even") == false);
 
-  REQUIRE_FALSE(doc->is_exists("other"));
-  REQUIRE_FALSE(doc->is_exists("countArray/10"));
-  REQUIRE_FALSE(doc->is_exists("countDict/other"));
+  REQUIRE_FALSE(doc->is_exists("/other"));
+  REQUIRE_FALSE(doc->is_exists("/countArray/10"));
+  REQUIRE_FALSE(doc->is_exists("/countDict/other"));
 }
 
 TEST_CASE("document_t::set") {
   auto allocator = std::pmr::new_delete_resource();
   auto doc = gen_doc(1, allocator);
 
-  std::string_view key("newValue");
+  std::string_view key("/newValue");
   std::string_view value("new value");
   doc->set(key, value);
 
@@ -70,23 +70,23 @@ TEST_CASE("document_t::set doc") {
   auto doc = gen_doc(1, allocator);
   auto nestedDoc = document_t::document_from_json(json, allocator);
 
-  std::string_view key("nestedDoc");
+  std::string_view key("/nestedDoc");
   doc->set(key, nestedDoc);
 
   int64_t value = 3;
-  doc->set("nestedDoc/other_number", value);
+  doc->set("/nestedDoc/other_number", value);
 
-  REQUIRE(doc->is_exists("nestedDoc"));
-  REQUIRE(doc->is_dict("nestedDoc"));
-  REQUIRE(doc->count("nestedDoc") == 2);
+  REQUIRE(doc->is_exists("/nestedDoc"));
+  REQUIRE(doc->is_dict("/nestedDoc"));
+  REQUIRE(doc->count("/nestedDoc") == 2);
 
-  REQUIRE(doc->is_exists("nestedDoc/number"));
-  REQUIRE(doc->is_long("nestedDoc/number"));
-  REQUIRE(doc->get_long("nestedDoc/number") == 2);
+  REQUIRE(doc->is_exists("/nestedDoc/number"));
+  REQUIRE(doc->is_long("/nestedDoc/number"));
+  REQUIRE(doc->get_long("/nestedDoc/number") == 2);
 
-  REQUIRE(doc->is_exists("nestedDoc/other_number"));
-  REQUIRE(doc->is_long("nestedDoc/other_number"));
-  REQUIRE(doc->get_long("nestedDoc/other_number") == 3);
+  REQUIRE(doc->is_exists("/nestedDoc/other_number"));
+  REQUIRE(doc->is_long("/nestedDoc/other_number"));
+  REQUIRE(doc->get_long("/nestedDoc/other_number") == 3);
 }
 
 TEST_CASE("document_t::merge") {
@@ -115,46 +115,46 @@ TEST_CASE("document_t::merge") {
   auto target_doc = document_t::document_from_json(target, allocator);
   auto patch_doc = document_t::document_from_json(patch, allocator);
 
-  patch_doc->set_deleter("author/familyName");
+  patch_doc->set_deleter("/author/familyName");
 
   auto res = document_t::merge(target_doc, patch_doc, allocator);
 
   REQUIRE(res->is_exists());
   REQUIRE(res->count() == 6);
 
-  REQUIRE(res->is_exists("_id"));
-  REQUIRE(res->is_string("_id"));
-  REQUIRE(res->get_string("_id") == "000000000000000000000001");
+  REQUIRE(res->is_exists("/_id"));
+  REQUIRE(res->is_string("/_id"));
+  REQUIRE(res->get_string("/_id") == "000000000000000000000001");
 
-  REQUIRE(res->is_exists("title"));
-  REQUIRE(res->is_string("title"));
-  REQUIRE(res->get_string("title") == "Hello!");
+  REQUIRE(res->is_exists("/title"));
+  REQUIRE(res->is_string("/title"));
+  REQUIRE(res->get_string("/title") == "Hello!");
 
-  REQUIRE(res->is_exists("author"));
-  REQUIRE(res->is_dict("author"));
-  REQUIRE(res->count("author") == 1);
+  REQUIRE(res->is_exists("/author"));
+  REQUIRE(res->is_dict("/author"));
+  REQUIRE(res->count("/author") == 1);
 
-  REQUIRE(res->is_exists("author/givenName"));
-  REQUIRE(res->is_string("author/givenName"));
-  REQUIRE(res->get_string("author/givenName") == "John");
+  REQUIRE(res->is_exists("/author/givenName"));
+  REQUIRE(res->is_string("/author/givenName"));
+  REQUIRE(res->get_string("/author/givenName") == "John");
 
-  REQUIRE_FALSE(res->is_exists("author/familyName"));
+  REQUIRE_FALSE(res->is_exists("/author/familyName"));
 
-  REQUIRE(res->is_exists("tags"));
-  REQUIRE(res->is_array("tags"));
-  REQUIRE(res->count("tags") == 1);
+  REQUIRE(res->is_exists("/tags"));
+  REQUIRE(res->is_array("/tags"));
+  REQUIRE(res->count("/tags") == 1);
 
-  REQUIRE(res->is_exists("tags/0"));
-  REQUIRE(res->is_string("tags/0"));
-  REQUIRE(res->get_string("tags/0") == "example");
+  REQUIRE(res->is_exists("/tags/0"));
+  REQUIRE(res->is_string("/tags/0"));
+  REQUIRE(res->get_string("/tags/0") == "example");
 
-  REQUIRE(res->is_exists("content"));
-  REQUIRE(res->is_string("content"));
-  REQUIRE(res->get_string("content") == "This will be unchanged");
+  REQUIRE(res->is_exists("/content"));
+  REQUIRE(res->is_string("/content"));
+  REQUIRE(res->get_string("/content") == "This will be unchanged");
 
-  REQUIRE(res->is_exists("phoneNumber"));
-  REQUIRE(res->is_string("phoneNumber"));
-  REQUIRE(res->get_string("phoneNumber") == "+01-123-456-7890");
+  REQUIRE(res->is_exists("/phoneNumber"));
+  REQUIRE(res->is_string("/phoneNumber"));
+  REQUIRE(res->get_string("/phoneNumber") == "+01-123-456-7890");
 }
 
 TEST_CASE("document_t::is_equals_documents") {
@@ -180,8 +180,8 @@ TEST_CASE("document_t::is_equals_documents") {
   auto doc2 = document_t::document_from_json(json, allocator);
 
   int64_t int64_t_value = 2;
-  doc1->set("number", int64_t_value);
-  doc2->set("number", int64_t_value);
+  doc1->set("/number", int64_t_value);
+  doc2->set("/number", int64_t_value);
 
   REQUIRE(document_t::is_equals_documents(doc1, doc2));
 }
@@ -210,8 +210,8 @@ TEST_CASE("document_t::is_equals_documents fail when different types") {
 
   int64_t int64_t_value = 2;
   uint64_t uint64_t_value = 2;
-  doc1->set("number", int64_t_value);
-  doc2->set("number", uint64_t_value);
+  doc1->set("/number", int64_t_value);
+  doc2->set("/number", uint64_t_value);
 
   REQUIRE_FALSE(document_t::is_equals_documents(doc1, doc2));
 }
@@ -240,8 +240,8 @@ TEST_CASE("document_t::is_equals_documents fail when different values") {
 
   int64_t int64_t_value = 2;
   int64_t int64_t_other_value = 3;
-  doc1->set("number", int64_t_value);
-  doc2->set("number", int64_t_other_value);
+  doc1->set("/number", int64_t_value);
+  doc2->set("/number", int64_t_other_value);
 
   REQUIRE_FALSE(document_t::is_equals_documents(doc1, doc2));
 }
@@ -266,7 +266,7 @@ TEST_CASE("document_t::remove") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(res_json, allocator);
 
-  REQUIRE(doc->remove("baz") == error_code_t::SUCCESS);
+  REQUIRE(doc->remove("/baz") == error_code_t::SUCCESS);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -285,7 +285,7 @@ TEST_CASE("document_t::remove fail when no element") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(json, allocator);
 
-  REQUIRE(doc->remove("bar") == error_code_t::NO_SUCH_ELEMENT);
+  REQUIRE(doc->remove("/bar") == error_code_t::NO_SUCH_ELEMENT);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -303,7 +303,7 @@ TEST_CASE("document_t::remove fail when removing array element") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(json, allocator);
 
-  REQUIRE(doc->remove("foo/1") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
+  REQUIRE(doc->remove("/foo/1") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -339,7 +339,7 @@ TEST_CASE("document_t::move") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(res_json, allocator);
 
-  REQUIRE(doc->move("foo/waldo", "qux/thud") == error_code_t::SUCCESS);
+  REQUIRE(doc->move("/foo/waldo", "/qux/thud") == error_code_t::SUCCESS);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -363,7 +363,7 @@ TEST_CASE("document_t::move fail when no element") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(json, allocator);
 
-  REQUIRE(doc->move("foo/wald", "qux/thud") == error_code_t::NO_SUCH_ELEMENT);
+  REQUIRE(doc->move("/foo/wald", "/qux/thud") == error_code_t::NO_SUCH_ELEMENT);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -381,7 +381,7 @@ TEST_CASE("document_t::move fail when moving array element") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(json, allocator);
 
-  REQUIRE(doc->move("foo/1", "foo/3") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
+  REQUIRE(doc->move("/foo/1", "/foo/3") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -418,7 +418,7 @@ TEST_CASE("document_t::copy") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(res_json, allocator);
 
-  REQUIRE(doc->copy("foo/waldo", "qux/thud") == error_code_t::SUCCESS);
+  REQUIRE(doc->copy("/foo/waldo", "/qux/thud") == error_code_t::SUCCESS);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -457,9 +457,68 @@ TEST_CASE("document_t::copy independent") {
   auto doc = document_t::document_from_json(json, allocator);
   auto res_doc = document_t::document_from_json(res_json, allocator);
 
-  REQUIRE(doc->copy("foo", "qux/foo") == error_code_t::SUCCESS);
+  REQUIRE(doc->copy("/foo", "/qux/foo") == error_code_t::SUCCESS);
 
-  REQUIRE(doc->remove("qux/foo/waldo") == error_code_t::SUCCESS);
+  REQUIRE(doc->remove("/qux/foo/waldo") == error_code_t::SUCCESS);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
+
+TEST_CASE("document_t:: json pointer") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": ["bar", "baz"],
+  "": 0,
+  "a/b": 1,
+  "c%d": 2,
+  "e^f": 3,
+  "g|h": 4,
+  "i\\j": 5,
+  "k\"l": 6,
+  " ": 7,
+  "m~n": 8
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+
+  REQUIRE(document_t::is_equals_documents(doc->get_dict(""), doc));
+
+  REQUIRE(doc->get_array("/foo")->to_json() == "[\"bar\",\"baz\"]");
+
+  REQUIRE(doc->get_string("/foo/0") == "bar");
+
+  REQUIRE(doc->is_long("/"));
+  REQUIRE(doc->get_long("/") == 0);
+
+  REQUIRE(doc->is_long("/a~1b"));
+  REQUIRE(doc->get_long("/a~1b") == 1);
+
+  REQUIRE(doc->is_long("/c%d"));
+  REQUIRE(doc->get_long("/c%d") == 2);
+
+  REQUIRE(doc->is_long("/e^f"));
+  REQUIRE(doc->get_long("/e^f") == 3);
+
+  REQUIRE(doc->is_long("/g|h"));
+  REQUIRE(doc->get_long("/g|h") == 4);
+
+  REQUIRE(doc->is_long("/i\\j"));
+  REQUIRE(doc->get_long("/i\\j") == 5);
+
+  REQUIRE(doc->is_long("/k\"l"));
+  REQUIRE(doc->get_long("/k\"l") == 6);
+
+  REQUIRE(doc->is_long("/ "));
+  REQUIRE(doc->get_long("/ ") == 7);
+
+  REQUIRE(doc->is_long("/m~0n"));
+  REQUIRE(doc->get_long("/m~0n") == 8);
+
+  REQUIRE(doc->set("m~0n", "error") == error_code_t::INVALID_JSON_POINTER);
+
+  REQUIRE(doc->set("/m~2n/0", "error") == error_code_t::INVALID_JSON_POINTER);
 }
