@@ -43,7 +43,7 @@ public:
 
   document_t(const document_t &) = delete;
 
-  document_t &operator=(document_t &&) noexcept;
+  document_t &operator=(document_t &&) noexcept = delete;
 
   document_t &operator=(const document_t &) = delete;
 
@@ -73,6 +73,8 @@ public:
   error_code_t remove(std::string_view json_pointer);
 
   error_code_t move(std::string_view json_pointer_from, std::string_view json_pointer_to);
+
+  error_code_t copy(std::string_view json_pointer_from, std::string_view json_pointer_to);
 
 //  document_id_t id() const;
 

@@ -385,3 +385,81 @@ TEST_CASE("document_t::move fail when moving array element") {
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
+
+TEST_CASE("document_t::copy") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": {
+    "bar": "baz",
+    "waldo": "fred"
+  },
+  "qux": {
+    "corge": "grault"
+  }
+}
+  )";
+  auto res_json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": {
+    "bar": "baz",
+    "waldo": "fred"
+  },
+  "qux": {
+    "corge": "grault",
+    "thud": "fred"
+  }
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(res_json, allocator);
+
+  REQUIRE(doc->copy("foo/waldo", "qux/thud") == error_code_t::SUCCESS);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
+
+TEST_CASE("document_t::copy independent") {
+  auto json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": {
+    "bar": "baz",
+    "waldo": "fred"
+  },
+  "qux": {
+    "corge": "grault"
+  }
+}
+  )";
+  auto res_json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": {
+    "bar": "baz",
+    "waldo": "fred"
+  },
+  "qux": {
+    "corge": "grault",
+    "foo": {
+        "bar": "baz"
+    }
+  }
+}
+  )";
+
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(res_json, allocator);
+
+  REQUIRE(doc->copy("foo", "qux/foo") == error_code_t::SUCCESS);
+
+  REQUIRE(doc->remove("qux/foo/waldo") == error_code_t::SUCCESS);
+
+  REQUIRE(document_t::is_equals_documents(doc, res_doc));
+}
