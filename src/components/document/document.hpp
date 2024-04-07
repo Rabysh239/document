@@ -22,6 +22,7 @@ enum class error_code_t {
   NOT_APPLICABLE_TO_ARRAY,
   NO_SUCH_ELEMENT,
   INVALID_INDEX,
+  INVALID_JSON_POINTER,
 };
 
 enum class special_type {
@@ -116,7 +117,7 @@ public:
 
   template<class T>
   bool is_as(std::string_view json_pointer) const {
-    const auto node_ptr = element_ind_->find_node_const(json_pointer);
+    const auto node_ptr = element_ind_->find_node_const(json_pointer).first;
     if (node_ptr == nullptr || !node_ptr->is_terminal()) {
       return false;
     }
@@ -126,7 +127,7 @@ public:
 
   template<class T>
   T get_as(std::string_view json_pointer) const {
-    const auto node_ptr = element_ind_->find_node_const(json_pointer);
+    const auto node_ptr = element_ind_->find_node_const(json_pointer).first;
     if (node_ptr == nullptr || !node_ptr->is_terminal()) {
       return T();
     }
@@ -207,7 +208,7 @@ private:
 
   error_code_t remove_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &node);
 
-  static void build_index(json_trie_node_element& node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
+  static void build_index(json_trie_node_element *node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
 
   static bool is_array(const json_trie_node_element &node);
   static bool is_object(const json_trie_node_element &node);
