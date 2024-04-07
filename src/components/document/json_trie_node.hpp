@@ -93,9 +93,9 @@ public:
 
   json_trie_node(json_trie_node &&) noexcept;
 
-  json_trie_node(const json_trie_node &) = delete;
+  json_trie_node(const json_trie_node &);
 
-  json_trie_node &operator=(json_trie_node &&) noexcept;
+  json_trie_node &operator=(json_trie_node &&) noexcept = delete;
 
   json_trie_node &operator=(const json_trie_node &) = delete;
 
@@ -119,7 +119,9 @@ public:
 
   void insert_deleter(std::string_view key);
 
-  boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> erase(std::string_view json_pointer);
+  boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> erase(std::string_view key);
+
+  boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> make_deep_copy(std::string_view key);
 
   size_t size() const;
 
@@ -185,6 +187,8 @@ private:
           std::pmr::string (*)(FirstType *, std::pmr::memory_resource *),
           std::pmr::string (*)(SecondType *, std::pmr::memory_resource *)
   ) const;
+
+  boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> make_deep_copy_(json_trie_node<FirstType, SecondType> *node);
 };
 
 template<typename FirstType, typename SecondType>
@@ -230,23 +234,17 @@ json_trie_node<FirstType, SecondType>::json_trie_node(json_trie_node &&other) no
 }
 
 template<typename FirstType, typename SecondType>
-json_trie_node<FirstType, SecondType> &
-json_trie_node<FirstType, SecondType>::operator=(json_trie_node &&other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-  allocator_ = other.allocator_;
-  children_ = std::move(other.children_);
-  value_ = std::move(other.value_);
-  is_first_ = other.is_first_;
-  type_ = other.type_;
-  other.allocator_ = nullptr;
-  if (other.is_first_) {
-    value_.first = nullptr;
+json_trie_node<FirstType, SecondType>::json_trie_node(const json_trie_node &other)
+        : allocator_intrusive_ref_counter(other.allocator_),
+          allocator_(other.allocator_),
+          children_(other.children_.size()),
+          is_first_(other.is_first_),
+          type_(other.type_) {
+  if (is_first_) {
+    value_.first = is_terminal() ? new(allocator_->allocate(sizeof(FirstType))) FirstType(*other.value_.first) : nullptr;
   } else {
-    value_.second = nullptr;
+    value_.second = is_terminal() ? new(allocator_->allocate(sizeof(SecondType))) SecondType(*other.value_.second) : nullptr;
   }
-  return *this;
 }
 
 template<typename FirstType, typename SecondType>
@@ -341,6 +339,16 @@ boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> json_trie_node<First
 }
 
 template<typename FirstType, typename SecondType>
+boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>
+json_trie_node<FirstType, SecondType>::make_deep_copy(std::string_view key) {
+  auto found = children_.find(key);
+  if (found == children_.end()) {
+    return nullptr;
+  }
+  return make_deep_copy_(found->second.get());
+}
+
+template<typename FirstType, typename SecondType>
 size_t json_trie_node<FirstType, SecondType>::size() const {
   return children_.size();
 }
@@ -376,6 +384,9 @@ json_trie_node<FirstType, SecondType>::to_json(
   }
   if (is_array()) {
     return to_json_array(to_json_first, to_json_second);
+  }
+  if (is_deleter()) {
+    return {"DELETER", allocator_};
   }
   return is_first_ ? to_json_first(value_.first, allocator_) : to_json_second(value_.second, allocator_);
 }
@@ -489,4 +500,14 @@ std::pmr::string json_trie_node<FirstType, SecondType>::to_json_array(
     res.append(it->to_json(to_json_first, to_json_second));
   }
   return res.append("]");
+}
+
+template<typename FirstType, typename SecondType>
+boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>
+json_trie_node<FirstType, SecondType>::make_deep_copy_(json_trie_node<FirstType, SecondType> *node) {
+  auto node_copy = new(allocator_->allocate(sizeof(json_trie_node))) json_trie_node(*node);
+  for (auto &it : node->children_) {
+    node_copy->children_[it.first] = it.second->make_deep_copy_(it.second.get());
+  }
+  return node_copy;
 }
