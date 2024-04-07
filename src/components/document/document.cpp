@@ -36,24 +36,6 @@ document_t::document_t(document_t &&other) noexcept
   other.is_root_ = false;
 }
 
-document_t &document_t::operator=(document_t &&other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-  mut_src_ = other.mut_src_;
-  immut_src_ = other.immut_src_;
-  builder_ = std::move(other.builder_);
-  allocator_ = other.allocator_;
-  element_ind_ = std::move(other.element_ind_);
-  ancestors_ = std::move(other.ancestors_);
-  is_root_ = other.is_root_;
-  other.allocator_ = nullptr;
-  other.mut_src_ = nullptr;
-  other.immut_src_ = nullptr;
-  other.is_root_ = false;
-  return *this;
-}
-
 document_t::document_t(document_t::allocator_type *allocator, bool is_root)
         : allocator_intrusive_ref_counter(allocator),
           allocator_(allocator),
@@ -202,12 +184,26 @@ error_code_t document_t::remove(std::string_view json_pointer) {
 }
 
 error_code_t document_t::move(std::string_view json_pointer_from, std::string_view json_pointer_to) {
-  boost::intrusive_ptr<json_trie_node_element> value;
-  auto res = remove_(json_pointer_from, value);
+  boost::intrusive_ptr<json_trie_node_element> node;
+  auto res = remove_(json_pointer_from, node);
   if (res != error_code_t::SUCCESS) {
     return res;
   }
-  return set_(json_pointer_to, std::move(value));
+  return set_(json_pointer_to, std::move(node));
+}
+
+error_code_t document_t::copy(std::string_view json_pointer_from, std::string_view json_pointer_to) {
+  json_trie_node_element *container;
+  std::pmr::string key(allocator_);
+  auto res = find_container_key(json_pointer_from, container, key);
+  if (res != error_code_t::SUCCESS) {
+    return res;
+  }
+  auto node = container->make_deep_copy(key);
+  if (node == nullptr) {
+    return error_code_t::NO_SUCH_ELEMENT;
+  }
+  return set_(json_pointer_to, std::move(node));
 }
 
 error_code_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
