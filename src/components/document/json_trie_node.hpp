@@ -99,9 +99,7 @@ public:
 
   json_trie_node &operator=(const json_trie_node &) = delete;
 
-  std::pair<const json_trie_node<FirstType, SecondType> *, bool> find_node_const(std::string_view json_pointer) const;
-
-  std::pair<json_trie_node<FirstType, SecondType> *, bool> find_node(std::string_view json_pointer);
+  const json_trie_node<FirstType, SecondType> *find(std::string_view key) const;
 
   const FirstType *get_value_first() const;
 
@@ -249,44 +247,12 @@ json_trie_node<FirstType, SecondType>::json_trie_node(const json_trie_node &othe
 }
 
 template<typename FirstType, typename SecondType>
-std::pair<const json_trie_node<FirstType, SecondType> *, bool>
-json_trie_node<FirstType, SecondType>::find_node_const(std::string_view json_pointer) const {
-  const auto *current = this;
-  for (auto word: string_splitter(json_pointer, '/')) {
-    typename map_type::const_iterator next;
-    size_t escape = word.find('~');
-    if (escape != std::string_view::npos) {
-      std::string unescaped(word);
-      do {
-        switch (unescaped[escape+1]) {
-          case '0':
-            unescaped.replace(escape, 2, "~");
-            break;
-          case '1':
-            unescaped.replace(escape, 2, "/");
-            break;
-          default:
-            return {nullptr, true};
-        }
-        escape = unescaped.find('~', escape+1);
-      } while (escape != std::string::npos);
-      next = current->children_.find(unescaped);
-    } else {
-      next = current->children_.find(word);
-    }
-    if (next == current->children_.end()) {
-      return {nullptr, false};
-    }
-    current = next->second.get();
+const json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::find(std::string_view key) const {
+  auto res = children_.find(key);
+  if (res == children_.end()) {
+    return nullptr;
   }
-  return {current, false};
-}
-
-template<typename FirstType, typename SecondType>
-std::pair<json_trie_node<FirstType, SecondType> *, bool>
-json_trie_node<FirstType, SecondType>::find_node(std::string_view json_pointer) {
-  auto node_error = find_node_const(json_pointer);
-  return {const_cast<json_trie_node<FirstType, SecondType> *>(node_error.first), node_error.second};
+  return res->second.get();
 }
 
 template<typename FirstType, typename SecondType>

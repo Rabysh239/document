@@ -117,7 +117,7 @@ public:
 
   template<class T>
   bool is_as(std::string_view json_pointer) const {
-    const auto node_ptr = element_ind_->find_node_const(json_pointer).first;
+    const auto node_ptr = find_node_const(json_pointer).first;
     if (node_ptr == nullptr || !node_ptr->is_terminal()) {
       return false;
     }
@@ -127,7 +127,7 @@ public:
 
   template<class T>
   T get_as(std::string_view json_pointer) const {
-    const auto node_ptr = element_ind_->find_node_const(json_pointer).first;
+    const auto node_ptr = find_node_const(json_pointer).first;
     if (node_ptr == nullptr || !node_ptr->is_terminal()) {
       return T();
     }
@@ -194,12 +194,6 @@ private:
           +[](json_trie_node_element *container, std::string_view key) { container->insert_deleter(key); },
   };
 
-  error_code_t find_container_key(
-          std::string_view json_pointer,
-          json_trie_node_element *&container,
-          std::pmr::string &key
-  );
-
   error_code_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
 
   error_code_t set_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &&value);
@@ -207,6 +201,16 @@ private:
   error_code_t set_(std::string_view json_pointer, special_type value);
 
   error_code_t remove_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &node);
+
+  std::pair<json_trie_node_element *, error_code_t> find_node(std::string_view json_pointer);
+
+  std::pair<const json_trie_node_element *, error_code_t> find_node_const(std::string_view json_pointer) const;
+
+  error_code_t find_container_key(
+          std::string_view json_pointer,
+          json_trie_node_element *&container,
+          std::pmr::string &key
+  );
 
   static void build_index(json_trie_node_element *node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
 
