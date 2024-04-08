@@ -51,7 +51,7 @@ bool document_t::is_valid() const {
 }
 
 std::size_t document_t::count(std::string_view json_pointer) const {
-  const auto value_ptr = element_ind_->find_node_const(json_pointer).first;
+  const auto value_ptr = find_node_const(json_pointer).first;
   if (value_ptr == nullptr) {
     return 0;
   }
@@ -59,11 +59,11 @@ std::size_t document_t::count(std::string_view json_pointer) const {
 }
 
 bool document_t::is_exists(std::string_view json_pointer) const {
-  return element_ind_->find_node_const(json_pointer).first != nullptr;
+  return find_node_const(json_pointer).first != nullptr;
 }
 
 bool document_t::is_null(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->find_node_const(json_pointer).first;
+  const auto node_ptr = find_node_const(json_pointer).first;
   if (node_ptr == nullptr) {
     return false;
   }
@@ -82,12 +82,12 @@ bool document_t::is_double(std::string_view json_pointer) const { return is_as<d
 bool document_t::is_string(std::string_view json_pointer) const { return is_as<std::string_view>(json_pointer); }
 
 bool document_t::is_array(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->find_node(json_pointer).first;
+  const auto node_ptr = find_node_const(json_pointer).first;
   return node_ptr != nullptr && is_array(*node_ptr);
 }
 
 bool document_t::is_dict(std::string_view json_pointer) const {
-  const auto node_ptr = element_ind_->find_node(json_pointer).first;
+  const auto node_ptr = find_node_const(json_pointer).first;
   return node_ptr != nullptr && is_object(*node_ptr);
 }
 
@@ -104,7 +104,7 @@ std::pmr::string document_t::get_string(std::string_view json_pointer) const {
 }
 
 document_t::ptr document_t::get_array(std::string_view json_pointer) {
-  const auto node_ptr = element_ind_->find_node(json_pointer).first;
+  const auto node_ptr = find_node(json_pointer).first;
   if (node_ptr == nullptr || !is_array(*node_ptr)) {
     return nullptr; // temporarily
   }
@@ -112,7 +112,7 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
 }
 
 document_t::ptr document_t::get_dict(std::string_view json_pointer) {
-  const auto node_ptr = element_ind_->find_node(json_pointer).first;
+  const auto node_ptr = find_node(json_pointer).first;
   if (node_ptr == nullptr || !is_object(*node_ptr)) {
     return nullptr; // temporarily
   }
@@ -253,6 +253,41 @@ error_code_t document_t::remove_(std::string_view json_pointer, boost::intrusive
   return error_code_t::SUCCESS;
 }
 
+std::pair<document_t::json_trie_node_element *, error_code_t> document_t::find_node(std::string_view json_pointer) {
+  auto node_error = find_node_const(json_pointer);
+  return {const_cast<json_trie_node_element *>(node_error.first), node_error.second};
+}
+
+std::pair<const document_t::json_trie_node_element *, error_code_t> document_t::find_node_const(std::string_view json_pointer) const {
+  const auto *current = element_ind_.get();
+  for (auto key: string_splitter(json_pointer, '/')) {
+    size_t escape = key.find('~');
+    if (escape != std::string_view::npos) {
+      std::pmr::string unescaped(key, allocator_);
+      do {
+        switch (unescaped[escape + 1]) {
+          case '0':
+            unescaped.replace(escape, 2, "~");
+            break;
+          case '1':
+            unescaped.replace(escape, 2, "/");
+            break;
+          default:
+            return {nullptr, error_code_t::INVALID_JSON_POINTER};
+        }
+        escape = unescaped.find('~', escape+1);
+      } while (escape != std::string::npos);
+      current = current->find(unescaped);
+    } else {
+      current = current->find(key);
+    }
+    if (current == nullptr) {
+      return {nullptr, error_code_t::SUCCESS};
+    }
+  }
+  return {current, error_code_t::SUCCESS};
+}
+
 error_code_t document_t::find_container_key(
         std::string_view json_pointer,
         json_trie_node_element *&container,
@@ -261,15 +296,14 @@ error_code_t document_t::find_container_key(
   size_t pos = json_pointer.find_last_of('/');
   if (pos == std::string::npos) {
     return error_code_t::INVALID_JSON_POINTER;
-  } else {
-    auto container_json_pointer = json_pointer.substr(0, pos);
-    auto node_error = element_ind_->find_node(container_json_pointer);
-    if (node_error.second) {
-      return error_code_t::INVALID_JSON_POINTER;
-    }
-    container = node_error.first;
-    key = json_pointer.substr(pos + 1);
   }
+  auto container_json_pointer = json_pointer.substr(0, pos);
+  auto node_error = find_node(container_json_pointer);
+  if (node_error.second != error_code_t::SUCCESS) {
+    return node_error.second;
+  }
+  container = node_error.first;
+  key = json_pointer.substr(pos + 1);
   if (container == nullptr || container->is_terminal()) {
     return error_code_t::NO_SUCH_CONTAINER;
   }
