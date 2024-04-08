@@ -45,6 +45,10 @@ public:
   const uint64_t &get_tape(size_t json_index) const;
   const uint8_t &get_string_buf(size_t json_index) const;
   const uint8_t *get_string_buf_ptr() const;
+
+  size_t size() const;
+
+  element<T> next_element() const;
   /**
  * @private Dump the raw tape for debugging.
  *
@@ -108,7 +112,7 @@ public:
    */
   size_t capacity() const noexcept;
 
-  element<immutable_document> next_element() const noexcept;
+  size_t size_impl() const noexcept;
 
 private:
   allocator_type *allocator_;
@@ -149,7 +153,7 @@ public:
   const uint8_t &get_string_buf_impl(size_t json_index) const;
   const uint8_t *get_string_buf_ptr_impl() const;
 
-  element<mutable_document> next_element() const noexcept;
+  size_t size_impl() const noexcept;
 
 private:
   allocator_type *allocator_;
