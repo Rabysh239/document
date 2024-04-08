@@ -179,6 +179,12 @@ error_code_t document_t::set_deleter(std::string_view json_pointer) {
   return set_(json_pointer, special_type::DELETER);
 }
 
+error_code_t document_t::set_null(std::string_view json_pointer) {
+  auto next_element = mut_src_->next_element();
+  builder_.visit_null_atom();
+  return set_(json_pointer, next_element);;
+}
+
 error_code_t document_t::remove(std::string_view json_pointer) {
   boost::intrusive_ptr<json_trie_node_element> ignored;
   return remove_(json_pointer, ignored);
@@ -424,6 +430,9 @@ bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K
   if (value1->is_string()) {
     return value1->get_string().value() == value2->get_string().value();
   }
+  if (value1->is_null()) {
+    return true;
+  }
   return false;
 }
 
@@ -455,16 +464,23 @@ std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::mem
       tmp.append("false");
     }
     return tmp;
-  } else if (value->is_uint64()) {
+  }
+  if (value->is_uint64()) {
     return create_pmr_string(value->get_uint64().value(), allocator);
-  } else if (value->is_int64()) {
+  }
+  if (value->is_int64()) {
     return create_pmr_string(value->get_int64().value(), allocator);
-  } else if (value->is_double()) {
+  }
+  if (value->is_double()) {
     return create_pmr_string(value->get_double().value(), allocator);
-  } else if (value->is_string()) {
+  }
+  if (value->is_string()) {
     std::pmr::string tmp(allocator);
     tmp.append("\"").append(value->get_string().value()).append("\"");
     return tmp;
+  }
+  if (value->is_null()) {
+    return {"null", allocator};
   }
   return {};
 }
