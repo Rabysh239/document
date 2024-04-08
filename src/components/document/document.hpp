@@ -70,6 +70,8 @@ public:
 
   error_code_t set_deleter(std::string_view json_pointer);
 
+  error_code_t set_null(std::string_view json_pointer);
+
   error_code_t remove(std::string_view json_pointer);
 
   error_code_t move(std::string_view json_pointer_from, std::string_view json_pointer_to);

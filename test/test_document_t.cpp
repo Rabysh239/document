@@ -33,6 +33,9 @@ TEST_CASE("document_t::is/get value") {
   REQUIRE(doc->is_bool("/countDict/even"));
   REQUIRE(doc->get_bool("/countDict/even") == false);
 
+  REQUIRE(doc->is_exists("/null"));
+  REQUIRE(doc->is_null("/null"));
+
   REQUIRE_FALSE(doc->is_exists("/other"));
   REQUIRE_FALSE(doc->is_exists("/countArray/10"));
   REQUIRE_FALSE(doc->is_exists("/countDict/other"));
