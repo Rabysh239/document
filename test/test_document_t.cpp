@@ -464,7 +464,39 @@ TEST_CASE("document_t::copy independent") {
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
 
-TEST_CASE("document_t:: json pointer") {
+TEST_CASE("document_t:: json pointer escape /") {
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = make_document(allocator);
+
+  REQUIRE(doc->set("/m~1n", true) == error_code_t::SUCCESS);
+
+  REQUIRE(doc->to_json() == "{\"m/n\":true}");
+}
+
+TEST_CASE("document_t:: json pointer escape ~") {
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = make_document(allocator);
+
+  REQUIRE(doc->set("/m~0n", true) == error_code_t::SUCCESS);
+
+  REQUIRE(doc->to_json() == "{\"m~n\":true}");
+}
+
+TEST_CASE("document_t:: json pointer failure") {
+  auto allocator = std::pmr::new_delete_resource();
+
+  auto doc = make_document(allocator);
+
+  REQUIRE(doc->set("m~0n", false) == error_code_t::INVALID_JSON_POINTER);
+
+  REQUIRE(doc->set("/m~2n", false) == error_code_t::INVALID_JSON_POINTER);
+
+  REQUIRE(doc->set("/m~2n/key", false) == error_code_t::INVALID_JSON_POINTER);
+}
+
+TEST_CASE("document_t:: json pointer read") {
   auto json = R"(
 {
   "_id": "000000000000000000000001",
@@ -517,8 +549,4 @@ TEST_CASE("document_t:: json pointer") {
 
   REQUIRE(doc->is_long("/m~0n"));
   REQUIRE(doc->get_long("/m~0n") == 8);
-
-  REQUIRE(doc->set("m~0n", "error") == error_code_t::INVALID_JSON_POINTER);
-
-  REQUIRE(doc->set("/m~2n/0", "error") == error_code_t::INVALID_JSON_POINTER);
 }

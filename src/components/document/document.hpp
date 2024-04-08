@@ -209,7 +209,9 @@ private:
   error_code_t find_container_key(
           std::string_view json_pointer,
           json_trie_node_element *&container,
-          std::pmr::string &key
+          bool &is_view_key,
+          std::pmr::string &key,
+          std::string_view &view_key
   );
 
   static void build_index(json_trie_node_element *node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
@@ -276,5 +278,12 @@ document_ptr deserialize_document(const std::string &text, document_t::allocator
 
 template<typename T>
 std::pmr::string create_pmr_string(T value, std::pmr::memory_resource *allocator);
+
+error_code_t unescape_key(
+        std::string_view key,
+        bool &is_unescaped,
+        std::pmr::string &unescaped_key,
+        document_t::allocator_type *allocator
+);
 
 } // namespace components::document
