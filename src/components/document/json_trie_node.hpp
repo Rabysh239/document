@@ -1,58 +1,10 @@
 #pragma once
 
 #include <boost/smart_ptr/intrusive_ptr.hpp>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
 #include <absl/container/flat_hash_map.h>
-#include <iostream>
-#include <memory>
 #include <memory_resource>
-#include <atomic>
-#include <charconv>
 #include <allocator_intrusive_ref_counter.hpp>
 #include <mr_utils.hpp>
-#include <sstream>
-
-class string_split_iterator {
-public:
-  using iterator_category = std::input_iterator_tag;
-  using value_type = std::string_view;
-  using difference_type = std::ptrdiff_t;
-  using pointer = const value_type *;
-  using reference = const value_type &;
-
-  string_split_iterator(std::string_view str, char delim, bool end = false);
-
-  reference operator*() const;
-
-  pointer operator->() const;
-
-  string_split_iterator &operator++();
-
-  string_split_iterator operator++(int);
-
-  friend bool operator==(const string_split_iterator &a, const string_split_iterator &b);
-
-  friend bool operator!=(const string_split_iterator &a, const string_split_iterator &b);
-
-private:
-  std::string_view str_;
-  char delim_;
-  bool end_ = false;
-  value_type current_;
-};
-
-class string_splitter {
-public:
-  string_splitter(std::string_view str, char delim);
-
-  string_split_iterator begin() const;
-
-  string_split_iterator end() const;
-
-private:
-  std::string_view str_;
-  char delim_;
-};
 
 struct string_view_hash {
   using is_transparent = void;
@@ -151,12 +103,6 @@ public:
   );
 
 private:
-  using map_type = absl::flat_hash_map<
-          std::pmr::string,
-          boost::intrusive_ptr<json_trie_node>,
-          string_view_hash, string_view_eq,
-          std::pmr::polymorphic_allocator<std::pair<const std::pmr::string, boost::intrusive_ptr<json_trie_node>>>
-  >;
   enum json_type {
     OBJECT,
     ARRAY,
@@ -172,7 +118,12 @@ private:
   explicit json_trie_node(allocator_type *allocator, value_type value, bool is_first, json_type type);
 
   allocator_type *allocator_;
-  map_type children_;
+  absl::flat_hash_map<
+          std::pmr::string,
+          boost::intrusive_ptr<json_trie_node>,
+          string_view_hash, string_view_eq,
+          std::pmr::polymorphic_allocator<std::pair<const std::pmr::string, boost::intrusive_ptr<json_trie_node>>>
+  > children_;
   value_type value_;
   bool is_first_;
   json_type type_;
