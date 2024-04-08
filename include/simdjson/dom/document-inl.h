@@ -64,30 +64,29 @@ const uint8_t *document<T>::get_string_buf_ptr() const {
 }
 
 template<typename T>
+size_t document<T>::size() const {
+  return self()->size_impl();
+}
+
+template<typename T>
+element<T> document<T>::next_element() const {
+  return {internal::tape_ref(this, size())};
+}
+
+template<typename T>
 inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
   uint32_t string_length;
   size_t tape_idx = 0;
-  uint64_t tape_val = get_tape(tape_idx);
-  uint8_t type = uint8_t(tape_val >> 56);
-  os << tape_idx << " : " << type;
-  tape_idx++;
-  size_t how_many = 0;
-  if (type == 'r') {
-    how_many = size_t(tape_val & internal::JSON_VALUE_MASK);
-  } else {
-    // Error: no starting root node?
-    return false;
-  }
-  os << "\t// pointing to " << how_many << " (right after last node)\n";
+  size_t how_many = size();
   uint64_t payload;
   for (; tape_idx < how_many; tape_idx++) {
     os << tape_idx << " : ";
-    tape_val = get_tape(tape_idx);
-    payload = tape_val & internal::JSON_VALUE_MASK;
-    type = uint8_t(tape_val >> 56);
+    auto tape_val = get_tape(tape_idx);
+    auto type = uint8_t(tape_val >> 56);
     switch (type) {
       case '"': // we have a string
         os << "string \"";
+        payload = tape_val & internal::JSON_VALUE_MASK;
         std::memcpy(&string_length, get_string_buf_ptr() + payload, sizeof(uint32_t));
         os << internal::escape_json_string(std::string_view(
                 reinterpret_cast<const char *>(get_string_buf_ptr() + payload + sizeof(uint32_t)),
@@ -126,37 +125,10 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
       case 'f': // we have a false
         os << "false\n";
         break;
-      case '{': // we have an object
-        os << "{\t// pointing to next tape location " << uint32_t(payload)
-           << " (first node after the scope), "
-           << " saturated count "
-           << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
-        break;    case '}': // we end an object
-        os << "}\t// pointing to previous tape location " << uint32_t(payload)
-           << " (start of the scope)\n";
-        break;
-      case '[': // we start an array
-        os << "[\t// pointing to next tape location " << uint32_t(payload)
-           << " (first node after the scope), "
-           << " saturated count "
-           << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
-        break;
-      case ']': // we end an array
-        os << "]\t// pointing to previous tape location " << uint32_t(payload)
-           << " (start of the scope)\n";
-        break;
-      case 'r': // we start and end with the root node
-        // should we be hitting the root node?
-        return false;
       default:
         return false;
     }
   }
-  tape_val = get_tape(tape_idx);
-  payload = tape_val & internal::JSON_VALUE_MASK;
-  type = uint8_t(tape_val >> 56);
-  os << tape_idx << " : " << type << "\t// pointing to " << payload
-     << " (start root)\n";
   return true;
 }
 
@@ -249,8 +221,8 @@ inline immutable_document &immutable_document::operator=(immutable_document &&ot
   return *this;
 }
 
-inline element<immutable_document> immutable_document::next_element() const noexcept {
-  return {internal::tape_ref(this, next_tape_loc - tape.get())};
+inline size_t immutable_document::size_impl() const noexcept {
+  return next_tape_loc - tape.get();
 }
 
 inline mutable_document::mutable_document() noexcept
@@ -291,8 +263,8 @@ inline const uint8_t *mutable_document::get_string_buf_ptr_impl() const {
   return string_buf.data();
 }
 
-inline element<mutable_document> mutable_document::next_element() const noexcept {
-  return {internal::tape_ref(this, tape.size())};
+inline size_t mutable_document::size_impl() const noexcept {
+  return tape.size();
 }
 
 template<typename T>
