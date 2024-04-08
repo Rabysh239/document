@@ -8,11 +8,6 @@ namespace internal {
  * The possible types in the tape.
  */
 enum class tape_type {
-  ROOT = 'r',
-  START_ARRAY = '[',
-  START_OBJECT = '{',
-  END_ARRAY = ']',
-  END_OBJECT = '}',
   STRING = '"',
   INT64 = 'l',
   UINT64 = 'u',

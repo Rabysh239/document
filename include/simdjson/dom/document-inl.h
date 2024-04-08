@@ -177,9 +177,6 @@ inline const uint8_t *immutable_document::get_string_buf_ptr_impl() const {
   return string_buf.get();
 }
 
-inline element<immutable_document> immutable_document::root() const noexcept {
-  return {internal::tape_ref(this, 1)};
-}
 simdjson_warn_unused
 inline size_t immutable_document::capacity() const noexcept {
   return allocated_capacity;
@@ -206,6 +203,8 @@ inline error_code immutable_document::allocate(size_t capacity) noexcept {
   try {
     string_buf = std::move(allocator_make_unique_ptr<uint8_t>(allocator_, string_capacity));
     tape = std::move(allocator_make_unique_ptr<uint64_t>(allocator_, tape_capacity));
+    next_tape_loc = tape.get();
+    current_string_buf_loc = string_buf.get();
   } catch (std::bad_alloc &) {
     allocated_capacity = 0;
     string_buf.reset();
@@ -227,8 +226,12 @@ inline immutable_document::immutable_document(immutable_document::allocator_type
 inline immutable_document::immutable_document(immutable_document &&other) noexcept
         : allocator_(other.allocator_),
           tape(std::move(other.tape)),
-          string_buf(std::move(other.string_buf)) {
+          string_buf(std::move(other.string_buf)),
+          next_tape_loc(other.next_tape_loc),
+          current_string_buf_loc(other.current_string_buf_loc) {
   other.allocator_ = nullptr;
+  other.next_tape_loc = nullptr;
+  other.current_string_buf_loc = nullptr;
 }
 
 inline immutable_document &immutable_document::operator=(immutable_document &&other) noexcept {
@@ -238,8 +241,16 @@ inline immutable_document &immutable_document::operator=(immutable_document &&ot
   allocator_ = other.allocator_;
   tape = std::move(other.tape);
   string_buf = std::move(other.string_buf);
+  next_tape_loc = other.next_tape_loc;
+  current_string_buf_loc = other.current_string_buf_loc;
   other.allocator_ = nullptr;
+  other.next_tape_loc = nullptr;
+  other.current_string_buf_loc = nullptr;
   return *this;
+}
+
+inline element<immutable_document> immutable_document::next_element() const noexcept {
+  return {internal::tape_ref(this, next_tape_loc - tape.get())};
 }
 
 inline mutable_document::mutable_document() noexcept

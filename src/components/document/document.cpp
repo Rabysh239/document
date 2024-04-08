@@ -1,10 +1,9 @@
 #include "document.hpp"
-#include <boost/json/src.hpp>
 #include <utility>
-#include <simdjson/json_iterator.h>
 #include <charconv>
 #include "varint.hpp"
 #include "string_splitter.hpp"
+#include <boost/json/src.hpp>
 
 namespace components::document {
 
@@ -331,22 +330,54 @@ error_code_t document_t::find_container_key(
   return error_code_t::SUCCESS;
 }
 
-void document_t::build_index(json_trie_node_element *node, const element_from_immutable &value, std::string_view key, allocator_type *allocator) {
+template<typename T>
+void document_t::visit_primitive(simdjson::tape_builder<T> &visitor, const boost::json::value &value) noexcept {
+  // Use the fact that most scalars are going to be either strings or numbers.
+  if (value.is_string()) {
+    auto &str = value.get_string();
+    visitor.build(str.c_str(), str.size());
+  } else if (value.is_number()) {
+    if (value.is_double()) {
+      visitor.build(value.get_double());
+    } else if (value.is_int64()) {
+      visitor.build(value.get_int64());
+    } else if (value.is_uint64()) {
+      visitor.build(value.get_uint64());
+    }
+  } else
+    // true, false, null are uncommon.
+  if (value.is_bool()) {
+    visitor.build(value.get_bool());
+  } else if (value.is_null()) {
+    visitor.visit_null_atom();
+  }
+}
+
+void document_t::build_index(
+        const boost::json::value &value,
+        json_trie_node_element *node,
+        std::string_view key,
+        simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> &builder,
+        simdjson::dom::immutable_document *immut_src,
+        allocator_type *allocator
+) noexcept {
   if (value.is_object()) {
     auto next = node->insert_object(key);
-    const auto obj = value.get_object();
-    for (auto &it : obj) {
-      build_index(next, it.value, it.key, allocator);
+    const auto &obj = value.get_object();
+    for (auto const &[key, val] : obj) {
+      build_index(val, next, key, builder, immut_src, allocator);
     }
   } else if (value.is_array()) {
     auto next = node->insert_array(key);
-    const auto arr = value.get_array();
+    const auto &arr = value.get_array();
     int i = 0;
     for (auto it: arr) {
-      build_index(next, it, create_pmr_string(i++, allocator), allocator);
+      build_index(it, next, create_pmr_string(i++, allocator), builder, immut_src, allocator);
     }
   } else {
-    node->insert(key, value);
+    auto element = immut_src->next_element();
+    visit_primitive(builder, value);
+    node->insert(key, element);
   }
 }
 
@@ -358,9 +389,8 @@ document_t::ptr document_t::document_from_json(const std::string &json, document
   }
   auto tree = boost::json::parse(json);
   simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, *res->immut_src_);
-  walk_document(builder, tree);
-  for (auto &it : res->immut_src_->root().get_object()) {
-    build_index(res->element_ind_.get(), it.value, it.key, allocator);
+  for (auto &[key, val] : tree.get_object()) {
+    build_index(val, res->element_ind_.get(), key, builder, res->immut_src_, allocator);
   }
   return res;
 }

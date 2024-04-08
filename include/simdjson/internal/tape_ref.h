@@ -5,6 +5,7 @@
 
 namespace simdjson {
 namespace dom {
+template<typename T>
 class document;
 } // namespace dom
 
@@ -13,11 +14,11 @@ namespace internal {
 /**
  * A reference to an element on the tape. Internal only.
  */
+template<typename K>
 class tape_ref {
 public:
   simdjson_inline tape_ref() noexcept;
-  simdjson_inline tape_ref(dom::document *doc, size_t json_index) noexcept;
-  inline size_t after_element() const noexcept;
+  simdjson_inline tape_ref(const dom::document<K> *doc, size_t json_index) noexcept;
   simdjson_inline tape_type tape_ref_type() const noexcept;
   simdjson_inline uint64_t tape_value() const noexcept;
   simdjson_inline bool is_double() const noexcept;
@@ -26,18 +27,15 @@ public:
   simdjson_inline bool is_false() const noexcept;
   simdjson_inline bool is_true() const noexcept;
   simdjson_inline bool is_null_on_tape() const noexcept;// different name to avoid clash with is_null.
-  simdjson_inline uint32_t matching_brace_index() const noexcept;
-  simdjson_inline uint32_t scope_count() const noexcept;
   template<typename T>
   simdjson_inline T next_tape_value() const noexcept;
   simdjson_inline uint32_t get_string_length() const noexcept;
   simdjson_inline const char * get_c_str() const noexcept;
   inline std::string_view get_string_view() const noexcept;
-  simdjson_inline bool is_document_root() const noexcept;
   simdjson_inline bool usable() const noexcept;
 
   /** The document this element references. */
-  dom::document *doc;
+  const dom::document<K> *doc;
 
   /** The index of this element on `doc_.tape[]` */
   size_t json_index;
