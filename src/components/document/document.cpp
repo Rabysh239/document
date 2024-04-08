@@ -331,25 +331,25 @@ error_code_t document_t::find_container_key(
 }
 
 template<typename T>
-void document_t::visit_primitive(simdjson::tape_builder<T> &visitor, const boost::json::value &value) noexcept {
+void document_t::build_primitive(simdjson::tape_builder<T> &builder, const boost::json::value &value) noexcept {
   // Use the fact that most scalars are going to be either strings or numbers.
   if (value.is_string()) {
     auto &str = value.get_string();
-    visitor.build(str.c_str(), str.size());
+    builder.build(str.c_str(), str.size());
   } else if (value.is_number()) {
     if (value.is_double()) {
-      visitor.build(value.get_double());
+      builder.build(value.get_double());
     } else if (value.is_int64()) {
-      visitor.build(value.get_int64());
+      builder.build(value.get_int64());
     } else if (value.is_uint64()) {
-      visitor.build(value.get_uint64());
+      builder.build(value.get_uint64());
     }
   } else
     // true, false, null are uncommon.
   if (value.is_bool()) {
-    visitor.build(value.get_bool());
+    builder.build(value.get_bool());
   } else if (value.is_null()) {
-    visitor.visit_null_atom();
+    builder.visit_null_atom();
   }
 }
 
@@ -376,7 +376,7 @@ void document_t::build_index(
     }
   } else {
     auto element = immut_src->next_element();
-    visit_primitive(builder, value);
+    build_primitive(builder, value);
     node->insert(key, element);
   }
 }

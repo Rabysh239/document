@@ -11,7 +11,6 @@ namespace simdjson {
 namespace internal {
 
 constexpr const uint64_t JSON_VALUE_MASK = 0x00FFFFFFFFFFFFFF;
-constexpr const uint32_t JSON_COUNT_MASK = 0xFFFFFF;
 
 //
 // tape_ref inline implementation

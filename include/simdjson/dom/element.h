@@ -343,8 +343,9 @@ public:
 private:
   simdjson_inline element(const internal::tape_ref<K> &tape) noexcept;
   internal::tape_ref<K> tape;
-  friend class immutable_document;
-  friend class mutable_document;
+
+  template<typename T>
+  friend class document;
   friend struct simdjson_result<element>;
 
 };

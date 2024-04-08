@@ -214,7 +214,7 @@ private:
   );
 
   template<typename T>
-  static void visit_primitive(simdjson::tape_builder<T> &visitor, const boost::json::value &value) noexcept;
+  static void build_primitive(simdjson::tape_builder<T> &builder, const boost::json::value &value) noexcept;
 
   static void build_index(
           const boost::json::value &value,
