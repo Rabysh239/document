@@ -21,11 +21,6 @@ simdjson_inline tape_ref<K>::tape_ref() noexcept : doc{nullptr}, json_index{0} {
 template<typename K>
 simdjson_inline tape_ref<K>::tape_ref(const dom::document<K> *_doc, size_t _json_index) noexcept : doc{_doc}, json_index{_json_index} {}
 
-
-template<typename K>
-simdjson_inline bool tape_ref<K>::is_document_root() const noexcept {
-  return json_index == 1; // should we ever change the structure of the tape, this should get updated.
-}
 template<typename K>
 simdjson_inline bool tape_ref<K>::usable() const noexcept {
   return doc != nullptr; // when the document pointer is null, this tape_ref is uninitialized (should not be accessed).
@@ -66,34 +61,12 @@ simdjson_inline bool tape_ref<K>::is_null_on_tape() const noexcept {
 }
 
 template<typename K>
-inline size_t tape_ref<K>::after_element() const noexcept {
-  switch (tape_ref_type()) {
-    case tape_type::START_ARRAY:
-    case tape_type::START_OBJECT:
-      return matching_brace_index();
-    case tape_type::UINT64:
-    case tape_type::INT64:
-    case tape_type::DOUBLE:
-      return json_index + 2;
-    default:
-      return json_index + 1;
-  }
-}
-template<typename K>
 simdjson_inline tape_type tape_ref<K>::tape_ref_type() const noexcept {
   return static_cast<tape_type>(doc->get_tape(json_index) >> 56);
 }
 template<typename K>
 simdjson_inline uint64_t internal::tape_ref<K>::tape_value() const noexcept {
   return doc->get_tape(json_index) & internal::JSON_VALUE_MASK;
-}
-template<typename K>
-simdjson_inline uint32_t internal::tape_ref<K>::matching_brace_index() const noexcept {
-  return uint32_t(doc->get_tape(json_index));
-}
-template<typename K>
-simdjson_inline uint32_t internal::tape_ref<K>::scope_count() const noexcept {
-  return uint32_t((doc->get_tape(json_index) >> 32) & internal::JSON_COUNT_MASK);
 }
 
 template<typename K>

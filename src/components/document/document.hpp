@@ -7,10 +7,9 @@
 //#include <components/document/document_id.hpp>
 #include <simdjson/dom/document-inl.h>
 #include <simdjson/dom/element-inl.h>
-#include <simdjson/dom/array-inl.h>
-#include <simdjson/dom/object-inl.h>
 #include <simdjson/tape_builder.h>
 #include <allocator_intrusive_ref_counter.hpp>
+#include <boost/json/value.hpp>
 
 namespace components::document {
 
@@ -214,7 +213,17 @@ private:
           std::string_view &view_key
   );
 
-  static void build_index(json_trie_node_element *node, const element_from_immutable &value, std::string_view key, allocator_type *allocator);
+  template<typename T>
+  static void visit_primitive(simdjson::tape_builder<T> &visitor, const boost::json::value &value) noexcept;
+
+  static void build_index(
+          const boost::json::value &value,
+          json_trie_node_element *node,
+          std::string_view key,
+          simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> &builder,
+          simdjson::dom::immutable_document *immut_src,
+          allocator_type *allocator
+  ) noexcept;
 
   static bool is_array(const json_trie_node_element &node);
   static bool is_object(const json_trie_node_element &node);

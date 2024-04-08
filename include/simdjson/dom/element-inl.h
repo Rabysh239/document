@@ -4,10 +4,8 @@
 #include <simdjson/dom/base.h>
 #include <simdjson/dom/element.h>
 #include <simdjson/dom/document.h>
-#include <simdjson/dom/object.h>
 #include <simdjson/internal/tape_type.h>
 
-#include <simdjson/dom/object-inl.h>
 #include <simdjson/error-inl.h>
 
 #include <ostream>
@@ -21,12 +19,6 @@ namespace simdjson {
 template<typename K>
 simdjson_inline simdjson_result<dom::element<K>>::simdjson_result() noexcept
     : internal::simdjson_result_base<dom::element<K>>() {}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>>::simdjson_result(dom::element<K> &&value) noexcept
-    : internal::simdjson_result_base<dom::element<K>>(std::forward<dom::element<K>>(value)) {}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>>::simdjson_result(error_code error) noexcept
-    : internal::simdjson_result_base<dom::element<K>>(error) {}
 template<typename K>
 inline simdjson_result<dom::element_type> simdjson_result<dom::element<K>>::type() const noexcept {
   if (error()) { return error(); }
@@ -51,16 +43,6 @@ simdjson_warn_unused simdjson_inline error_code simdjson_result<dom::element<K>>
   return first.template get<T>(value);
 }
 
-template<typename K>
-simdjson_inline simdjson_result<dom::array<K>> simdjson_result<dom::element<K>>::get_array() const noexcept {
-  if (error()) { return error(); }
-  return first.get_array();
-}
-template<typename K>
-simdjson_inline simdjson_result<dom::object<K>> simdjson_result<dom::element<K>>::get_object() const noexcept {
-  if (error()) { return error(); }
-  return first.get_object();
-}
 template<typename K>
 simdjson_inline simdjson_result<const char *> simdjson_result<dom::element<K>>::get_c_str() const noexcept {
   if (error()) { return error(); }
@@ -98,14 +80,6 @@ simdjson_inline simdjson_result<bool> simdjson_result<dom::element<K>>::get_bool
 }
 
 template<typename K>
-simdjson_inline bool simdjson_result<dom::element<K>>::is_array() const noexcept {
-  return !error() && first.is_array();
-}
-template<typename K>
-simdjson_inline bool simdjson_result<dom::element<K>>::is_object() const noexcept {
-  return !error() && first.is_object();
-}
-template<typename K>
 simdjson_inline bool simdjson_result<dom::element<K>>::is_string() const noexcept {
   return !error() && first.is_string();
 }
@@ -135,48 +109,6 @@ simdjson_inline bool simdjson_result<dom::element<K>>::is_null() const noexcept 
   return !error() && first.is_null();
 }
 
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>> simdjson_result<dom::element<K>>::operator[](std::string_view key) const noexcept {
-  if (error()) { return error(); }
-  return first[key];
-}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>> simdjson_result<dom::element<K>>::operator[](const char *key) const noexcept {
-  if (error()) { return error(); }
-  return first[key];
-}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>> simdjson_result<dom::element<K>>::at_pointer(const std::string_view json_pointer) const noexcept {
-  if (error()) { return error(); }
-  return first.at_pointer(json_pointer);
-}
-#ifndef SIMDJSON_DISABLE_DEPRECATED_API
-template<typename K>
-[[deprecated("For standard compliance, use at_pointer instead, and prefix your pointers with a slash '/', see RFC6901 ")]]
-simdjson_inline simdjson_result<dom::element<K>> simdjson_result<dom::element<K>>::at(const std::string_view json_pointer) const noexcept {
-SIMDJSON_PUSH_DISABLE_WARNINGS
-SIMDJSON_DISABLE_DEPRECATED_WARNING
-  if (error()) { return error(); }
-  return first.at(json_pointer);
-SIMDJSON_POP_DISABLE_WARNINGS
-}
-#endif // SIMDJSON_DISABLE_DEPRECATED_API
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>> simdjson_result<dom::element<K>>::at(size_t index) const noexcept {
-  if (error()) { return error(); }
-  return first.at(index);
-}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>> simdjson_result<dom::element<K>>::at_key(std::string_view key) const noexcept {
-  if (error()) { return error(); }
-  return first.at_key(key);
-}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>> simdjson_result<dom::element<K>>::at_key_case_insensitive(std::string_view key) const noexcept {
-  if (error()) { return error(); }
-  return first.at_key_case_insensitive(key);
-}
-
 #if SIMDJSON_EXCEPTIONS
 
 template<typename K>
@@ -202,25 +134,6 @@ simdjson_inline simdjson_result<dom::element<K>>::operator int64_t() const noexc
 template<typename K>
 simdjson_inline simdjson_result<dom::element<K>>::operator double() const noexcept(false) {
   return get<double>();
-}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>>::operator dom::array<K>() const noexcept(false) {
-  return get<dom::array>();
-}
-template<typename K>
-simdjson_inline simdjson_result<dom::element<K>>::operator dom::object<K>() const noexcept(false) {
-  return get<dom::object>();
-}
-
-template<typename K>
-simdjson_inline typename dom::array<K>::iterator simdjson_result<dom::element<K>>::begin() const noexcept(false) {
-  if (error()) { throw simdjson_error(error()); }
-  return first.begin();
-}
-template<typename K>
-simdjson_inline typename dom::array<K>::iterator simdjson_result<dom::element<K>>::end() const noexcept(false) {
-  if (error()) { throw simdjson_error(error()); }
-  return first.end();
 }
 
 #endif // SIMDJSON_EXCEPTIONS
@@ -338,26 +251,6 @@ inline simdjson_result<double> element<K>::get_double() const noexcept {
   // this is common:
   return tape.template next_tape_value<double>();
 }
-template<typename K>
-inline simdjson_result<array<K>> element<K>::get_array() const noexcept {
-  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-  switch (tape.tape_ref_type()) {
-    case internal::tape_type::START_ARRAY:
-      return array(tape);
-    default:
-      return INCORRECT_TYPE;
-  }
-}
-template<typename K>
-inline simdjson_result<object<K>> element<K>::get_object() const noexcept {
-  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-  switch (tape.tape_ref_type()) {
-    case internal::tape_type::START_OBJECT:
-      return object(tape);
-    default:
-      return INCORRECT_TYPE;
-  }
-}
 
 template<typename K>
 template<typename T>
@@ -378,8 +271,6 @@ simdjson_inline bool element<K>::is() const noexcept {
   return !result.error();
 }
 
-template<typename K> inline bool element<K>::is_array() const noexcept { return is<array<K>>(); }
-template<typename K> inline bool element<K>::is_object() const noexcept { return is<object<K>>(); }
 template<typename K> inline bool element<K>::is_string() const noexcept { return is<std::string_view>(); }
 template<typename K> inline bool element<K>::is_int64() const noexcept { return is<int64_t>(); }
 template<typename K> inline bool element<K>::is_uint64() const noexcept { return is<uint64_t>(); }
@@ -400,69 +291,9 @@ template<typename K> inline element<K>::operator std::string_view() const noexce
 template<typename K> inline element<K>::operator uint64_t() const noexcept(false) { return get<uint64_t>(); }
 template<typename K> inline element<K>::operator int64_t() const noexcept(false) { return get<int64_t>(); }
 template<typename K> inline element<K>::operator double() const noexcept(false) { return get<double>(); }
-template<typename K> inline element<K>::operator array<K>() const noexcept(false) { return get<array>(); }
-template<typename K> inline element<K>::operator object<K>() const noexcept(false) { return get<object>(); }
-
-template<typename K>
-inline typename array<K>::iterator element<K>::begin() const noexcept(false) {
-  return get<array>().begin();
-}
-template<typename K>
-inline typename array<K>::iterator element<K>::end() const noexcept(false) {
-  return get<array>().end();
-}
 
 #endif // SIMDJSON_EXCEPTIONS
 
-template<typename K>
-inline simdjson_result<element<K>> element<K>::operator[](std::string_view key) const noexcept {
-  return at_key(key);
-}
-template<typename K>
-inline simdjson_result<element<K>> element<K>::operator[](const char *key) const noexcept {
-  return at_key(key);
-}
-
-template<typename K>
-inline simdjson_result<element<K>> element<K>::at_pointer(std::string_view json_pointer) const noexcept {
-  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
-  switch (tape.tape_ref_type()) {
-    case internal::tape_type::START_OBJECT:
-      return object(tape).at_pointer(json_pointer);
-    case internal::tape_type::START_ARRAY:
-      return array(tape).at_pointer(json_pointer);
-    default: {
-      if(!json_pointer.empty()) { // a non-empty string is invalid on an atom
-        return INVALID_JSON_POINTER;
-      }
-      // an empty string means that we return the current node
-      dom::element copy(*this);
-      return simdjson_result<element>(std::move(copy));
-    }
-  }
-}
-#ifndef SIMDJSON_DISABLE_DEPRECATED_API
-template<typename K>
-[[deprecated("For standard compliance, use at_pointer instead, and prefix your pointers with a slash '/', see RFC6901 ")]]
-inline simdjson_result<element<K>> element<K>::at(std::string_view json_pointer) const noexcept {
-  // version 0.4 of simdjson allowed non-compliant pointers
-  auto std_pointer = (json_pointer.empty() ? "" : "/") + std::string(json_pointer.begin(), json_pointer.end());
-  return at_pointer(std_pointer);
-}
-#endif // SIMDJSON_DISABLE_DEPRECATED_API
-
-template<typename K>
-inline simdjson_result<element<K>> element<K>::at(size_t index) const noexcept {
-  return get<array>().at(index);
-}
-template<typename K>
-inline simdjson_result<element<K>> element<K>::at_key(std::string_view key) const noexcept {
-  return get<object>().at_key(key);
-}
-template<typename K>
-inline simdjson_result<element<K>> element<K>::at_key_case_insensitive(std::string_view key) const noexcept {
-  return get<object>().at_key_case_insensitive(key);
-}
 template<typename K>
 inline bool element<K>::operator<(const element &other) const noexcept {
   return tape.json_index < other.tape.json_index;
@@ -481,10 +312,6 @@ inline bool element<K>::dump_raw_tape(std::ostream &out) const noexcept {
 
 inline std::ostream& operator<<(std::ostream& out, element_type type) {
   switch (type) {
-    case element_type::ARRAY:
-      return out << "array";
-    case element_type::OBJECT:
-      return out << "object";
     case element_type::INT64:
       return out << "int64_t";
     case element_type::UINT64:
