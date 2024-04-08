@@ -31,16 +31,6 @@ struct tape_builder {
 
   simdjson_inline tape_builder &operator=(const tape_builder &) = delete;
 
-  simdjson_inline uint32_t start_container() noexcept;
-
-  simdjson_inline void visit_document_end() noexcept;
-
-  simdjson_inline void visit_array_end(uint32_t start_tape_index, uint32_t count) noexcept;
-  simdjson_inline void visit_empty_array() noexcept;
-
-  simdjson_inline void visit_object_end(uint32_t start_tape_index, uint32_t count) noexcept;
-  simdjson_inline void visit_empty_object() noexcept;
-
   simdjson_inline void build(char const* c_str, size_t size) noexcept;
   simdjson_inline void build(std::string_view value) noexcept;
 
@@ -58,19 +48,10 @@ private:
   allocator_type *allocator_;
   dom::tape_writer<K> *tape_;
 
-  simdjson_inline void end_container(uint32_t start_tape_index, uint32_t count, internal::tape_type start, internal::tape_type end) noexcept;
-  simdjson_inline void empty_container(internal::tape_type start, internal::tape_type end) noexcept;
-
   /**
    * Append a tape entry (an 8-bit type,and 56 bits worth of value).
    */
   simdjson_inline void append(uint64_t val, internal::tape_type t) noexcept;
-  /**
-   * Write a value to a known location on 
-   *
-   * Used to go back and write out the start of a container after the container ends.
-   */
-  simdjson_inline void write(uint32_t tape_index, uint64_t val, internal::tape_type t) noexcept;
 
 private:
   /**
@@ -111,30 +92,6 @@ tape_builder<K> &tape_builder<K>::operator=(tape_builder &&other) noexcept {
   return *this;
 }
 // struct tape_builder
-
-template<typename K>
-simdjson_inline void tape_builder<K>::visit_empty_object() noexcept {
-  empty_container(internal::tape_type::START_OBJECT, internal::tape_type::END_OBJECT);
-}
-template<typename K>
-simdjson_inline void tape_builder<K>::visit_empty_array() noexcept {
-  empty_container(internal::tape_type::START_ARRAY, internal::tape_type::END_ARRAY);
-}
-
-template<typename K>
-simdjson_inline void tape_builder<K>::visit_object_end(uint32_t start_tape_index, uint32_t count) noexcept {
-  end_container(start_tape_index, count, internal::tape_type::START_OBJECT, internal::tape_type::END_OBJECT);
-}
-template<typename K>
-simdjson_inline void tape_builder<K>::visit_array_end(uint32_t start_tape_index, uint32_t count) noexcept {
-  end_container(start_tape_index, count, internal::tape_type::START_ARRAY, internal::tape_type::END_ARRAY);
-}
-template<typename K>
-simdjson_inline void tape_builder<K>::visit_document_end() noexcept {
-  constexpr uint32_t start_tape_index = 0;
-  append(start_tape_index, internal::tape_type::ROOT);
-  write(start_tape_index, tape_->next_tape_index(), internal::tape_type::ROOT);
-}
 
 template<typename K>
 simdjson_inline tape_builder<K>::tape_builder(allocator_type *allocator, dom::immutable_document &doc) noexcept
@@ -188,31 +145,6 @@ simdjson_inline void tape_builder<K>::visit_null_atom() noexcept {
 }
 
 template<typename K>
-simdjson_inline void tape_builder<K>::empty_container(internal::tape_type start, internal::tape_type end) noexcept {
-  auto start_index = tape_->next_tape_index();
-  append(start_index+2, start);
-  append(start_index, end);
-}
-
-template<typename K>
-simdjson_inline uint32_t tape_builder<K>::start_container() noexcept {
-  auto start_index = tape_->next_tape_index();
-  tape_->skip(); // We don't actually *write* the start element until the end.
-  return start_index;
-}
-
-template<typename K>
-simdjson_inline void tape_builder<K>::end_container(uint32_t start_tape_index, uint32_t count, internal::tape_type start, internal::tape_type end) noexcept {
-  // Write the ending tape element, pointing at the start location
-  append(start_tape_index, end);
-  // Write the start tape element, pointing at the end location (and including count)
-  // count can overflow if it exceeds 24 bits... so we saturate
-  // the convention being that a cnt of 0xffffff or more is undetermined in value (>=  0xffffff).
-  const uint32_t cntsat = count > 0xFFFFFF ? 0xFFFFFF : count;
-  write(start_tape_index, tape_->next_tape_index() | (uint64_t(cntsat) << 32), start);
-}
-
-template<typename K>
 simdjson_inline void tape_builder<K>::append(uint64_t val, internal::tape_type t) noexcept {
   tape_->append(val | ((uint64_t(char(t))) << 56));
 }
@@ -223,11 +155,6 @@ simdjson_inline void tape_builder<K>::append2(uint64_t val, T val2, internal::ta
   append(val, t);
   static_assert(sizeof(val2) == sizeof(int64_t), "Type is not 64 bits!");
   tape_->copy(&val2);
-}
-
-template<typename K>
-simdjson_inline void tape_builder<K>::write(uint32_t tape_index, uint64_t val, internal::tape_type t) noexcept {
-  tape_->write(tape_index, val | ((uint64_t(char(t))) << 56));
 }
 
 } // namespace simdjson

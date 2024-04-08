@@ -90,11 +90,6 @@ public:
   const uint8_t &get_string_buf_impl(size_t json_index) const;
   const uint8_t *get_string_buf_ptr_impl() const;
 
-  /**
-   * Get the root element of this document as a JSON array.
-   */
-  element<immutable_document> root() const noexcept;
-
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.
    *
@@ -113,6 +108,7 @@ public:
    */
   size_t capacity() const noexcept;
 
+  element<immutable_document> next_element() const noexcept;
 
 private:
   allocator_type *allocator_;
@@ -125,6 +121,9 @@ private:
    */
   std::unique_ptr<uint8_t[], array_deleter<uint8_t>> string_buf{};
   size_t allocated_capacity{0};
+
+  uint64_t *next_tape_loc = nullptr;
+  uint8_t *current_string_buf_loc = nullptr;
   friend class tape_writer_to_immutable;
 }; // class immutable_document
 
@@ -149,7 +148,9 @@ public:
   const uint64_t &get_tape_impl(size_t json_index) const;
   const uint8_t &get_string_buf_impl(size_t json_index) const;
   const uint8_t *get_string_buf_ptr_impl() const;
+
   element<mutable_document> next_element() const noexcept;
+
 private:
   allocator_type *allocator_;
   std::pmr::vector<uint64_t> tape{};
