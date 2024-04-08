@@ -54,5 +54,6 @@ document_ptr gen_doc(int num, document_t::allocator_type *allocator) {
     dict->set_dict(json_pointer);
     gen_dict(num + i, dict->get_dict(json_pointer));
   }
+  doc->set_null("/null");
   return doc;
 }
