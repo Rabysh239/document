@@ -1,17 +1,17 @@
 #include "string_splitter.hpp"
 
-string_split_iterator::string_split_iterator(std::string_view str, char delim, bool end)
+string_split_iterator::string_split_iterator(std::string_view str, char delim, bool end) noexcept
         : str_(str), delim_(delim), end_(end) {
   if (!end_) {
     ++(*this);
   }
 }
 
-string_split_iterator::reference string_split_iterator::operator*() const { return current_; }
+string_split_iterator::reference string_split_iterator::operator*() const noexcept { return current_; }
 
-string_split_iterator::pointer string_split_iterator::operator->() const { return &current_; }
+string_split_iterator::pointer string_split_iterator::operator->() const noexcept { return &current_; }
 
-string_split_iterator &string_split_iterator::operator++() {
+string_split_iterator &string_split_iterator::operator++() noexcept {
   if (end_) return *this;
 
   if (str_.empty() || str_[0] != '/') {
@@ -26,28 +26,27 @@ string_split_iterator &string_split_iterator::operator++() {
     str_.remove_prefix(pos);
   } else {
     current_ = str_;
-    str_ = "";
   }
   return *this;
 }
 
-string_split_iterator string_split_iterator::operator++(int) {
+string_split_iterator string_split_iterator::operator++(int) noexcept {
   string_split_iterator tmp = *this;
   ++(*this);
   return tmp;
 }
 
-bool operator==(const string_split_iterator &a, const string_split_iterator &b) {
+bool operator==(const string_split_iterator &a, const string_split_iterator &b) noexcept {
   return a.end_ == b.end_ && (a.end_ || a.str_.data() == b.str_.data());
 }
 
-bool operator!=(const string_split_iterator &a, const string_split_iterator &b) {
+bool operator!=(const string_split_iterator &a, const string_split_iterator &b) noexcept {
   return !(a == b);
 }
 
-string_splitter::string_splitter(std::string_view str, char delim)
+string_splitter::string_splitter(std::string_view str, char delim) noexcept
         : str_(str), delim_(delim) {}
 
-string_split_iterator string_splitter::begin() const { return {str_, delim_}; }
+string_split_iterator string_splitter::begin() const noexcept { return {str_, delim_}; }
 
-string_split_iterator string_splitter::end() const { return {str_, delim_, true}; }
+string_split_iterator string_splitter::end() const noexcept { return {str_, delim_, true}; }

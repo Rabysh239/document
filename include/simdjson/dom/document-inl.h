@@ -49,27 +49,27 @@ void array_deleter<T>::operator()(T *p) {
 //
 
 template<typename T>
-const uint64_t &document<T>::get_tape(size_t json_index) const {
+const uint64_t &document<T>::get_tape(size_t json_index) const noexcept {
   return self()->get_tape_impl(json_index);
 }
 
 template<typename T>
-const uint8_t &document<T>::get_string_buf(size_t json_index) const {
+const uint8_t &document<T>::get_string_buf(size_t json_index) const noexcept {
   return self()->get_string_buf_impl(json_index);
 }
 
 template<typename T>
-const uint8_t *document<T>::get_string_buf_ptr() const {
+const uint8_t *document<T>::get_string_buf_ptr() const noexcept {
   return self()->get_string_buf_ptr_impl();
 }
 
 template<typename T>
-size_t document<T>::size() const {
+size_t document<T>::size() const noexcept {
   return self()->size_impl();
 }
 
 template<typename T>
-element<T> document<T>::next_element() const {
+element<T> document<T>::next_element() const noexcept {
   return {internal::tape_ref(this, size())};
 }
 
@@ -145,7 +145,7 @@ inline const uint8_t &immutable_document::get_string_buf_impl(size_t json_index)
   return string_buf[json_index];
 }
 
-inline const uint8_t *immutable_document::get_string_buf_ptr_impl() const {
+inline const uint8_t *immutable_document::get_string_buf_ptr_impl() const noexcept {
   return string_buf.get();
 }
 
@@ -259,7 +259,7 @@ inline const uint8_t &mutable_document::get_string_buf_impl(size_t json_index) c
   return string_buf[json_index];
 }
 
-inline const uint8_t *mutable_document::get_string_buf_ptr_impl() const {
+inline const uint8_t *mutable_document::get_string_buf_ptr_impl() const noexcept {
   return string_buf.data();
 }
 
