@@ -221,11 +221,11 @@ private:
   static void build_index(
           const boost::json::value &value,
           json_trie_node_element *node,
-          std::string_view key,
+          std::string_view current_key,
           simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> &builder,
           simdjson::dom::immutable_document *immut_src,
           allocator_type *allocator
-  ) noexcept;
+  );
 
   static bool is_array(const json_trie_node_element &node);
   static bool is_object(const json_trie_node_element &node);

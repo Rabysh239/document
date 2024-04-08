@@ -42,13 +42,13 @@ template<typename T>
 class document : public boost::intrusive_ref_counter<document<T>> {
 public:
   virtual ~document() = default;
-  const uint64_t &get_tape(size_t json_index) const;
-  const uint8_t &get_string_buf(size_t json_index) const;
-  const uint8_t *get_string_buf_ptr() const;
+  const uint64_t &get_tape(size_t json_index) const noexcept;
+  const uint8_t &get_string_buf(size_t json_index) const noexcept;
+  const uint8_t *get_string_buf_ptr() const noexcept;
 
-  size_t size() const;
+  size_t size() const noexcept;
 
-  element<T> next_element() const;
+  element<T> next_element() const noexcept;
   /**
  * @private Dump the raw tape for debugging.
  *
@@ -92,7 +92,7 @@ public:
 
   const uint64_t &get_tape_impl(size_t json_index) const;
   const uint8_t &get_string_buf_impl(size_t json_index) const;
-  const uint8_t *get_string_buf_ptr_impl() const;
+  const uint8_t *get_string_buf_ptr_impl() const noexcept;
 
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.
@@ -151,7 +151,7 @@ public:
 
   const uint64_t &get_tape_impl(size_t json_index) const;
   const uint8_t &get_string_buf_impl(size_t json_index) const;
-  const uint8_t *get_string_buf_ptr_impl() const;
+  const uint8_t *get_string_buf_ptr_impl() const noexcept;
 
   size_t size_impl() const noexcept;
 
