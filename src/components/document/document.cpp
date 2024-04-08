@@ -2,7 +2,9 @@
 #include <boost/json/src.hpp>
 #include <utility>
 #include <simdjson/json_iterator.h>
+#include <charconv>
 #include "varint.hpp"
+#include "string_splitter.hpp"
 
 namespace components::document {
 
@@ -194,12 +196,14 @@ error_code_t document_t::move(std::string_view json_pointer_from, std::string_vi
 
 error_code_t document_t::copy(std::string_view json_pointer_from, std::string_view json_pointer_to) {
   json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer_from, container, key);
+  bool is_view_key;
+  std::pmr::string key;
+  std::string_view view_key;
+  auto res = find_container_key(json_pointer_from, container, is_view_key, key, view_key);
   if (res != error_code_t::SUCCESS) {
     return res;
   }
-  auto node = container->make_deep_copy(key);
+  auto node = container->make_deep_copy(is_view_key ? view_key : key);
   if (node == nullptr) {
     return error_code_t::NO_SUCH_ELEMENT;
   }
@@ -208,45 +212,53 @@ error_code_t document_t::copy(std::string_view json_pointer_from, std::string_vi
 
 error_code_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
   json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer, container, key);
+  bool is_view_key;
+  std::pmr::string key;
+  std::string_view view_key;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
   if (res == error_code_t::SUCCESS) {
-    container->insert(key, value);
+    container->insert(is_view_key ? view_key : key, value);
   }
   return res;
 }
 
 error_code_t document_t::set_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &&value) {
   json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer, container, key);
+  bool is_view_key;
+  std::pmr::string key;
+  std::string_view view_key;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
   if (res == error_code_t::SUCCESS) {
-    container->insert(key, std::forward<boost::intrusive_ptr<json_trie_node_element>>(value));
+    container->insert(is_view_key ? view_key : key, std::forward<boost::intrusive_ptr<json_trie_node_element>>(value));
   }
   return res;
 }
 
 error_code_t document_t::set_(std::string_view json_pointer, special_type value) {
   json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer, container, key);
+  bool is_view_key;
+  std::pmr::string key;
+  std::string_view view_key;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
   if (res == error_code_t::SUCCESS) {
-    inserters[static_cast<int>(value)](container, key);
+    inserters[static_cast<int>(value)](container, is_view_key ? view_key : key);
   }
   return res;
 }
 
 error_code_t document_t::remove_(std::string_view json_pointer, boost::intrusive_ptr<json_trie_node_element> &node) {
   json_trie_node_element *container;
-  std::pmr::string key(allocator_);
-  auto res = find_container_key(json_pointer, container, key);
+  bool is_view_key;
+  std::pmr::string key;
+  std::string_view view_key;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
   if (res != error_code_t::SUCCESS) {
     return res;
   }
   if (container->is_array()) {
     return error_code_t::NOT_APPLICABLE_TO_ARRAY;
   }
-  node = container->erase(key);
+  node = container->erase(is_view_key ? view_key : key);
   if (node == nullptr) {
     return error_code_t::NO_SUCH_ELEMENT;
   }
@@ -261,28 +273,15 @@ std::pair<document_t::json_trie_node_element *, error_code_t> document_t::find_n
 std::pair<const document_t::json_trie_node_element *, error_code_t> document_t::find_node_const(std::string_view json_pointer) const {
   const auto *current = element_ind_.get();
   for (auto key: string_splitter(json_pointer, '/')) {
-    size_t escape = key.find('~');
-    if (escape != std::string_view::npos) {
-      std::pmr::string unescaped(key, allocator_);
-      do {
-        switch (unescaped[escape + 1]) {
-          case '0':
-            unescaped.replace(escape, 2, "~");
-            break;
-          case '1':
-            unescaped.replace(escape, 2, "/");
-            break;
-          default:
-            return {nullptr, error_code_t::INVALID_JSON_POINTER};
-        }
-        escape = unescaped.find('~', escape+1);
-      } while (escape != std::string::npos);
-      current = current->find(unescaped);
-    } else {
-      current = current->find(key);
+    std::pmr::string unescaped_key;
+    bool is_unescaped;
+    auto error = unescape_key(key, is_unescaped, unescaped_key, allocator_);
+    if (error != error_code_t::SUCCESS) {
+      return {nullptr, error};
     }
+    current = current->find(is_unescaped ? unescaped_key : key);
     if (current == nullptr) {
-      return {nullptr, error_code_t::SUCCESS};
+      return {nullptr, error_code_t::NO_SUCH_ELEMENT};
     }
   }
   return {current, error_code_t::SUCCESS};
@@ -291,7 +290,9 @@ std::pair<const document_t::json_trie_node_element *, error_code_t> document_t::
 error_code_t document_t::find_container_key(
         std::string_view json_pointer,
         json_trie_node_element *&container,
-        std::pmr::string &key
+        bool &is_view_key,
+        std::pmr::string &key,
+        std::string_view &view_key
 ) {
   size_t pos = json_pointer.find_last_of('/');
   if (pos == std::string::npos) {
@@ -299,20 +300,32 @@ error_code_t document_t::find_container_key(
   }
   auto container_json_pointer = json_pointer.substr(0, pos);
   auto node_error = find_node(container_json_pointer);
-  if (node_error.second != error_code_t::SUCCESS) {
+  if (node_error.second == error_code_t::INVALID_JSON_POINTER) {
     return node_error.second;
   }
-  container = node_error.first;
-  key = json_pointer.substr(pos + 1);
-  if (container == nullptr || container->is_terminal()) {
+  if (node_error.second == error_code_t::NO_SUCH_ELEMENT || node_error.first->is_terminal()) {
     return error_code_t::NO_SUCH_CONTAINER;
   }
+  container = node_error.first;
+  view_key = json_pointer.substr(pos + 1);
+  is_view_key = true;
+  std::pmr::string unescaped_key;
+  bool is_unescaped;
+  auto error = unescape_key(view_key, is_unescaped, unescaped_key, allocator_);
+  if (error != error_code_t::SUCCESS) {
+    return error;
+  }
+  if (is_unescaped) {
+    key = std::move(unescaped_key);
+    is_view_key = false;
+  }
   if (is_array(*container)) {
-    auto index = std::atol(std::pmr::string(key, allocator_).c_str());
+    auto index = std::atol(std::pmr::string(is_unescaped ? key : view_key, allocator_).c_str());
     if (index < 0) {
       return error_code_t::INVALID_INDEX;
     }
     size_t correct_index = std::min(size_t(index), container->size());
+    is_view_key = false;
     key = create_pmr_string(correct_index, allocator_);
   }
   return error_code_t::SUCCESS;
@@ -445,5 +458,35 @@ std::pmr::string create_pmr_string(T value, std::pmr::memory_resource *allocator
 
 document_ptr make_document(document_t::allocator_type *allocator) {
   return new(allocator->allocate(sizeof(components::document::document_t))) components::document::document_t(allocator);
+}
+
+error_code_t unescape_key(
+        std::string_view key,
+        bool &is_unescaped,
+        std::pmr::string &unescaped_key,
+        document_t::allocator_type *allocator
+) {
+  size_t escape = key.find('~');
+  if (escape != std::string_view::npos) {
+    is_unescaped = true;
+    std::pmr::string unescaped(key, allocator);
+    do {
+      switch (unescaped[escape + 1]) {
+        case '0':
+          unescaped.replace(escape, 2, "~");
+          break;
+        case '1':
+          unescaped.replace(escape, 2, "/");
+          break;
+        default:
+          return error_code_t::INVALID_JSON_POINTER;
+      }
+      escape = unescaped.find('~', escape+1);
+    } while (escape != std::string::npos);
+    unescaped_key = std::move(unescaped);
+    return error_code_t::SUCCESS;
+  }
+  is_unescaped = false;
+  return error_code_t::SUCCESS;
 }
 } // namespace components::document
