@@ -21,15 +21,15 @@ struct string_view_hash {
 struct string_view_eq {
   using is_transparent = void;
 
-  bool operator()(const std::pmr::string &lhs, const std::pmr::string &rhs) const {
+  bool operator()(const std::pmr::string &lhs, const std::pmr::string &rhs) const noexcept {
     return lhs == rhs;
   }
 
-  bool operator()(const std::pmr::string &lhs, std::string_view rhs) const {
+  bool operator()(const std::pmr::string &lhs, std::string_view rhs) const noexcept {
     return lhs == rhs;
   }
 
-  bool operator()(std::string_view lhs, const std::pmr::string &rhs) const {
+  bool operator()(std::string_view lhs, const std::pmr::string &rhs) const noexcept {
     return lhs == rhs;
   }
 };
@@ -39,7 +39,7 @@ class json_trie_node : public allocator_intrusive_ref_counter {
 public:
   using allocator_type = std::pmr::memory_resource;
 
-  explicit json_trie_node(allocator_type *allocator);
+  explicit json_trie_node(allocator_type *allocator) noexcept;
 
   ~json_trie_node() override;
 
@@ -53,9 +53,9 @@ public:
 
   const json_trie_node<FirstType, SecondType> *find(std::string_view key) const;
 
-  const FirstType *get_value_first() const;
+  const FirstType *get_value_first() const noexcept;
 
-  const SecondType *get_value_second() const;
+  const SecondType *get_value_second() const noexcept;
 
   void insert(std::string_view key, const FirstType &value);
 
@@ -73,15 +73,15 @@ public:
 
   boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> make_deep_copy(std::string_view key);
 
-  size_t size() const;
+  size_t size() const noexcept;
 
-  bool is_object() const;
+  bool is_object() const noexcept;
 
-  bool is_array() const;
+  bool is_array() const noexcept;
 
-  bool is_terminal() const;
+  bool is_terminal() const noexcept;
 
-  bool is_deleter() const;
+  bool is_deleter() const noexcept;
 
   std::pmr::string to_json(
           std::pmr::string (*)(FirstType *, std::pmr::memory_resource *),
@@ -115,7 +115,7 @@ private:
     SecondType* second;
   };
 
-  explicit json_trie_node(allocator_type *allocator, value_type value, bool is_first, json_type type);
+  explicit json_trie_node(allocator_type *allocator, value_type value, bool is_first, json_type type) noexcept;
 
   allocator_type *allocator_;
   absl::flat_hash_map<
@@ -142,7 +142,7 @@ private:
 };
 
 template<typename FirstType, typename SecondType>
-json_trie_node<FirstType, SecondType>::json_trie_node(json_trie_node::allocator_type *allocator)
+json_trie_node<FirstType, SecondType>::json_trie_node(json_trie_node::allocator_type *allocator) noexcept
         : json_trie_node(allocator, {.second = nullptr}, false, OBJECT) {}
 
 template<typename FirstType, typename SecondType>
@@ -151,7 +151,7 @@ json_trie_node<FirstType, SecondType>::json_trie_node(
         value_type value,
         bool is_first,
         json_type type
-)
+) noexcept
         : allocator_intrusive_ref_counter(allocator),
           allocator_(allocator),
           children_(allocator_),
@@ -207,7 +207,7 @@ const json_trie_node<FirstType, SecondType> *json_trie_node<FirstType, SecondTyp
 }
 
 template<typename FirstType, typename SecondType>
-const FirstType *json_trie_node<FirstType, SecondType>::get_value_first() const {
+const FirstType *json_trie_node<FirstType, SecondType>::get_value_first() const noexcept {
   if (!is_first_) {
     return nullptr;
   }
@@ -215,7 +215,7 @@ const FirstType *json_trie_node<FirstType, SecondType>::get_value_first() const 
 }
 
 template<typename FirstType, typename SecondType>
-const SecondType *json_trie_node<FirstType, SecondType>::get_value_second() const {
+const SecondType *json_trie_node<FirstType, SecondType>::get_value_second() const noexcept {
   if (is_first_) {
     return nullptr;
   }
@@ -289,27 +289,27 @@ json_trie_node<FirstType, SecondType>::make_deep_copy(std::string_view key) {
 }
 
 template<typename FirstType, typename SecondType>
-size_t json_trie_node<FirstType, SecondType>::size() const {
+size_t json_trie_node<FirstType, SecondType>::size() const noexcept {
   return children_.size();
 }
 
 template<typename FirstType, typename SecondType>
-bool json_trie_node<FirstType, SecondType>::is_object() const {
+bool json_trie_node<FirstType, SecondType>::is_object() const noexcept {
   return type_ == OBJECT;
 }
 
 template<typename FirstType, typename SecondType>
-bool json_trie_node<FirstType, SecondType>::is_array() const {
+bool json_trie_node<FirstType, SecondType>::is_array() const noexcept {
   return type_ == ARRAY;
 }
 
 template<typename FirstType, typename SecondType>
-bool json_trie_node<FirstType, SecondType>::is_terminal() const {
+bool json_trie_node<FirstType, SecondType>::is_terminal() const noexcept {
   return type_ == TERMINAL;
 }
 
 template<typename FirstType, typename SecondType>
-bool json_trie_node<FirstType, SecondType>::is_deleter() const {
+bool json_trie_node<FirstType, SecondType>::is_deleter() const noexcept {
   return type_ == DELETER;
 }
 

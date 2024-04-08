@@ -362,28 +362,28 @@ void document_t::build_primitive(simdjson::tape_builder<T> &builder, const boost
 void document_t::build_index(
         const boost::json::value &value,
         json_trie_node_element *node,
-        std::string_view key,
+        std::string_view current_key,
         simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> &builder,
         simdjson::dom::immutable_document *immut_src,
         allocator_type *allocator
-) noexcept {
+) {
   if (value.is_object()) {
-    auto next = node->insert_object(key);
+    auto next = node->insert_object(current_key);
     const auto &obj = value.get_object();
     for (auto const &[key, val] : obj) {
       build_index(val, next, key, builder, immut_src, allocator);
     }
   } else if (value.is_array()) {
-    auto next = node->insert_array(key);
+    auto next = node->insert_array(current_key);
     const auto &arr = value.get_array();
     int i = 0;
-    for (auto it: arr) {
+    for (const auto& it: arr) {
       build_index(it, next, create_pmr_string(i++, allocator), builder, immut_src, allocator);
     }
   } else {
     auto element = immut_src->next_element();
     build_primitive(builder, value);
-    node->insert(key, element);
+    node->insert(current_key, element);
   }
 }
 

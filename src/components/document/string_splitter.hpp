@@ -10,19 +10,19 @@ public:
   using pointer = const value_type *;
   using reference = const value_type &;
 
-  string_split_iterator(std::string_view str, char delim, bool end = false);
+  string_split_iterator(std::string_view str, char delim, bool end = false) noexcept;
 
-  reference operator*() const;
+  reference operator*() const noexcept;
 
-  pointer operator->() const;
+  pointer operator->() const noexcept;
 
-  string_split_iterator &operator++();
+  string_split_iterator &operator++() noexcept;
 
-  string_split_iterator operator++(int);
+  string_split_iterator operator++(int) noexcept;
 
-  friend bool operator==(const string_split_iterator &a, const string_split_iterator &b);
+  friend bool operator==(const string_split_iterator &a, const string_split_iterator &b) noexcept;
 
-  friend bool operator!=(const string_split_iterator &a, const string_split_iterator &b);
+  friend bool operator!=(const string_split_iterator &a, const string_split_iterator &b) noexcept;
 
 private:
   std::string_view str_;
@@ -33,11 +33,11 @@ private:
 
 class string_splitter {
 public:
-  string_splitter(std::string_view str, char delim);
+  string_splitter(std::string_view str, char delim) noexcept;
 
-  string_split_iterator begin() const;
+  string_split_iterator begin() const noexcept;
 
-  string_split_iterator end() const;
+  string_split_iterator end() const noexcept;
 
 private:
   std::string_view str_;
