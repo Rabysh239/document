@@ -263,64 +263,6 @@ public:
   template<typename T>
   inline void tie(T &value, error_code &error) && noexcept;
 
-#if SIMDJSON_EXCEPTIONS
-  /**
-   * Read this element as a boolean.
-   *
-   * @return The boolean value
-   * @exception simdjson_error(INCORRECT_TYPE) if the JSON element is not a boolean.
-   */
-  inline operator bool() const noexcept(false);
-
-  /**
-   * Read this element as a null-terminated UTF-8 string.
-   *
-   * Be mindful that JSON allows strings to contain null characters.
-   *
-   * Does *not* convert other types to a string; requires that the JSON type of the element was
-   * an actual string.
-   *
-   * @return The string value.
-   * @exception simdjson_error(INCORRECT_TYPE) if the JSON element is not a string.
-   */
-  inline explicit operator const char*() const noexcept(false);
-
-  /**
-   * Read this element as a null-terminated UTF-8 string.
-   *
-   * Does *not* convert other types to a string; requires that the JSON type of the element was
-   * an actual string.
-   *
-   * @return The string value.
-   * @exception simdjson_error(INCORRECT_TYPE) if the JSON element is not a string.
-   */
-  inline operator std::string_view() const noexcept(false);
-
-  /**
-   * Read this element as an unsigned integer.
-   *
-   * @return The integer value.
-   * @exception simdjson_error(INCORRECT_TYPE) if the JSON element is not an integer
-   * @exception simdjson_error(NUMBER_OUT_OF_RANGE) if the integer does not fit in 64 bits or is negative
-   */
-  inline operator uint64_t() const noexcept(false);
-  /**
-   * Read this element as an signed integer.
-   *
-   * @return The integer value.
-   * @exception simdjson_error(INCORRECT_TYPE) if the JSON element is not an integer
-   * @exception simdjson_error(NUMBER_OUT_OF_RANGE) if the integer does not fit in 64 bits
-   */
-  inline operator int64_t() const noexcept(false);
-  /**
-   * Read this element as an double.
-   *
-   * @return The double value.
-   * @exception simdjson_error(INCORRECT_TYPE) if the JSON element is not a number
-   */
-  inline operator double() const noexcept(false);
-#endif // SIMDJSON_EXCEPTIONS
-
   /**
    * operator< defines a total order for element allowing to use them in
    * ordered C++ STL containers
@@ -351,52 +293,6 @@ private:
 };
 
 } // namespace dom
-
-/** The result of a JSON navigation that may fail. */
-template<typename K>
-struct simdjson_result<dom::element<K>> : public internal::simdjson_result_base<dom::element<K>>  {
-  using base = internal::simdjson_result_base<dom::element<K>>;
-  using base::error;
-  using base::first;
-public:
-  simdjson_inline simdjson_result() noexcept; ///< @private
-  simdjson_inline simdjson_result(dom::element<K> &&value) noexcept; ///< @private
-  simdjson_inline simdjson_result(error_code error) noexcept; ///< @private
-
-  simdjson_inline simdjson_result<dom::element_type> type() const noexcept;
-  template<typename T>
-  simdjson_inline bool is() const noexcept;
-  template<typename T>
-  simdjson_inline simdjson_result<T> get() const noexcept;
-  template<typename T>
-  simdjson_warn_unused simdjson_inline error_code get(T &value) const noexcept;
-
-  simdjson_inline simdjson_result<const char *> get_c_str() const noexcept;
-  simdjson_inline simdjson_result<size_t> get_string_length() const noexcept;
-  simdjson_inline simdjson_result<std::string_view> get_string() const noexcept;
-  simdjson_inline simdjson_result<int64_t> get_int64() const noexcept;
-  simdjson_inline simdjson_result<uint64_t> get_uint64() const noexcept;
-  simdjson_inline simdjson_result<double> get_double() const noexcept;
-  simdjson_inline simdjson_result<bool> get_bool() const noexcept;
-
-  simdjson_inline bool is_string() const noexcept;
-  simdjson_inline bool is_int64() const noexcept;
-  simdjson_inline bool is_uint64() const noexcept;
-  simdjson_inline bool is_double() const noexcept;
-  simdjson_inline bool is_number() const noexcept;
-  simdjson_inline bool is_bool() const noexcept;
-  simdjson_inline bool is_null() const noexcept;
-
-#if SIMDJSON_EXCEPTIONS
-  simdjson_inline operator bool() const noexcept(false);
-  simdjson_inline explicit operator const char*() const noexcept(false);
-  simdjson_inline operator std::string_view() const noexcept(false);
-  simdjson_inline operator uint64_t() const noexcept(false);
-  simdjson_inline operator int64_t() const noexcept(false);
-  simdjson_inline operator double() const noexcept(false);
-#endif // SIMDJSON_EXCEPTIONS
-};
-
 } // namespace simdjson
 
 #endif // SIMDJSON_DOM_DOCUMENT_H
