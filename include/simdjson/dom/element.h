@@ -109,6 +109,8 @@ public:
    * Equivalent to is<std::string_view>() or is<const char *>().
    */
   inline bool is_string() const noexcept;
+
+  inline bool is_int32() const noexcept;
   /**
    * Whether this element is a json number that fits in a signed 64-bit integer.
    *

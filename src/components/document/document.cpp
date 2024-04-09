@@ -152,6 +152,8 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
     return equals_<bool>(*this, other, json_pointer);
   if (is_ulong(json_pointer) && other.is_ulong(json_pointer))
     return equals_<uint64_t>(*this, other, json_pointer);
+  if (is_int(json_pointer) && other.is_int(json_pointer))
+    return equals_<int32_t>(*this, other, json_pointer);
   if (is_long(json_pointer) && other.is_long(json_pointer))
     return equals_<int64_t>(*this, other, json_pointer);
   if (is_double(json_pointer) && other.is_double(json_pointer))
@@ -425,6 +427,9 @@ bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K
   if (value1->is_uint64()) {
     return value1->get_uint64().value() == value2->get_uint64().value();
   }
+  if (value1->is_int32()) {
+    return value1->get_int32().value() == value2->get_int32().value();
+  }
   if (value1->is_int64()) {
     return value1->get_int64().value() == value2->get_int64().value();
   }
@@ -463,6 +468,9 @@ std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::mem
   }
   if (value->is_uint64()) {
     return create_pmr_string(value->get_uint64().value(), allocator);
+  }
+  if (value->is_int32()) {
+    return create_pmr_string(value->get_int32().value(), allocator);
   }
   if (value->is_int64()) {
     return create_pmr_string(value->get_int64().value(), allocator);
