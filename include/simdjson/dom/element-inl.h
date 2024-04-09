@@ -84,7 +84,7 @@ inline simdjson_result<uint64_t> element<K>::get_uint64() const noexcept {
     }
     return INCORRECT_TYPE;
   }
-  return tape.template next_tape_value<int64_t>();
+  return tape.template next_tape_value<uint64_t>();
 }
 template<typename K>
 inline simdjson_result<int32_t> element<K>::get_int32() const noexcept {
@@ -161,6 +161,7 @@ simdjson_inline bool element<K>::is() const noexcept {
 }
 
 template<typename K> inline bool element<K>::is_string() const noexcept { return is<std::string_view>(); }
+template<typename K> inline bool element<K>::is_int32() const noexcept { return is<int32_t>(); }
 template<typename K> inline bool element<K>::is_int64() const noexcept { return is<int64_t>(); }
 template<typename K> inline bool element<K>::is_uint64() const noexcept { return is<uint64_t>(); }
 template<typename K> inline bool element<K>::is_double() const noexcept { return is<double>(); }
