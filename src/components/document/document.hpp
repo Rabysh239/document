@@ -134,10 +134,12 @@ public:
     }
     auto first = node_ptr->get_value_first();
     if (first != nullptr) {
-      return first->is<T>() ? first->get<T>().value() : T();
+      auto res = first->get<T>();
+      return res.error() == simdjson::error_code::SUCCESS ? res.value() : T();
     }
     auto second = node_ptr->get_value_second();
-    return second->is<T>() ? second->get<T>().value() : T();
+    auto res = second->get<T>();
+    return res.error() == simdjson::error_code::SUCCESS ? res.value() : T();
   }
 //  ::document::impl::dict_iterator_t begin() const;
 
@@ -226,9 +228,6 @@ private:
           simdjson::dom::immutable_document *immut_src,
           allocator_type *allocator
   );
-
-  static bool is_array(const json_trie_node_element &node);
-  static bool is_object(const json_trie_node_element &node);
 };
 
 using document_ptr = document_t::ptr;
