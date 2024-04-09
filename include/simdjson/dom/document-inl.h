@@ -95,20 +95,23 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         os << '"';
         os << '\n';
         break;
+      case 'i': // we have a long int
+        os << "int " << static_cast<int32_t>(get_tape(tape_idx++) & internal::JSON_VALUE_MASK) << "\n";
+        break;
       case 'l': // we have a long int
         if (tape_idx + 1 >= how_many) {
           return false;
         }
-        os << "integer " << static_cast<int64_t>(get_tape(++tape_idx)) << "\n";
+        os << "long " << static_cast<int64_t>(get_tape(++tape_idx)) << "\n";
         break;
       case 'u': // we have a long uint
         if (tape_idx + 1 >= how_many) {
           return false;
         }
-        os << "unsigned integer " << get_tape(++tape_idx) << "\n";
+        os << "unsigned long " << get_tape(++tape_idx) << "\n";
         break;
       case 'd': // we have a double
-        os << "float ";
+        os << "double ";
         if (tape_idx + 1 >= how_many) {
           return false;
         }

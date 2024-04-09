@@ -77,27 +77,38 @@ inline simdjson_result<uint64_t> element<K>::get_uint64() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   if(simdjson_unlikely(!tape.is_uint64())) { // branch rarely taken
     if(tape.is_int64()) {
-      int64_t result = tape.template next_tape_value<int64_t>();
-      if (result < 0) {
-        return NUMBER_OUT_OF_RANGE;
-      }
-      return uint64_t(result);
+      return cast_from<K, int64_t, uint64_t>(tape);
+    }
+    if(tape.is_int32()) {
+      return cast_from<K, int32_t, uint64_t>(tape);
     }
     return INCORRECT_TYPE;
   }
   return tape.template next_tape_value<int64_t>();
 }
 template<typename K>
+inline simdjson_result<int32_t> element<K>::get_int32() const noexcept {
+  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
+  if(simdjson_unlikely(!tape.is_int32())) { // branch rarely taken
+    if(tape.is_uint64()) {
+      return cast_from<K, uint64_t, int32_t>(tape);
+    }
+    if(tape.is_int64()) {
+      return cast_from<K, int64_t, int32_t>(tape);
+    }
+    return INCORRECT_TYPE;
+  }
+  return tape.template next_tape_value<int32_t>();
+}
+template<typename K>
 inline simdjson_result<int64_t> element<K>::get_int64() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
   if(simdjson_unlikely(!tape.is_int64())) { // branch rarely taken
     if(tape.is_uint64()) {
-      uint64_t result = tape.template next_tape_value<uint64_t>();
-      // Wrapping max in parens to handle Windows issue: https://stackoverflow.com/questions/11544073/how-do-i-deal-with-the-max-macro-in-windows-h-colliding-with-max-in-std
-      if (result > uint64_t((std::numeric_limits<int64_t>::max)())) {
-        return NUMBER_OUT_OF_RANGE;
-      }
-      return static_cast<int64_t>(result);
+      return cast_from<K, uint64_t, int64_t>(tape);
+    }
+    if (tape.is_int32()) {
+      return int64_t(tape.template next_tape_value<uint32_t>());
     }
     return INCORRECT_TYPE;
   }
@@ -120,6 +131,9 @@ inline simdjson_result<double> element<K>::get_double() const noexcept {
       return double(tape.template next_tape_value<uint64_t>());
     } else if(tape.is_int64()) {
       return double(tape.template next_tape_value<int64_t>());
+    }
+    if (tape.is_int32()) {
+      return double(tape.template next_tape_value<int32_t>());
     }
     return INCORRECT_TYPE;
   }

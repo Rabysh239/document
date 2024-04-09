@@ -34,6 +34,11 @@ simdjson_inline bool tape_ref<K>::is_double() const noexcept {
   return doc->get_tape(json_index) == tape_double;
 }
 template<typename K>
+simdjson_inline bool tape_ref<K>::is_int32() const noexcept {
+  constexpr auto tape_int32 = uint8_t(tape_type::INT32);
+  return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_int32;
+}
+template<typename K>
 simdjson_inline bool tape_ref<K>::is_int64() const noexcept {
   constexpr uint64_t tape_int64 = uint64_t(tape_type::INT64)<<56;
   return doc->get_tape(json_index) == tape_int64;
@@ -66,19 +71,6 @@ simdjson_inline tape_type tape_ref<K>::tape_ref_type() const noexcept {
 template<typename K>
 simdjson_inline uint64_t internal::tape_ref<K>::tape_value() const noexcept {
   return doc->get_tape(json_index) & internal::JSON_VALUE_MASK;
-}
-
-template<typename K>
-template<typename T>
-simdjson_inline T tape_ref<K>::next_tape_value() const noexcept {
-  static_assert(sizeof(T) == sizeof(uint64_t), "next_tape_value() template parameter must be 64-bit");
-  // Though the following is tempting...
-  //  return *reinterpret_cast<const T*>(&doc_->tape[json_index + 1]);
-  // It is not generally safe. It is safer, and often faster to rely
-  // on memcpy. Yes, it is uglier, but it is also encapsulated.
-  T x;
-  std::memcpy(&x,&doc->get_tape(json_index + 1),sizeof(uint64_t));
-  return x;
 }
 
 template<typename K>

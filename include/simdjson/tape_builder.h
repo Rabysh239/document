@@ -34,6 +34,7 @@ struct tape_builder {
   simdjson_inline void build(char const* c_str, size_t size) noexcept;
   simdjson_inline void build(std::string_view value) noexcept;
 
+  simdjson_inline void build(int32_t value) noexcept;
   /** Write a signed 64-bit value to  */
   simdjson_inline void build(int64_t value) noexcept;
 
@@ -115,6 +116,11 @@ simdjson_inline void tape_builder<K>::build(char const* c_str, size_t size) noex
 template<typename K>
 simdjson_inline void tape_builder<K>::build(std::string_view value) noexcept {
   build(std::pmr::string(value, allocator_).c_str(), value.size());
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(int32_t value) noexcept {
+  append(value, internal::tape_type::INT32);
 }
 
 template<typename K>

@@ -92,6 +92,8 @@ public:
 
   bool is_ulong(std::string_view json_pointer) const;
 
+  bool is_int(std::string_view json_pointer) const;
+
   bool is_long(std::string_view json_pointer) const;
 
   bool is_double(std::string_view json_pointer) const;
@@ -105,6 +107,8 @@ public:
   bool get_bool(std::string_view json_pointer) const;
 
   uint64_t get_ulong(std::string_view json_pointer) const;
+
+  uint64_t get_int(std::string_view json_pointer) const;
 
   int64_t get_long(std::string_view json_pointer) const;
 
