@@ -84,12 +84,12 @@ bool document_t::is_string(std::string_view json_pointer) const { return is_as<s
 
 bool document_t::is_array(std::string_view json_pointer) const {
   const auto node_ptr = find_node_const(json_pointer).first;
-  return node_ptr != nullptr && is_array(*node_ptr);
+  return node_ptr != nullptr && node_ptr->is_array();
 }
 
 bool document_t::is_dict(std::string_view json_pointer) const {
   const auto node_ptr = find_node_const(json_pointer).first;
-  return node_ptr != nullptr && is_object(*node_ptr);
+  return node_ptr != nullptr && node_ptr->is_object();
 }
 
 bool document_t::get_bool(std::string_view json_pointer) const { return get_as<bool>(json_pointer); }
@@ -106,7 +106,7 @@ std::pmr::string document_t::get_string(std::string_view json_pointer) const {
 
 document_t::ptr document_t::get_array(std::string_view json_pointer) {
   const auto node_ptr = find_node(json_pointer).first;
-  if (node_ptr == nullptr || !is_array(*node_ptr)) {
+  if (node_ptr == nullptr || !node_ptr->is_array()) {
     return nullptr; // temporarily
   }
   return new(allocator_->allocate(sizeof(document_t))) document_t({this}, allocator_, node_ptr);
@@ -114,7 +114,7 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
 
 document_t::ptr document_t::get_dict(std::string_view json_pointer) {
   const auto node_ptr = find_node(json_pointer).first;
-  if (node_ptr == nullptr || !is_object(*node_ptr)) {
+  if (node_ptr == nullptr || !node_ptr->is_object()) {
     return nullptr; // temporarily
   }
   return new(allocator_->allocate(sizeof(document_t))) document_t({this}, allocator_, node_ptr);
@@ -324,7 +324,7 @@ error_code_t document_t::find_container_key(
     key = std::move(unescaped_key);
     is_view_key = false;
   }
-  if (is_array(*container)) {
+  if (container->is_array()) {
     auto index = std::atol(std::pmr::string(is_unescaped ? key : view_key, allocator_).c_str());
     if (index < 0) {
       return error_code_t::INVALID_INDEX;
@@ -444,14 +444,6 @@ bool document_t::is_equals_documents(const document_ptr &doc1, const document_pt
           &is_equals_value<simdjson::dom::mutable_document, simdjson::dom::mutable_document>,
           &is_equals_value<simdjson::dom::immutable_document, simdjson::dom::mutable_document>
   );
-}
-
-bool document_t::is_array(const json_trie_node_element &node) {
-  return node.is_array();
-}
-
-bool document_t::is_object(const json_trie_node_element &node) {
-  return node.is_object();
 }
 
 template<typename T>
