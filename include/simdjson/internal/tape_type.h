@@ -9,6 +9,7 @@ namespace internal {
  */
 enum class tape_type {
   STRING = '"',
+  INT32 = 'i',
   INT64 = 'l',
   UINT64 = 'u',
   DOUBLE = 'd',

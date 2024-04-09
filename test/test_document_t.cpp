@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "generaty.hpp"
+#include "../src/components/document/varint.hpp"
 
 using components::document::document_t;
 using components::document::error_code_t;
@@ -39,6 +40,22 @@ TEST_CASE("document_t::is/get value") {
   REQUIRE_FALSE(doc->is_exists("/other"));
   REQUIRE_FALSE(doc->is_exists("/countArray/10"));
   REQUIRE_FALSE(doc->is_exists("/countDict/other"));
+}
+
+TEST_CASE("document_t::int") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/countInt");
+  int32_t value = 3;
+  doc->set(key, value);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_int(key));
+  REQUIRE(doc->get_int(key) == value);
+  REQUIRE(doc->get_long(key) == value);
+  REQUIRE(doc->get_ulong(key) == value);
+  REQUIRE(is_equals(doc->get_double(key), value));
 }
 
 TEST_CASE("document_t::set") {
