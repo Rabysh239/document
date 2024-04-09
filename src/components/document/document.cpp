@@ -76,6 +76,8 @@ bool document_t::is_bool(std::string_view json_pointer) const { return is_as<boo
 
 bool document_t::is_ulong(std::string_view json_pointer) const { return is_as<uint64_t>(json_pointer); }
 
+bool document_t::is_int(std::string_view json_pointer) const { return is_as<int32_t>(json_pointer); }
+
 bool document_t::is_long(std::string_view json_pointer) const { return is_as<int64_t>(json_pointer); }
 
 bool document_t::is_double(std::string_view json_pointer) const { return is_as<double>(json_pointer); }
@@ -95,6 +97,8 @@ bool document_t::is_dict(std::string_view json_pointer) const {
 bool document_t::get_bool(std::string_view json_pointer) const { return get_as<bool>(json_pointer); }
 
 uint64_t document_t::get_ulong(std::string_view json_pointer) const { return get_as<uint64_t>(json_pointer); }
+
+uint64_t document_t::get_int(std::string_view json_pointer) const { return get_as<int32_t>(json_pointer); }
 
 int64_t document_t::get_long(std::string_view json_pointer) const { return get_as<int64_t>(json_pointer); }
 

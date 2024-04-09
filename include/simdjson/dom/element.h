@@ -8,7 +8,7 @@ namespace dom {
 
 /**
  * The actual concrete type of a JSON element
- * This is the type it is most easily cast to with get<>.
+ * This is the type it is most easily cast_from to with get<>.
  */
 enum class element_type {
   INT64 = 'l',     ///< int64_t
@@ -70,6 +70,8 @@ public:
    *          Returns INCORRECT_TYPE if the JSON element is not a string.
    */
   inline simdjson_result<std::string_view> get_string() const noexcept;
+
+  inline simdjson_result<int32_t> get_int32() const noexcept;
   /**
    * Cast this element to a signed integer.
    *
@@ -145,7 +147,7 @@ public:
   inline bool is_null() const noexcept;
 
   /**
-   * Tell whether the value can be cast to provided type (T).
+   * Tell whether the value can be cast_from to provided type (T).
    *
    * Supported types:
    * - Boolean: bool
@@ -170,8 +172,8 @@ public:
    *
    * @tparam T bool, double, uint64_t, int64_t, std::string_view, const char *
    *
-   * @returns The value cast to the given type, or:
-   *          INCORRECT_TYPE if the value cannot be cast to the given type.
+   * @returns The value cast_from to the given type, or:
+   *          INCORRECT_TYPE if the value cannot be cast_from to the given type.
    */
 
   template<typename T>
@@ -196,6 +198,12 @@ public:
   inline typename std::enable_if<std::is_same<T, std::string_view>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_string();
+  }
+
+  template<typename T>
+  inline typename std::enable_if<std::is_same<T, std::int32_t>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_int32();
   }
 
   template<typename T>
@@ -292,7 +300,35 @@ private:
 
 };
 
+template<typename K, typename From, typename To, typename std::enable_if<std::is_signed<From>::value && std::is_signed<To>::value, uint8_t>::type = 0>
+simdjson_result<To> cast_from(internal::tape_ref<K> tape) noexcept {
+  From result = tape.template next_tape_value<From>();
+  if (result > From((std::numeric_limits<To>::max)()) || result < From((std::numeric_limits<To>::min)() < result)) {
+    return NUMBER_OUT_OF_RANGE;
+  }
+  return static_cast<To>(result);
+}
+
+template<typename K, typename From, typename To, typename std::enable_if<std::is_signed<From>::value && std::is_unsigned<To>::value, uint8_t>::type = 1>
+simdjson_result<To> cast_from(internal::tape_ref<K> tape) noexcept {
+  From result = tape.template next_tape_value<From>();
+  if (result < 0) {
+    return NUMBER_OUT_OF_RANGE;
+  }
+  return static_cast<To>(result);
+}
+
+template<typename K, typename From, typename To, typename std::enable_if<std::is_unsigned<From>::value, uint8_t>::type = 2>
+simdjson_result<To> cast_from(internal::tape_ref<K> tape) noexcept {
+  From result = tape.template next_tape_value<From>();
+  // Wrapping max in parens to handle Windows issue: https://stackoverflow.com/questions/11544073/how-do-i-deal-with-the-max-macro-in-windows-h-colliding-with-max-in-std
+  if (result > From((std::numeric_limits<To>::max)())) {
+    return NUMBER_OUT_OF_RANGE;
+  }
+  return static_cast<To>(result);
+}
+
 } // namespace dom
 } // namespace simdjson
 
-#endif // SIMDJSON_DOM_DOCUMENT_H
+#endif // SIMDJSON_DOM_ELEMENT_H
