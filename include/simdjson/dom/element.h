@@ -14,9 +14,10 @@ enum class element_type {
   INT32 = 'i',
   INT64 = 'l',     ///< int64_t
   UINT64 = 'u',    ///< uint64_t: any integer that fits in uint64_t but *not* int64_t
+  FLOAT = 'f',
   DOUBLE = 'd',    ///< double: Any number with a "." or "e" that fits in double.
   STRING = '"',    ///< std::string_view
-  BOOL = 't',      ///< bool
+  BOOL = '1',      ///< bool
   NULL_VALUE = 'n' ///< null
 };
 
@@ -89,6 +90,8 @@ public:
    *          if it is too large.
    */
   inline simdjson_result<uint64_t> get_uint64() const noexcept;
+
+  inline simdjson_result<float> get_float() const noexcept;
   /**
    * Cast this element to a double floating-point.
    *
@@ -124,6 +127,8 @@ public:
    * Equivalent to is<uint64_t>().
    */
   inline bool is_uint64() const noexcept;
+
+  inline bool is_float() const noexcept;
   /**
    * Whether this element is a json number that fits in a double.
    *
@@ -219,6 +224,12 @@ public:
   inline typename std::enable_if<std::is_same<T, std::uint64_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_uint64();
+  }
+
+  template<typename T>
+  inline typename std::enable_if<std::is_same<T, float>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_float();
   }
 
   template<typename T>

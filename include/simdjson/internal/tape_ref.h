@@ -21,6 +21,7 @@ public:
   simdjson_inline tape_ref(const dom::document<K> *doc, size_t json_index) noexcept;
   simdjson_inline tape_type tape_ref_type() const noexcept;
   simdjson_inline uint64_t tape_value() const noexcept;
+  simdjson_inline bool is_float() const noexcept;
   simdjson_inline bool is_double() const noexcept;
   simdjson_inline bool is_int32() const noexcept;
   simdjson_inline bool is_int64() const noexcept;
@@ -31,6 +32,7 @@ public:
 
   template<typename T, typename std::enable_if<(sizeof(T) < sizeof(uint64_t)), uint8_t>::type = 0>
   simdjson_inline T next_tape_value() const noexcept {
+    static_assert(sizeof(T) == sizeof(uint32_t), "next_tape_value() template parameter must be 32 or 64-bit");
     T x;
     std::memcpy(&x,&doc->get_tape(json_index),sizeof(T));
     return x;
@@ -38,7 +40,7 @@ public:
 
   template<typename T, typename std::enable_if<(sizeof(T) >= sizeof(uint64_t)), uint8_t>::type = 1>
   simdjson_inline T next_tape_value() const noexcept {
-    static_assert(sizeof(T) == sizeof(uint64_t), "next_tape_value() template parameter must be 64-bit");
+    static_assert(sizeof(T) == sizeof(uint64_t), "next_tape_value() template parameter must be 32 or 64-bit");
     // Though the following is tempting...
     //  return *reinterpret_cast<const T*>(&doc_->tape[json_index + 1]);
     // It is not generally safe. It is safer, and often faster to rely
