@@ -6,8 +6,10 @@
 
 namespace components::document {
 
-    static inline bool is_equals(double x, double y) {
-        return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
-    }
+template<typename T>
+static inline bool is_equals(T x, T y) {
+  static_assert(std::is_floating_point<T>());
+  return std::fabs(x - y) < std::numeric_limits<T>::epsilon();
+}
 
-} // namespace document
+} // namespace components::document

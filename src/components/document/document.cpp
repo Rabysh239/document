@@ -80,6 +80,8 @@ bool document_t::is_int(std::string_view json_pointer) const { return is_as<int3
 
 bool document_t::is_long(std::string_view json_pointer) const { return is_as<int64_t>(json_pointer); }
 
+bool document_t::is_float(std::string_view json_pointer) const { return is_as<float>(json_pointer); }
+
 bool document_t::is_double(std::string_view json_pointer) const { return is_as<double>(json_pointer); }
 
 bool document_t::is_string(std::string_view json_pointer) const { return is_as<std::string_view>(json_pointer); }
@@ -98,9 +100,11 @@ bool document_t::get_bool(std::string_view json_pointer) const { return get_as<b
 
 uint64_t document_t::get_ulong(std::string_view json_pointer) const { return get_as<uint64_t>(json_pointer); }
 
-uint64_t document_t::get_int(std::string_view json_pointer) const { return get_as<int32_t>(json_pointer); }
+int32_t document_t::get_int(std::string_view json_pointer) const { return get_as<int32_t>(json_pointer); }
 
 int64_t document_t::get_long(std::string_view json_pointer) const { return get_as<int64_t>(json_pointer); }
+
+float document_t::get_float(std::string_view json_pointer) const { return get_as<float>(json_pointer); }
 
 double document_t::get_double(std::string_view json_pointer) const { return get_as<double>(json_pointer); }
 
@@ -157,6 +161,8 @@ compare_t compare_(
         return equals_<int64_t>(element1, element2);
       case element_type::UINT64:
         return equals_<uint64_t>(element1, element2);
+      case element_type::FLOAT:
+        return equals_<float>(element1, element2);
       case element_type::DOUBLE:
         return equals_<double>(element1, element2);
       case element_type::STRING:
@@ -473,6 +479,9 @@ bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K
   if (value1->is_int64()) {
     return value1->get_int64().value() == value2->get_int64().value();
   }
+  if (value1->is_float()) {
+    return is_equals(value1->get_float().value(), value2->get_float().value());
+  }
   if (value1->is_double()) {
     return is_equals(value1->get_double().value(), value2->get_double().value());
   }
@@ -514,6 +523,9 @@ std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::mem
   }
   if (value->is_int64()) {
     return create_pmr_string_(value->get_int64().value(), allocator);
+  }
+  if (value->is_double()) {
+    return create_pmr_string_(value->get_float().value(), allocator);
   }
   if (value->is_double()) {
     return create_pmr_string_(value->get_double().value(), allocator);
