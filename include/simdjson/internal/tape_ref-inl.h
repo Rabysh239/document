@@ -49,6 +49,11 @@ simdjson_inline bool tape_ref<K>::is_int64() const noexcept {
   return doc->get_tape(json_index) == tape_int64;
 }
 template<typename K>
+simdjson_inline bool tape_ref<K>::is_uint32() const noexcept {
+  constexpr auto tape_uint32 = uint8_t(tape_type::UINT32);
+  return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_uint32;
+}
+template<typename K>
 simdjson_inline bool tape_ref<K>::is_uint64() const noexcept {
   constexpr uint64_t tape_uint64 = uint64_t(tape_type::UINT64)<<56;
   return doc->get_tape(json_index) == tape_uint64;

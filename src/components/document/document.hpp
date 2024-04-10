@@ -90,6 +90,8 @@ public:
 
   bool is_bool(std::string_view json_pointer) const;
 
+  bool is_uint(std::string_view json_pointer) const;
+
   bool is_ulong(std::string_view json_pointer) const;
 
   bool is_int(std::string_view json_pointer) const;
@@ -107,6 +109,8 @@ public:
   bool is_dict(std::string_view json_pointer = "") const;
 
   bool get_bool(std::string_view json_pointer) const;
+
+  uint32_t get_uint(std::string_view json_pointer) const;
 
   uint64_t get_ulong(std::string_view json_pointer) const;
 

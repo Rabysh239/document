@@ -74,6 +74,8 @@ bool document_t::is_null(std::string_view json_pointer) const {
 
 bool document_t::is_bool(std::string_view json_pointer) const { return is_as<bool>(json_pointer); }
 
+bool document_t::is_uint(std::string_view json_pointer) const { return is_as<uint32_t>(json_pointer); }
+
 bool document_t::is_ulong(std::string_view json_pointer) const { return is_as<uint64_t>(json_pointer); }
 
 bool document_t::is_int(std::string_view json_pointer) const { return is_as<int32_t>(json_pointer); }
@@ -97,6 +99,8 @@ bool document_t::is_dict(std::string_view json_pointer) const {
 }
 
 bool document_t::get_bool(std::string_view json_pointer) const { return get_as<bool>(json_pointer); }
+
+uint32_t document_t::get_uint(std::string_view json_pointer) const { return get_as<uint32_t>(json_pointer); }
 
 uint64_t document_t::get_ulong(std::string_view json_pointer) const { return get_as<uint64_t>(json_pointer); }
 
@@ -147,18 +151,18 @@ compare_t compare_(
         const simdjson::dom::element<FirstType> *element1,
         const simdjson::dom::element<SecondType> *element2
 ) {
-  using simdjson::error_code;
   using simdjson::dom::element_type;
 
   auto type1 = element1->type();
-  auto type2 = element2->type();
 
-  if (type1 == type2) {
+  if (type1 == element2->type()) {
     switch (type1) {
       case element_type::INT32:
         return equals_<int32_t>(element1, element2);
       case element_type::INT64:
         return equals_<int64_t>(element1, element2);
+      case element_type::UINT32:
+        return equals_<uint32_t>(element1, element2);
       case element_type::UINT64:
         return equals_<uint64_t>(element1, element2);
       case element_type::FLOAT:
@@ -464,32 +468,33 @@ document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &d
 
 template<typename T, typename K>
 bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K> *value2) {
-  if (value1->type() != value2->type()) {
+  using simdjson::dom::element_type;
+
+  auto type1 = value1->type();
+
+  if (type1 != value2->type()) {
     return false;
   }
-  if (value1->is_bool()) {
-    return value1->get_bool().value() == value2->get_bool().value();
-  }
-  if (value1->is_uint64()) {
-    return value1->get_uint64().value() == value2->get_uint64().value();
-  }
-  if (value1->is_int32()) {
-    return value1->get_int32().value() == value2->get_int32().value();
-  }
-  if (value1->is_int64()) {
-    return value1->get_int64().value() == value2->get_int64().value();
-  }
-  if (value1->is_float()) {
-    return is_equals(value1->get_float().value(), value2->get_float().value());
-  }
-  if (value1->is_double()) {
-    return is_equals(value1->get_double().value(), value2->get_double().value());
-  }
-  if (value1->is_string()) {
-    return value1->get_string().value() == value2->get_string().value();
-  }
-  if (value1->is_null()) {
-    return true;
+
+  switch (type1) {
+    case element_type::INT32:
+      return value1->get_int32().value() == value2->get_int32().value();
+    case element_type::INT64:
+      return value1->get_int64().value() == value2->get_int64().value();
+    case element_type::UINT32:
+      return value1->get_uint32().value() == value2->get_uint32().value();
+    case element_type::UINT64:
+      return value1->get_uint64().value() == value2->get_uint64().value();
+    case element_type::FLOAT:
+      return is_equals(value1->get_float().value(), value2->get_float().value());
+    case element_type::DOUBLE:
+      return is_equals(value1->get_double().value(), value2->get_double().value());
+    case element_type::STRING:
+      return value1->get_string().value() == value2->get_string().value();
+    case element_type::BOOL:
+      return value1->get_bool().value() == value2->get_bool().value();
+    case element_type::NULL_VALUE:
+      return true;
   }
   return false;
 }
@@ -506,37 +511,37 @@ bool document_t::is_equals_documents(const document_ptr &doc1, const document_pt
 
 template<typename T>
 std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::memory_resource *allocator) {
-  if (value->is_bool()) {
-    std::pmr::string tmp(allocator);
-    if(value->get_bool()) {
-      tmp.append("true");
-    } else {
-      tmp.append("false");
+  using simdjson::dom::element_type;
+
+  switch (value->type()) {
+    case element_type::INT32:
+      return create_pmr_string_(value->get_int32().value(), allocator);
+    case element_type::INT64:
+      return create_pmr_string_(value->get_int64().value(), allocator);
+    case element_type::UINT32:
+      return create_pmr_string_(value->get_uint32().value(), allocator);
+    case element_type::UINT64:
+      return create_pmr_string_(value->get_uint64().value(), allocator);
+    case element_type::FLOAT:
+      return create_pmr_string_(value->get_float().value(), allocator);
+    case element_type::DOUBLE:
+      return create_pmr_string_(value->get_double().value(), allocator);
+    case element_type::STRING: {
+      std::pmr::string tmp(allocator);
+      tmp.append("\"").append(value->get_string().value()).append("\"");
+      return tmp;
     }
-    return tmp;
-  }
-  if (value->is_uint64()) {
-    return create_pmr_string_(value->get_uint64().value(), allocator);
-  }
-  if (value->is_int32()) {
-    return create_pmr_string_(value->get_int32().value(), allocator);
-  }
-  if (value->is_int64()) {
-    return create_pmr_string_(value->get_int64().value(), allocator);
-  }
-  if (value->is_double()) {
-    return create_pmr_string_(value->get_float().value(), allocator);
-  }
-  if (value->is_double()) {
-    return create_pmr_string_(value->get_double().value(), allocator);
-  }
-  if (value->is_string()) {
-    std::pmr::string tmp(allocator);
-    tmp.append("\"").append(value->get_string().value()).append("\"");
-    return tmp;
-  }
-  if (value->is_null()) {
-    return {"null", allocator};
+    case element_type::BOOL: {
+      std::pmr::string tmp(allocator);
+      if (value->get_bool()) {
+        tmp.append("true");
+      } else {
+        tmp.append("false");
+      }
+      return tmp;
+    }
+    case element_type::NULL_VALUE:
+      return {"null", allocator};
   }
   return {};
 }
