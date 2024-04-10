@@ -3,6 +3,7 @@
 #include "../src/components/document/varint.hpp"
 
 using components::document::document_t;
+using components::document::compare_t;
 using components::document::error_code_t;
 
 TEST_CASE("document_t::is/get value") {
@@ -40,6 +41,37 @@ TEST_CASE("document_t::is/get value") {
   REQUIRE_FALSE(doc->is_exists("/other"));
   REQUIRE_FALSE(doc->is_exists("/countArray/10"));
   REQUIRE_FALSE(doc->is_exists("/countDict/other"));
+}
+
+TEST_CASE("document_t::compare") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc1 = make_document(allocator);
+  auto doc2 = make_document(allocator);
+
+  std::string_view less("/less");
+  std::string_view equals("/equals");
+  std::string_view equals_null("/equalsNull");
+  std::string_view more("/more");
+
+  uint64_t value1 = 1;
+  uint64_t value2 = 2;
+
+  doc1->set(less, value1);
+  doc2->set(less, value2);
+
+  doc1->set(equals, value1);
+  doc2->set(equals, value1);
+
+  doc1->set_null(equals_null);
+  doc2->set_null(equals_null);
+
+  doc1->set(more, value2);
+  doc2->set(more, value1);
+
+  REQUIRE(doc1->compare(*doc2, less) == compare_t::less);
+  REQUIRE(doc1->compare(*doc2, equals) == compare_t::equals);
+  REQUIRE(doc1->compare(*doc2, equals_null) == compare_t::equals);
+  REQUIRE(doc1->compare(*doc2, more) == compare_t::more);
 }
 
 TEST_CASE("document_t::int") {

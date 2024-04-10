@@ -11,6 +11,7 @@ namespace dom {
  * This is the type it is most easily cast_from to with get<>.
  */
 enum class element_type {
+  INT32 = 'i',
   INT64 = 'l',     ///< int64_t
   UINT64 = 'u',    ///< uint64_t: any integer that fits in uint64_t but *not* int64_t
   DOUBLE = 'd',    ///< double: Any number with a "." or "e" that fits in double.
