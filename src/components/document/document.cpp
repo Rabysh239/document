@@ -124,14 +124,50 @@ document_t::ptr document_t::get_dict(std::string_view json_pointer) {
   return new(allocator_->allocate(sizeof(document_t))) document_t({this}, allocator_, node_ptr);
 }
 
-template<class T>
-compare_t equals_(const document_t& doc1, const document_t& doc2, std::string_view json_pointer) {
-  T v1 = doc1.get_as<T>(json_pointer);
-  T v2 = doc2.get_as<T>(json_pointer);
+template<class T, typename FirstType, typename SecondType>
+compare_t equals_(
+        const simdjson::dom::element<FirstType> *element1,
+        const simdjson::dom::element<SecondType> *element2
+) {
+  T v1 = element1->template get<T>();
+  T v2 = element2->template get<T>();
   if (v1 < v2)
     return compare_t::less;
   if (v1 > v2)
     return compare_t::more;
+  return compare_t::equals;
+}
+
+template<typename FirstType, typename SecondType>
+compare_t compare_(
+        const simdjson::dom::element<FirstType> *element1,
+        const simdjson::dom::element<SecondType> *element2
+) {
+  using simdjson::error_code;
+  using simdjson::dom::element_type;
+
+  auto type1 = element1->type();
+  auto type2 = element2->type();
+
+  if (type1 == type2) {
+    switch (type1) {
+      case element_type::INT32:
+        return equals_<int32_t>(element1, element2);
+      case element_type::INT64:
+        return equals_<int64_t>(element1, element2);
+      case element_type::UINT64:
+        return equals_<uint64_t>(element1, element2);
+      case element_type::DOUBLE:
+        return equals_<double>(element1, element2);
+      case element_type::STRING:
+        return equals_<std::string_view>(element1, element2);
+      case element_type::BOOL:
+        return equals_<bool>(element1, element2);
+      case element_type::NULL_VALUE:
+        return compare_t::equals;
+    }
+  }
+
   return compare_t::equals;
 }
 
@@ -142,25 +178,29 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
     return compare_t::more;
   if (!is_valid())
     return compare_t::equals;
-  if (is_exists(json_pointer) && !other.is_exists(json_pointer))
+  auto node = find_node_const(json_pointer).first;
+  auto other_node = other.find_node_const(json_pointer).first;
+  auto exists = node != nullptr;
+  auto other_exists = other_node != nullptr;
+  if (exists && !other_exists)
     return compare_t::less;
-  if (!is_exists(json_pointer) && other.is_exists(json_pointer))
+  if (!exists && other_exists)
     return compare_t::more;
-  if (!is_exists(json_pointer) && !other.is_exists(json_pointer))
+  if (!exists)
     return compare_t::equals;
-  if (is_bool(json_pointer) && other.is_bool(json_pointer))
-    return equals_<bool>(*this, other, json_pointer);
-  if (is_ulong(json_pointer) && other.is_ulong(json_pointer))
-    return equals_<uint64_t>(*this, other, json_pointer);
-  if (is_int(json_pointer) && other.is_int(json_pointer))
-    return equals_<int32_t>(*this, other, json_pointer);
-  if (is_long(json_pointer) && other.is_long(json_pointer))
-    return equals_<int64_t>(*this, other, json_pointer);
-  if (is_double(json_pointer) && other.is_double(json_pointer))
-    return equals_<double>(*this, other, json_pointer);
-  if (is_string(json_pointer) && other.is_string(json_pointer))
-    return equals_<std::string_view>(*this, other, json_pointer);
-  return compare_t::equals;
+  auto first = node->get_value_first();
+  auto other_first = other_node->get_value_first();
+  if (first != nullptr) {
+    if (other_first != nullptr) {
+      return compare_(first, other_first);
+    }
+    return compare_(first, other_node->get_value_second());
+  }
+  auto second = node->get_value_second();
+  if (other_first != nullptr) {
+    return compare_(second, other_first);
+  }
+  return compare_(second, other_node->get_value_second());
 }
 
 document_t::document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index)
@@ -286,7 +326,7 @@ std::pair<const document_t::json_trie_node_element *, error_code_t> document_t::
   for (auto key: string_splitter(json_pointer, '/')) {
     std::pmr::string unescaped_key;
     bool is_unescaped;
-    auto error = unescape_key(key, is_unescaped, unescaped_key, allocator_);
+    auto error = unescape_key_(key, is_unescaped, unescaped_key, allocator_);
     if (error != error_code_t::SUCCESS) {
       return {nullptr, error};
     }
@@ -322,7 +362,7 @@ error_code_t document_t::find_container_key(
   is_view_key = true;
   std::pmr::string unescaped_key;
   bool is_unescaped;
-  auto error = unescape_key(view_key, is_unescaped, unescaped_key, allocator_);
+  auto error = unescape_key_(view_key, is_unescaped, unescaped_key, allocator_);
   if (error != error_code_t::SUCCESS) {
     return error;
   }
@@ -337,7 +377,7 @@ error_code_t document_t::find_container_key(
     }
     size_t correct_index = std::min(size_t(index), container->size());
     is_view_key = false;
-    key = create_pmr_string(correct_index, allocator_);
+    key = create_pmr_string_(correct_index, allocator_);
   }
   return error_code_t::SUCCESS;
 }
@@ -384,7 +424,7 @@ void document_t::build_index(
     const auto &arr = value.get_array();
     int i = 0;
     for (const auto& it: arr) {
-      build_index(it, next, create_pmr_string(i++, allocator), builder, immut_src, allocator);
+      build_index(it, next, create_pmr_string_(i++, allocator), builder, immut_src, allocator);
     }
   } else {
     auto element = immut_src->next_element();
@@ -467,16 +507,16 @@ std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::mem
     return tmp;
   }
   if (value->is_uint64()) {
-    return create_pmr_string(value->get_uint64().value(), allocator);
+    return create_pmr_string_(value->get_uint64().value(), allocator);
   }
   if (value->is_int32()) {
-    return create_pmr_string(value->get_int32().value(), allocator);
+    return create_pmr_string_(value->get_int32().value(), allocator);
   }
   if (value->is_int64()) {
-    return create_pmr_string(value->get_int64().value(), allocator);
+    return create_pmr_string_(value->get_int64().value(), allocator);
   }
   if (value->is_double()) {
-    return create_pmr_string(value->get_double().value(), allocator);
+    return create_pmr_string_(value->get_double().value(), allocator);
   }
   if (value->is_string()) {
     std::pmr::string tmp(allocator);
@@ -500,7 +540,7 @@ document_ptr deserialize_document(const std::string &text, document_t::allocator
 }
 
 template<typename T>
-std::pmr::string create_pmr_string(T value, std::pmr::memory_resource *allocator) {
+std::pmr::string create_pmr_string_(T value, std::pmr::memory_resource *allocator) {
   std::array<char, sizeof(T)> buffer{};
   auto [ptr, ec] = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
   return std::pmr::string(buffer.data(), ptr - buffer.data(), allocator);
@@ -510,7 +550,7 @@ document_ptr make_document(document_t::allocator_type *allocator) {
   return new(allocator->allocate(sizeof(components::document::document_t))) components::document::document_t(allocator);
 }
 
-error_code_t unescape_key(
+error_code_t unescape_key_(
         std::string_view key,
         bool &is_unescaped,
         std::pmr::string &unescaped_key,

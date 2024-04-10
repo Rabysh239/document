@@ -291,9 +291,9 @@ document_ptr deserialize_document(const std::string &text, document_t::allocator
 //document_t sum(const document_t &value1, const document_t &value2);
 
 template<typename T>
-std::pmr::string create_pmr_string(T value, std::pmr::memory_resource *allocator);
+std::pmr::string create_pmr_string_(T value, std::pmr::memory_resource *allocator);
 
-error_code_t unescape_key(
+error_code_t unescape_key_(
         std::string_view key,
         bool &is_unescaped,
         std::pmr::string &unescaped_key,
