@@ -25,6 +25,7 @@ public:
   simdjson_inline bool is_double() const noexcept;
   simdjson_inline bool is_int32() const noexcept;
   simdjson_inline bool is_int64() const noexcept;
+  simdjson_inline bool is_uint32() const noexcept;
   simdjson_inline bool is_uint64() const noexcept;
   simdjson_inline bool is_false() const noexcept;
   simdjson_inline bool is_true() const noexcept;

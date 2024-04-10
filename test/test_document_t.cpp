@@ -85,6 +85,24 @@ TEST_CASE("document_t::int") {
   REQUIRE(doc->is_exists(key));
   REQUIRE(doc->is_int(key));
   REQUIRE(doc->get_int(key) == value);
+  REQUIRE(doc->get_uint(key) == value);
+  REQUIRE(doc->get_long(key) == value);
+  REQUIRE(doc->get_ulong(key) == value);
+  REQUIRE(is_equals(doc->get_double(key), double(value)));
+}
+
+TEST_CASE("document_t::unsigned int") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/countInsignedInt");
+  uint32_t value = 3;
+  doc->set(key, value);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_uint(key));
+  REQUIRE(doc->get_uint(key) == value);
+  REQUIRE(doc->get_int(key) == value);
   REQUIRE(doc->get_long(key) == value);
   REQUIRE(doc->get_ulong(key) == value);
   REQUIRE(is_equals(doc->get_double(key), double(value)));

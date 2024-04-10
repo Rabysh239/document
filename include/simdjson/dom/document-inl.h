@@ -96,7 +96,7 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         os << '\n';
         break;
       case 'i': // we have a long int
-        os << "int " << static_cast<int32_t>(get_tape(tape_idx++) & internal::JSON_VALUE_MASK) << "\n";
+        os << "int " << static_cast<int32_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
         break;
       case 'l': // we have a long int
         if (tape_idx + 1 >= how_many) {
@@ -104,7 +104,10 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         }
         os << "long " << static_cast<int64_t>(get_tape(++tape_idx)) << "\n";
         break;
-      case 'u': // we have a long uint
+      case 'u': // we have a long int
+        os << "unsigned int " << static_cast<uint32_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
+        break;
+      case 'U': // we have a long uint
         if (tape_idx + 1 >= how_many) {
           return false;
         }
@@ -113,7 +116,7 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
       case 'f': // we have a double
         os << "float ";
         float float_value;
-        std::memcpy(&float_value, &get_tape(tape_idx++), sizeof(float_value));
+        std::memcpy(&float_value, &get_tape(tape_idx), sizeof(float_value));
         os << float_value << '\n';
         break;
       case 'd': // we have a double

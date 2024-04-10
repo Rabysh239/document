@@ -13,7 +13,8 @@ namespace dom {
 enum class element_type {
   INT32 = 'i',
   INT64 = 'l',     ///< int64_t
-  UINT64 = 'u',    ///< uint64_t: any integer that fits in uint64_t but *not* int64_t
+  UINT32 = 'u',
+  UINT64 = 'U',    ///< uint64_t: any integer that fits in uint64_t but *not* int64_t
   FLOAT = 'f',
   DOUBLE = 'd',    ///< double: Any number with a "." or "e" that fits in double.
   STRING = '"',    ///< std::string_view
@@ -82,6 +83,8 @@ public:
    *          if it is negative.
    */
   inline simdjson_result<int64_t> get_int64() const noexcept;
+
+  inline simdjson_result<uint32_t> get_uint32() const noexcept;
   /**
    * Cast this element to an unsigned integer.
    *
@@ -121,6 +124,8 @@ public:
    * Equivalent to is<int64_t>().
    */
   inline bool is_int64() const noexcept;
+
+  inline bool is_uint32() const noexcept;
   /**
    * Whether this element is a json number that fits in an unsigned 64-bit integer.
    *
@@ -218,6 +223,12 @@ public:
   inline typename std::enable_if<std::is_same<T, std::int64_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_int64();
+  }
+
+  template<typename T>
+  inline typename std::enable_if<std::is_same<T, std::uint32_t>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_uint32();
   }
 
   template<typename T>
