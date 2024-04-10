@@ -41,6 +41,7 @@ struct tape_builder {
   /** Write an unsigned 64-bit value to  */
   simdjson_inline void build(uint64_t value) noexcept;
 
+  simdjson_inline void build(float value) noexcept;
   /** Write a double value to  */
   simdjson_inline void build(double value) noexcept;
   simdjson_inline void build(bool value) noexcept;
@@ -132,6 +133,13 @@ template<typename K>
 simdjson_inline void tape_builder<K>::build(uint64_t value) noexcept {
   append(0, internal::tape_type::UINT64);
   tape_->append(value);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(float value) noexcept {
+  uint64_t tape_data;
+  std::memcpy(&tape_data, &value, sizeof(value));
+  append(tape_data, internal::tape_type::FLOAT);
 }
 
 /** Write a double value to  */

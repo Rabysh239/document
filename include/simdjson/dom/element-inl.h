@@ -114,6 +114,32 @@ inline simdjson_result<int64_t> element<K>::get_int64() const noexcept {
   }
   return tape.template next_tape_value<int64_t>();
 }
+
+template<typename K>
+inline simdjson_result<float> element<K>::get_float() const noexcept {
+  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
+  if(simdjson_unlikely(!tape.is_float())) { // branch rarely taken
+    switch (tape.tape_ref_type()) {
+      case internal::tape_type::UINT64: {
+        return float(tape.template next_tape_value<uint64_t>());
+      }
+      case internal::tape_type::INT64: {
+        return float(tape.template next_tape_value<int64_t>());
+      }
+      case internal::tape_type::INT32: {
+        return float(tape.template next_tape_value<int32_t>());
+      }
+      case internal::tape_type::DOUBLE: {
+        return float(tape.template next_tape_value<double>());
+      }
+      default:
+        return INCORRECT_TYPE;
+    }
+  }
+  // this is common:
+  return tape.template next_tape_value<float>();
+}
+
 template<typename K>
 inline simdjson_result<double> element<K>::get_double() const noexcept {
   SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
@@ -126,16 +152,23 @@ inline simdjson_result<double> element<K>::get_double() const noexcept {
   // We can expect get<double> to refer to a double type almost all the time.
   // It is important to craft the code accordingly so that the compiler can use this
   // information. (This could also be solved with profile-guided optimization.)
-  if(simdjson_unlikely(!tape.is_double())) { // branch rarely taken
-    if(tape.is_uint64()) {
-      return double(tape.template next_tape_value<uint64_t>());
-    } else if(tape.is_int64()) {
-      return double(tape.template next_tape_value<int64_t>());
+  if(simdjson_unlikely(!tape.is_double())) { // branch rarely taken    switch (tape.tape_ref_type()) {
+    switch (tape.tape_ref_type()) {
+      case internal::tape_type::FLOAT: {
+        return double(tape.template next_tape_value<float>());
+      }
+      case internal::tape_type::UINT64: {
+        return double(tape.template next_tape_value<uint64_t>());
+      }
+      case internal::tape_type::INT64: {
+        return double(tape.template next_tape_value<int64_t>());
+      }
+      case internal::tape_type::INT32: {
+        return double(tape.template next_tape_value<int32_t>());
+      }
+      default:
+        return INCORRECT_TYPE;
     }
-    if (tape.is_int32()) {
-      return double(tape.template next_tape_value<int32_t>());
-    }
-    return INCORRECT_TYPE;
   }
   // this is common:
   return tape.template next_tape_value<double>();
@@ -164,6 +197,7 @@ template<typename K> inline bool element<K>::is_string() const noexcept { return
 template<typename K> inline bool element<K>::is_int32() const noexcept { return is<int32_t>(); }
 template<typename K> inline bool element<K>::is_int64() const noexcept { return is<int64_t>(); }
 template<typename K> inline bool element<K>::is_uint64() const noexcept { return is<uint64_t>(); }
+template<typename K> inline bool element<K>::is_float() const noexcept { return is<float>(); }
 template<typename K> inline bool element<K>::is_double() const noexcept { return is<double>(); }
 template<typename K> inline bool element<K>::is_bool() const noexcept { return is<bool>(); }
 template<typename K> inline bool element<K>::is_number() const noexcept { return is_int64() || is_uint64() || is_double(); }

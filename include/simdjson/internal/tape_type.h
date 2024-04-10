@@ -12,9 +12,10 @@ enum class tape_type {
   INT32 = 'i',
   INT64 = 'l',
   UINT64 = 'u',
+  FLOAT = 'f',
   DOUBLE = 'd',
-  TRUE_VALUE = 't',
-  FALSE_VALUE = 'f',
+  TRUE_VALUE = '1',
+  FALSE_VALUE = '0',
   NULL_VALUE = 'n'
 }; // enum class tape_type
 

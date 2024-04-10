@@ -110,6 +110,12 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         }
         os << "unsigned long " << get_tape(++tape_idx) << "\n";
         break;
+      case 'f': // we have a double
+        os << "float ";
+        float float_value;
+        std::memcpy(&float_value, &get_tape(tape_idx++), sizeof(float_value));
+        os << float_value << '\n';
+        break;
       case 'd': // we have a double
         os << "double ";
         if (tape_idx + 1 >= how_many) {
@@ -122,10 +128,10 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
       case 'n': // we have a null
         os << "null\n";
         break;
-      case 't': // we have a true
+      case '1': // we have a true
         os << "true\n";
         break;
-      case 'f': // we have a false
+      case '0': // we have a false
         os << "false\n";
         break;
       default:

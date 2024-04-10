@@ -29,6 +29,11 @@ simdjson_inline bool tape_ref<K>::usable() const noexcept {
 // most significant 8 bits.
 
 template<typename K>
+simdjson_inline bool tape_ref<K>::is_float() const noexcept {
+  constexpr auto tape_float = uint8_t(tape_type::FLOAT);
+  return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_float;
+}
+template<typename K>
 simdjson_inline bool tape_ref<K>::is_double() const noexcept {
   constexpr uint64_t tape_double = uint64_t(tape_type::DOUBLE)<<56;
   return doc->get_tape(json_index) == tape_double;
