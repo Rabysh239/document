@@ -11,6 +11,7 @@ enum class tape_type {
   STRING = '"',
   INT32 = 'i',
   INT64 = 'l',
+  INT128 = 'h',
   UINT32 = 'u',
   UINT64 = 'U',
   FLOAT = 'f',
