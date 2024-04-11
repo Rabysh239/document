@@ -104,6 +104,13 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         }
         os << "long " << static_cast<int64_t>(get_tape(++tape_idx)) << "\n";
         break;
+      case 'h': // we have a long int
+        if (tape_idx + 2 >= how_many) {
+          return false;
+        }
+        os << "hugeint\n"; //TODO support value
+        tape_idx += 2;
+        break;
       case 'u': // we have a long int
         os << "unsigned int " << static_cast<uint32_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
         break;

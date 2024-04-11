@@ -98,6 +98,8 @@ public:
 
   bool is_long(std::string_view json_pointer) const;
 
+  bool is_hugeint(std::string_view json_pointer) const;
+
   bool is_float(std::string_view json_pointer) const;
 
   bool is_double(std::string_view json_pointer) const;
@@ -117,6 +119,8 @@ public:
   int32_t get_int(std::string_view json_pointer) const;
 
   int64_t get_long(std::string_view json_pointer) const;
+
+  __int128_t get_hugeint(std::string_view json_pointer) const;
 
   float get_float(std::string_view json_pointer) const;
 

@@ -82,6 +82,8 @@ bool document_t::is_int(std::string_view json_pointer) const { return is_as<int3
 
 bool document_t::is_long(std::string_view json_pointer) const { return is_as<int64_t>(json_pointer); }
 
+bool document_t::is_hugeint(std::string_view json_pointer) const { return is_as<__int128_t>(json_pointer); }
+
 bool document_t::is_float(std::string_view json_pointer) const { return is_as<float>(json_pointer); }
 
 bool document_t::is_double(std::string_view json_pointer) const { return is_as<double>(json_pointer); }
@@ -107,6 +109,8 @@ uint64_t document_t::get_ulong(std::string_view json_pointer) const { return get
 int32_t document_t::get_int(std::string_view json_pointer) const { return get_as<int32_t>(json_pointer); }
 
 int64_t document_t::get_long(std::string_view json_pointer) const { return get_as<int64_t>(json_pointer); }
+
+__int128_t document_t::get_hugeint(std::string_view json_pointer) const { return get_as<__int128_t>(json_pointer); }
 
 float document_t::get_float(std::string_view json_pointer) const { return get_as<float>(json_pointer); }
 
@@ -161,6 +165,8 @@ compare_t compare_(
         return equals_<int32_t>(element1, element2);
       case element_type::INT64:
         return equals_<int64_t>(element1, element2);
+      case element_type::INT128:
+        return equals_<__int128_t>(element1, element2);
       case element_type::UINT32:
         return equals_<uint32_t>(element1, element2);
       case element_type::UINT64:
@@ -481,6 +487,8 @@ bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K
       return value1->get_int32().value() == value2->get_int32().value();
     case element_type::INT64:
       return value1->get_int64().value() == value2->get_int64().value();
+    case element_type::INT128:
+      return value1->get_int128().value() == value2->get_int128().value();
     case element_type::UINT32:
       return value1->get_uint32().value() == value2->get_uint32().value();
     case element_type::UINT64:
@@ -518,6 +526,8 @@ std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::mem
       return create_pmr_string_(value->get_int32().value(), allocator);
     case element_type::INT64:
       return create_pmr_string_(value->get_int64().value(), allocator);
+    case element_type::INT128:
+      return {"hugeint", allocator}; //TODO support value
     case element_type::UINT32:
       return create_pmr_string_(value->get_uint32().value(), allocator);
     case element_type::UINT64:

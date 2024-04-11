@@ -13,6 +13,7 @@ namespace dom {
 enum class element_type {
   INT32 = 'i',
   INT64 = 'l',     ///< int64_t
+  INT128 = 'h',
   UINT32 = 'u',
   UINT64 = 'U',    ///< uint64_t: any integer that fits in uint64_t but *not* int64_t
   FLOAT = 'f',
@@ -84,6 +85,8 @@ public:
    */
   inline simdjson_result<int64_t> get_int64() const noexcept;
 
+  inline simdjson_result<__int128_t> get_int128() const noexcept;
+
   inline simdjson_result<uint32_t> get_uint32() const noexcept;
   /**
    * Cast this element to an unsigned integer.
@@ -124,6 +127,8 @@ public:
    * Equivalent to is<int64_t>().
    */
   inline bool is_int64() const noexcept;
+
+  inline bool is_int128() const noexcept;
 
   inline bool is_uint32() const noexcept;
   /**
@@ -214,25 +219,31 @@ public:
   }
 
   template<typename T>
-  inline typename std::enable_if<std::is_same<T, std::int32_t>::value, simdjson_result<T>>::type
+  inline typename std::enable_if<std::is_same<T, int32_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_int32();
   }
 
   template<typename T>
-  inline typename std::enable_if<std::is_same<T, std::int64_t>::value, simdjson_result<T>>::type
+  inline typename std::enable_if<std::is_same<T, int64_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_int64();
   }
 
   template<typename T>
-  inline typename std::enable_if<std::is_same<T, std::uint32_t>::value, simdjson_result<T>>::type
+  inline typename std::enable_if<std::is_same<T, __int128_t>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_int128();
+  }
+
+  template<typename T>
+  inline typename std::enable_if<std::is_same<T, uint32_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_uint32();
   }
 
   template<typename T>
-  inline typename std::enable_if<std::is_same<T, std::uint64_t>::value, simdjson_result<T>>::type
+  inline typename std::enable_if<std::is_same<T, uint64_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_uint64();
   }
