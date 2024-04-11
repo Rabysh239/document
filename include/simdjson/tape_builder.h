@@ -38,6 +38,8 @@ struct tape_builder {
   /** Write a signed 64-bit value to  */
   simdjson_inline void build(int64_t value) noexcept;
 
+  simdjson_inline void build(__int128_t value) noexcept;
+
   simdjson_inline void build(uint32_t value) noexcept;
   /** Write an unsigned 64-bit value to  */
   simdjson_inline void build(uint64_t value) noexcept;
@@ -63,6 +65,9 @@ private:
    */
   template<typename T>
   simdjson_inline void append2(uint64_t val, T val2, internal::tape_type t) noexcept;
+
+  template<typename T>
+  simdjson_inline void append3(T val2, internal::tape_type t) noexcept;
 };
 
 template<typename K>
@@ -131,6 +136,11 @@ simdjson_inline void tape_builder<K>::build(int64_t value) noexcept {
 }
 
 template<typename K>
+simdjson_inline void tape_builder<K>::build(__int128_t value) noexcept {
+  append3(value, internal::tape_type::INT128);
+}
+
+template<typename K>
 simdjson_inline void tape_builder<K>::build(uint32_t value) noexcept {
   append(value, internal::tape_type::UINT32);
 }
@@ -173,8 +183,18 @@ template<typename K>
 template<typename T>
 simdjson_inline void tape_builder<K>::append2(uint64_t val, T val2, internal::tape_type t) noexcept {
   append(val, t);
-  static_assert(sizeof(val2) == sizeof(int64_t), "Type is not 64 bits!");
+  static_assert(sizeof(val2) == sizeof(uint64_t), "Type is not 64 bits!");
   tape_->copy(&val2);
+}
+
+template<typename K>
+template<typename T>
+simdjson_inline void tape_builder<K>::append3(T val2, internal::tape_type t) noexcept {
+  append(0, t);
+  static_assert(sizeof(val2) == 2 * sizeof(uint64_t), "Type is not 128 bits!");
+  auto data = reinterpret_cast<uint64_t *>(&val2);
+  tape_->copy(data);
+  tape_->copy(data + 1);
 }
 
 } // namespace simdjson

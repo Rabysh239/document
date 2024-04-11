@@ -86,6 +86,9 @@ inline simdjson_result<uint32_t> element<K>::get_uint32() const noexcept {
       case internal::tape_type::INT64: {
         return cast_from<K, int64_t, uint32_t>(tape);
       }
+      case internal::tape_type::INT128: {
+        return cast_from<K, __int128_t, uint32_t>(tape);
+      }
       default:
         return INCORRECT_TYPE;
     }
@@ -105,6 +108,9 @@ inline simdjson_result<uint64_t> element<K>::get_uint64() const noexcept {
       }
       case internal::tape_type::INT64: {
         return cast_from<K, int64_t, uint64_t>(tape);
+      }
+      case internal::tape_type::INT128: {
+        return cast_from<K, __int128_t, uint64_t>(tape);
       }
       default:
         return INCORRECT_TYPE;
@@ -126,6 +132,9 @@ inline simdjson_result<int32_t> element<K>::get_int32() const noexcept {
       case internal::tape_type::UINT64: {
         return cast_from<K, uint64_t, int32_t>(tape);
       }
+      case internal::tape_type::INT128: {
+        return cast_from<K, __int128_t, int32_t>(tape);
+      }
       default:
         return INCORRECT_TYPE;
     }
@@ -146,11 +155,38 @@ inline simdjson_result<int64_t> element<K>::get_int64() const noexcept {
       case internal::tape_type::UINT64: {
         return cast_from<K, uint64_t, int64_t>(tape);
       }
+      case internal::tape_type::INT128: {
+        return cast_from<K, __int128_t, int64_t>(tape);
+      }
       default:
         return INCORRECT_TYPE;
     }
   }
   return tape.template next_tape_value<int64_t>();
+}
+
+template<typename K>
+inline simdjson_result<__int128_t> element<K>::get_int128() const noexcept {
+  SIMDJSON_DEVELOPMENT_ASSERT(tape.usable()); // https://github.com/simdjson/simdjson/issues/1914
+  if(simdjson_unlikely(!tape.is_int128())) { // branch rarely taken
+    switch (tape.tape_ref_type()) {
+      case internal::tape_type::INT32: {
+        return __int128_t(tape.template next_tape_value<int32_t>());
+      }
+      case internal::tape_type::UINT32: {
+        return __int128_t(tape.template next_tape_value<uint32_t>());
+      }
+      case internal::tape_type::INT64: {
+        return cast_from<K, int64_t, __int128_t>(tape);
+      }
+      case internal::tape_type::UINT64: {
+        return cast_from<K, uint64_t, __int128_t>(tape);
+      }
+      default:
+        return INCORRECT_TYPE;
+    }
+  }
+  return tape.template next_tape_value<__int128_t>();
 }
 
 template<typename K>
@@ -172,6 +208,9 @@ inline simdjson_result<float> element<K>::get_float() const noexcept {
       }
       case internal::tape_type::INT64: {
         return float(tape.template next_tape_value<int64_t>());
+      }
+      case internal::tape_type::INT128: {
+        return float(tape.template next_tape_value<__int128_t>());
       }
       default:
         return INCORRECT_TYPE;
@@ -198,17 +237,20 @@ inline simdjson_result<double> element<K>::get_double() const noexcept {
       case internal::tape_type::FLOAT: {
         return double(tape.template next_tape_value<float>());
       }
+      case internal::tape_type::UINT32: {
+        return double(tape.template next_tape_value<uint32_t>());
+      }
+      case internal::tape_type::INT32: {
+        return double(tape.template next_tape_value<int32_t>());
+      }
       case internal::tape_type::UINT64: {
         return double(tape.template next_tape_value<uint64_t>());
       }
       case internal::tape_type::INT64: {
         return double(tape.template next_tape_value<int64_t>());
       }
-      case internal::tape_type::UINT32: {
-        return double(tape.template next_tape_value<uint32_t>());
-      }
-      case internal::tape_type::INT32: {
-        return double(tape.template next_tape_value<int32_t>());
+      case internal::tape_type::INT128: {
+        return double(tape.template next_tape_value<__int128_t>());
       }
       default:
         return INCORRECT_TYPE;
@@ -240,6 +282,7 @@ simdjson_inline bool element<K>::is() const noexcept {
 template<typename K> inline bool element<K>::is_string() const noexcept { return is<std::string_view>(); }
 template<typename K> inline bool element<K>::is_int32() const noexcept { return is<int32_t>(); }
 template<typename K> inline bool element<K>::is_int64() const noexcept { return is<int64_t>(); }
+template<typename K> inline bool element<K>::is_int128() const noexcept { return is<__int128_t>(); }
 template<typename K> inline bool element<K>::is_uint32() const noexcept { return is<uint32_t>(); }
 template<typename K> inline bool element<K>::is_uint64() const noexcept { return is<uint64_t>(); }
 template<typename K> inline bool element<K>::is_float() const noexcept { return is<float>(); }
