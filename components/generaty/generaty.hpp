@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../src/components/document/document.hpp"
+#include "../../src/components/document/document.hpp"
 
 using namespace components::document;
 

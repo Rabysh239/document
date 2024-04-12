@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include "generaty.hpp"
+#include "../components/generaty/generaty.hpp"
 
 using namespace components::document;
 
