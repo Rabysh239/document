@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include "generaty.hpp"
+#include "../components/generaty/generaty.hpp"
 #include "../src/components/document/varint.hpp"
 
 using components::document::document_t;
