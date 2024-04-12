@@ -3,7 +3,6 @@ project(test_document_base)
 include(FetchContent)
 
 set( ${PROJECT_NAME}_SOURCES
-        generaty.cpp
         test_document_json.cpp
         test_document_t.cpp
 )
@@ -22,4 +21,5 @@ target_link_libraries(
         ${PROJECT_NAME} PRIVATE
         Catch2::Catch2WithMain
         document_library
+        generaty_library
 )

@@ -65,7 +65,7 @@ bool document_t::is_exists(std::string_view json_pointer) const {
 
 bool document_t::is_null(std::string_view json_pointer) const {
   const auto node_ptr = find_node_const(json_pointer).first;
-  if (node_ptr == nullptr) {
+  if (node_ptr == nullptr || !node_ptr->is_terminal()) {
     return false;
   }
   auto first = node_ptr->get_value_first();
