@@ -14,18 +14,15 @@ string_split_iterator::pointer string_split_iterator::operator->() const noexcep
 string_split_iterator &string_split_iterator::operator++() noexcept {
   if (end_) return *this;
 
-  if (str_.empty() || str_[0] != '/') {
-    end_ = true;
-    return *this;
-  } else {
-    str_.remove_prefix(1);
-  }
   auto pos = str_.find(delim_);
   if (pos != std::string_view::npos) {
     current_ = str_.substr(0, pos);
-    str_.remove_prefix(pos);
+    str_.remove_prefix(pos + 1);
+  } else if (next_end_) {
+    end_ = true;
   } else {
     current_ = str_;
+    next_end_ = true;
   }
   return *this;
 }
