@@ -2,6 +2,7 @@
 #define SIMDJSON_INTERNAL_TAPE_REF_H
 
 #include <simdjson/base.h>
+#include <cstring>
 
 namespace simdjson {
 namespace dom {

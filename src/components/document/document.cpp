@@ -339,6 +339,13 @@ std::pair<document_t::json_trie_node_element *, error_code_t> document_t::find_n
 
 std::pair<const document_t::json_trie_node_element *, error_code_t> document_t::find_node_const(std::string_view json_pointer) const {
   const auto *current = element_ind_.get();
+  if (json_pointer.empty()) {
+    return {current, error_code_t::SUCCESS};
+  }
+  if (json_pointer[0] != '/') {
+    return {nullptr, error_code_t::INVALID_JSON_POINTER};
+  }
+  json_pointer.remove_prefix(1);
   for (auto key: string_splitter(json_pointer, '/')) {
     std::pmr::string unescaped_key;
     bool is_unescaped;
