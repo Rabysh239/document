@@ -34,6 +34,7 @@ array_deleter<T> &array_deleter<T>::operator=(array_deleter &&other) noexcept {
   allocator_ = other.allocator_;
   n_ = other.n_;
   other.allocator_ = nullptr;
+  return *this;
 }
 
 template<typename T>

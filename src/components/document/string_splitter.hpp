@@ -28,6 +28,7 @@ private:
   std::string_view str_;
   char delim_;
   bool end_ = false;
+  bool next_end_ = false;
   value_type current_;
 };
 
