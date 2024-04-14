@@ -11,24 +11,24 @@ file(GLOB_RECURSE DOCUMENT_SOURCES "src/components/document/*.cpp")
 file(GLOB_RECURSE INTERNAL_SOURCES "src/internal/*.cpp")
 
 add_compile_options(-g)
-#add_compile_options(
-#        -Wall
-#        -Wextra
-#        -Wpedantic
-#
-#        -Wcast-align
-#        -Wcast-qual
-#        -Wconversion
-#        -Wctor-dtor-privacy
-#        -Wenum-compare
-#        -Wfloat-equal
-#        -Wnon-virtual-dtor
-#        -Wold-style-cast
-#        -Woverloaded-virtual
-#        -Wredundant-decls
-#        -Wsign-conversion
-#        -Wsign-promo
-#)
+add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+
+        -Wcast-align
+        -Wcast-qual
+        -Wconversion
+        -Wctor-dtor-privacy
+        -Wenum-compare
+        -Wfloat-equal
+        -Wnon-virtual-dtor
+        -Wold-style-cast
+        -Woverloaded-virtual
+        -Wredundant-decls
+        -Wsign-conversion
+        -Wsign-promo
+)
 add_compile_options(-fno-omit-frame-pointer)
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
