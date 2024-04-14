@@ -10,11 +10,11 @@ struct string_view_hash {
   using is_transparent = void;
 
   size_t operator()(const std::pmr::string& s) const {
-    return absl::Hash<std::pmr::string>{}(s);
+    return std::hash<std::pmr::string>{}(s);
   }
 
   size_t operator()(std::string_view sv) const {
-    return absl::Hash<std::string_view>{}(sv);
+    return std::hash<std::string_view>{}(sv);
   }
 };
 
