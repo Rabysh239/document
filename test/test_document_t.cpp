@@ -404,13 +404,19 @@ TEST_CASE("document_t::remove fail when removing array element") {
   "foo": [ "bar", "qux", "baz" ]
 }
   )";
+  auto res_json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": [ "bar", "baz" ]
+}
+  )";
 
   auto allocator = std::pmr::new_delete_resource();
 
   auto doc = document_t::document_from_json(json, allocator);
-  auto res_doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(res_json, allocator);
 
-  REQUIRE(doc->remove("/foo/1") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
+  REQUIRE(doc->remove("/foo/1") == error_code_t::SUCCESS);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
@@ -482,13 +488,19 @@ TEST_CASE("document_t::move fail when moving array element") {
   "foo": [ "bar", "qux", "baz" ]
 }
   )";
+  auto res_json = R"(
+{
+  "_id": "000000000000000000000001",
+  "foo": [ "bar", "baz", "qux" ]
+}
+  )";
 
   auto allocator = std::pmr::new_delete_resource();
 
   auto doc = document_t::document_from_json(json, allocator);
-  auto res_doc = document_t::document_from_json(json, allocator);
+  auto res_doc = document_t::document_from_json(res_json, allocator);
 
-  REQUIRE(doc->move("/foo/1", "/foo/3") == error_code_t::NOT_APPLICABLE_TO_ARRAY);
+  REQUIRE(doc->move("/foo/1", "/foo/3") == error_code_t::SUCCESS);
 
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }

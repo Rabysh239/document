@@ -1,8 +1,8 @@
 #include "document.hpp"
 #include <utility>
 #include <charconv>
-#include "varint.hpp"
-#include "string_splitter.hpp"
+#include <components/document/varint.hpp>
+#include <components/document/string_splitter.hpp>
 #include <boost/json/src.hpp>
 
 namespace components::document {
@@ -43,7 +43,7 @@ document_t::document_t(document_t::allocator_type *allocator, bool is_root)
           immut_src_(nullptr),
           mut_src_(is_root ? new(allocator_->allocate(sizeof(simdjson::dom::mutable_document))) simdjson::dom::mutable_document(allocator_) : nullptr),
           builder_(allocator_, *mut_src_),
-          element_ind_(is_root ? new(allocator_->allocate(sizeof(json_trie_node_element))) json_trie_node_element(allocator_) : nullptr),
+          element_ind_(is_root ? json_trie_node_element::create_object(allocator_) : nullptr),
           ancestors_(allocator_),
           is_root_(is_root) {}
 
@@ -56,7 +56,13 @@ std::size_t document_t::count(std::string_view json_pointer) const {
   if (value_ptr == nullptr) {
     return 0;
   }
-  return value_ptr->size();
+  if (value_ptr->is_object()) {
+    return value_ptr->get_object()->size();
+  }
+  if (value_ptr->is_array()) {
+    return value_ptr->get_array()->size();
+  }
+  return 0;
 }
 
 bool document_t::is_exists(std::string_view json_pointer) const {
@@ -65,11 +71,16 @@ bool document_t::is_exists(std::string_view json_pointer) const {
 
 bool document_t::is_null(std::string_view json_pointer) const {
   const auto node_ptr = find_node_const(json_pointer).first;
-  if (node_ptr == nullptr || !node_ptr->is_terminal()) {
+  if (node_ptr == nullptr) {
     return false;
   }
-  auto first = node_ptr->get_value_first();
-  return first != nullptr ? first->is_null() : node_ptr->get_value_second()->is_null();
+  if (node_ptr->is_first()) {
+    return node_ptr->get_first()->is_null();
+  }
+  if (node_ptr->is_second()) {
+    return node_ptr->get_second()->is_null();
+  }
+  return false;;
 }
 
 bool document_t::is_bool(std::string_view json_pointer) const { return is_as<bool>(json_pointer); }
@@ -204,19 +215,18 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
     return compare_t::more;
   if (!exists)
     return compare_t::equals;
-  auto first = node->get_value_first();
-  auto other_first = other_node->get_value_first();
-  if (first != nullptr) {
-    if (other_first != nullptr) {
-      return compare_(first, other_first);
-    }
-    return compare_(first, other_node->get_value_second());
+
+  if (node->is_first() && other_node->is_first()) {
+    return compare_(node->get_first(), other_node->get_first());
+  } else if (node->is_first() && other_node->is_second()) {
+    return compare_(node->get_first(), other_node->get_second());
+  } else if (node->is_second() && other_node->is_first()) {
+    return compare_(node->get_second(), other_node->get_first());
+  } else if (node->is_second() && other_node->is_second()) {
+    return compare_(node->get_second(), other_node->get_second());
+  } else {
+    return compare_t::equals;
   }
-  auto second = node->get_value_second();
-  if (other_first != nullptr) {
-    return compare_(second, other_first);
-  }
-  return compare_(second, other_node->get_value_second());
 }
 
 document_t::document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index)
@@ -244,7 +254,7 @@ error_code_t document_t::set_deleter(std::string_view json_pointer) {
 error_code_t document_t::set_null(std::string_view json_pointer) {
   auto next_element = mut_src_->next_element();
   builder_.visit_null_atom();
-  return set_(json_pointer, next_element);;
+  return set_(json_pointer, next_element);
 }
 
 error_code_t document_t::remove(std::string_view json_pointer) {
@@ -266,15 +276,18 @@ error_code_t document_t::copy(std::string_view json_pointer_from, std::string_vi
   bool is_view_key;
   std::pmr::string key;
   std::string_view view_key;
-  auto res = find_container_key(json_pointer_from, container, is_view_key, key, view_key);
+  uint32_t index;
+  auto res = find_container_key(json_pointer_from, container, is_view_key, key, view_key, index);
   if (res != error_code_t::SUCCESS) {
     return res;
   }
-  auto node = container->make_deep_copy(is_view_key ? view_key : key);
+  auto node = container->is_object()
+              ? container->get_object()->get(is_view_key ? view_key : key)
+              : container->get_array()->get(index);
   if (node == nullptr) {
     return error_code_t::NO_SUCH_ELEMENT;
   }
-  return set_(json_pointer_to, std::move(node));
+  return set_(json_pointer_to, node->make_deep_copy());
 }
 
 error_code_t document_t::set_(std::string_view json_pointer, const element_from_mutable &value) {
@@ -282,9 +295,15 @@ error_code_t document_t::set_(std::string_view json_pointer, const element_from_
   bool is_view_key;
   std::pmr::string key;
   std::string_view view_key;
-  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
+  uint32_t index;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key, index);
   if (res == error_code_t::SUCCESS) {
-    container->insert(is_view_key ? view_key : key, value);
+    auto node = json_trie_node_element::create(value, allocator_);
+    if (container->is_object()) {
+      container->as_object()->set(is_view_key ? view_key : key, node);
+    } else {
+      container->as_array()->set(index, node);
+    }
   }
   return res;
 }
@@ -294,9 +313,17 @@ error_code_t document_t::set_(std::string_view json_pointer, boost::intrusive_pt
   bool is_view_key;
   std::pmr::string key;
   std::string_view view_key;
-  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
+  uint32_t index;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key, index);
   if (res == error_code_t::SUCCESS) {
-    container->insert(is_view_key ? view_key : key, std::forward<boost::intrusive_ptr<json_trie_node_element>>(value));
+    if (container->is_object()) {
+      container->as_object()->set(
+              is_view_key ? view_key : key,
+              std::forward<boost::intrusive_ptr<json_trie_node_element>>(value)
+      );
+    } else {
+      container->as_array()->set(index, std::forward<boost::intrusive_ptr<json_trie_node_element>>(value));
+    }
   }
   return res;
 }
@@ -306,9 +333,15 @@ error_code_t document_t::set_(std::string_view json_pointer, special_type value)
   bool is_view_key;
   std::pmr::string key;
   std::string_view view_key;
-  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
+  uint32_t index;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key, index);
   if (res == error_code_t::SUCCESS) {
-    inserters[static_cast<int>(value)](container, is_view_key ? view_key : key);
+    auto node = inserters[static_cast<int>(value)](allocator_);
+    if (container->is_object()) {
+      container->as_object()->set(is_view_key ? view_key : key, node);
+    } else {
+      container->as_array()->set(index, node);
+    }
   }
   return res;
 }
@@ -318,14 +351,14 @@ error_code_t document_t::remove_(std::string_view json_pointer, boost::intrusive
   bool is_view_key;
   std::pmr::string key;
   std::string_view view_key;
-  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key);
+  uint32_t index;
+  auto res = find_container_key(json_pointer, container, is_view_key, key, view_key, index);
   if (res != error_code_t::SUCCESS) {
     return res;
   }
-  if (container->is_array()) {
-    return error_code_t::NOT_APPLICABLE_TO_ARRAY;
-  }
-  node = container->erase(is_view_key ? view_key : key);
+  node = container->is_object()
+              ? container->as_object()->remove(is_view_key ? view_key : key)
+              : container->as_array()->remove(index);
   if (node == nullptr) {
     return error_code_t::NO_SUCH_ELEMENT;
   }
@@ -347,13 +380,19 @@ std::pair<const document_t::json_trie_node_element *, error_code_t> document_t::
   }
   json_pointer.remove_prefix(1);
   for (auto key: string_splitter(json_pointer, '/')) {
-    std::pmr::string unescaped_key;
-    bool is_unescaped;
-    auto error = unescape_key_(key, is_unescaped, unescaped_key, allocator_);
-    if (error != error_code_t::SUCCESS) {
-      return {nullptr, error};
+    if (current->is_object()) {
+      std::pmr::string unescaped_key;
+      bool is_unescaped;
+      auto error = unescape_key_(key, is_unescaped, unescaped_key, allocator_);
+      if (error != error_code_t::SUCCESS) {
+        return {nullptr, error};
+      }
+      current = current->get_object()->get(is_unescaped ? unescaped_key : key);
+    } else if (current->is_array()) {
+      current = current->get_array()->get(atol(key.data()));
+    } else {
+      return {nullptr, error_code_t::NO_SUCH_ELEMENT};
     }
-    current = current->find(is_unescaped ? unescaped_key : key);
     if (current == nullptr) {
       return {nullptr, error_code_t::NO_SUCH_ELEMENT};
     }
@@ -366,7 +405,8 @@ error_code_t document_t::find_container_key(
         json_trie_node_element *&container,
         bool &is_view_key,
         std::pmr::string &key,
-        std::string_view &view_key
+        std::string_view &view_key,
+        uint32_t &index
 ) {
   size_t pos = json_pointer.find_last_of('/');
   if (pos == std::string::npos) {
@@ -377,32 +417,34 @@ error_code_t document_t::find_container_key(
   if (node_error.second == error_code_t::INVALID_JSON_POINTER) {
     return node_error.second;
   }
-  if (node_error.second == error_code_t::NO_SUCH_ELEMENT || node_error.first->is_terminal()) {
+  if (node_error.second == error_code_t::NO_SUCH_ELEMENT) {
     return error_code_t::NO_SUCH_CONTAINER;
   }
   container = node_error.first;
   view_key = json_pointer.substr(pos + 1);
-  is_view_key = true;
-  std::pmr::string unescaped_key;
-  bool is_unescaped;
-  auto error = unescape_key_(view_key, is_unescaped, unescaped_key, allocator_);
-  if (error != error_code_t::SUCCESS) {
-    return error;
-  }
-  if (is_unescaped) {
-    key = std::move(unescaped_key);
-    is_view_key = false;
+  if (container->is_object()) {
+    is_view_key = true;
+    std::pmr::string unescaped_key;
+    bool is_unescaped;
+    auto error = unescape_key_(view_key, is_unescaped, unescaped_key, allocator_);
+    if (error != error_code_t::SUCCESS) {
+      return error;
+    }
+    if (is_unescaped) {
+      key = std::move(unescaped_key);
+      is_view_key = false;
+    }
+    return error_code_t::SUCCESS;
   }
   if (container->is_array()) {
-    auto index = std::atol(std::pmr::string(is_unescaped ? key : view_key, allocator_).c_str());
-    if (index < 0) {
+    auto raw_index = atol(view_key.data());
+    if (raw_index < 0) {
       return error_code_t::INVALID_INDEX;
     }
-    size_t correct_index = std::min(size_t(index), container->size());
-    is_view_key = false;
-    key = create_pmr_string_(correct_index, allocator_);
+    index = std::min(uint32_t(raw_index), container->get_array()->size());
+    return error_code_t::SUCCESS;
   }
-  return error_code_t::SUCCESS;
+  return error_code_t::NO_SUCH_CONTAINER;
 }
 
 template<typename T>
@@ -428,32 +470,32 @@ void document_t::build_primitive(simdjson::tape_builder<T> &builder, const boost
   }
 }
 
-void document_t::build_index(
+document_t::json_trie_node_element *document_t::build_index(
         const boost::json::value &value,
-        json_trie_node_element *node,
-        std::string_view current_key,
         simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> &builder,
         simdjson::dom::immutable_document *immut_src,
         allocator_type *allocator
 ) {
+  document_t::json_trie_node_element *res;
   if (value.is_object()) {
-    auto next = node->insert_object(current_key);
-    const auto &obj = value.get_object();
-    for (auto const &[key, val] : obj) {
-      build_index(val, next, key, builder, immut_src, allocator);
+    res = json_trie_node_element::create_object(allocator);
+    const auto &boost_obj = value.get_object();
+    for (auto const &[current_key, val] : boost_obj) {
+      res->as_object()->set(current_key, build_index(val, builder, immut_src, allocator));
     }
   } else if (value.is_array()) {
-    auto next = node->insert_array(current_key);
-    const auto &arr = value.get_array();
-    int i = 0;
-    for (const auto& it: arr) {
-      build_index(it, next, create_pmr_string_(i++, allocator), builder, immut_src, allocator);
+    res = json_trie_node_element::create_array(allocator);
+    const auto &boost_arr = value.get_array();
+    uint32_t i = 0;
+    for (const auto& it: boost_arr) {
+      res->as_array()->set(i++, build_index(it, builder, immut_src, allocator));
     }
   } else {
     auto element = immut_src->next_element();
     build_primitive(builder, value);
-    node->insert(current_key, element);
+    res = json_trie_node_element::create(element, allocator);
   }
+  return res;
 }
 
 document_t::ptr document_t::document_from_json(const std::string &json, document_t::allocator_type *allocator) {
@@ -464,8 +506,9 @@ document_t::ptr document_t::document_from_json(const std::string &json, document
   }
   auto tree = boost::json::parse(json);
   simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> builder(allocator, *res->immut_src_);
+  auto obj = res->element_ind_->as_object();
   for (auto &[key, val] : tree.get_object()) {
-    build_index(val, res->element_ind_.get(), key, builder, res->immut_src_, allocator);
+    obj->set(key, build_index(val, builder, res->immut_src_, allocator));
   }
   return res;
 }
@@ -475,12 +518,12 @@ document_t::ptr document_t::merge(document_t::ptr &document1, document_t::ptr &d
   auto res = new(allocator->allocate(sizeof(document_t))) document_t(allocator, is_root);
   res->ancestors_.push_back(document1);
   res->ancestors_.push_back(document2);
-  res->element_ind_ = json_trie_node_element::merge(document1->element_ind_.get(), document2->element_ind_.get(), *res->allocator_);
+  res->element_ind_ = json_trie_node_element::merge(document1->element_ind_.get(), document2->element_ind_.get(), res->allocator_);
   return res;
 }
 
 template<typename T, typename K>
-bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K> *value2) {
+bool is_equals_value(const simdjson::dom::element<T> *value1, const simdjson::dom::element<K> *value2) {
   using simdjson::dom::element_type;
 
   auto type1 = value1->type();
@@ -515,8 +558,7 @@ bool is_equals_value(simdjson::dom::element<T> *value1, simdjson::dom::element<K
 }
 
 bool document_t::is_equals_documents(const document_ptr &doc1, const document_ptr &doc2) {
-  return json_trie_node_element::equals(
-          doc1->element_ind_.get(),
+  return doc1->element_ind_->equals(
           doc2->element_ind_.get(),
           &is_equals_value<simdjson::dom::immutable_document, simdjson::dom::immutable_document>,
           &is_equals_value<simdjson::dom::mutable_document, simdjson::dom::mutable_document>,
@@ -525,7 +567,7 @@ bool document_t::is_equals_documents(const document_ptr &doc1, const document_pt
 }
 
 template<typename T>
-std::pmr::string value_to_string(simdjson::dom::element<T> *value, std::pmr::memory_resource *allocator) {
+std::pmr::string value_to_string(const simdjson::dom::element<T> *value, std::pmr::memory_resource *allocator) {
   using simdjson::dom::element_type;
 
   switch (value->type()) {
