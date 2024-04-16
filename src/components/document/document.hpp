@@ -1,6 +1,6 @@
 #pragma once
 
-#include "json_trie_node.hpp"
+#include <components/document/json_trie_node.hpp>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <utility>
 #include <memory_resource>
@@ -18,7 +18,6 @@ enum class compare_t { less = -1, equals = 0, more = 1 };
 enum class error_code_t {
   SUCCESS,
   NO_SUCH_CONTAINER,
-  NOT_APPLICABLE_TO_ARRAY,
   NO_SUCH_ELEMENT,
   INVALID_INDEX,
   INVALID_JSON_POINTER,
@@ -135,27 +134,33 @@ public:
   template<class T>
   bool is_as(std::string_view json_pointer) const {
     const auto node_ptr = find_node_const(json_pointer).first;
-    if (node_ptr == nullptr || !node_ptr->is_terminal()) {
+    if (node_ptr == nullptr) {
       return false;
     }
-    auto first = node_ptr->get_value_first();
-    return first != nullptr ? first->is<T>() : node_ptr->get_value_second()->is<T>();
+    if (node_ptr->is_first()) {
+      return node_ptr->get_first()->is<T>();
+    }
+    if (node_ptr->is_second()) {
+      return node_ptr->get_second()->is<T>();
+    }
+    return false;
   }
 
   template<class T>
   T get_as(std::string_view json_pointer) const {
     const auto node_ptr = find_node_const(json_pointer).first;
-    if (node_ptr == nullptr || !node_ptr->is_terminal()) {
+    if (node_ptr == nullptr) {
       return T();
     }
-    auto first = node_ptr->get_value_first();
-    if (first != nullptr) {
-      auto res = first->get<T>();
+    if (node_ptr->is_first()) {
+      auto res = node_ptr->get_first()->get<T>();
       return res.error() == simdjson::error_code::SUCCESS ? res.value() : T();
     }
-    auto second = node_ptr->get_value_second();
-    auto res = second->get<T>();
-    return res.error() == simdjson::error_code::SUCCESS ? res.value() : T();
+    if (node_ptr->is_second()) {
+      auto res = node_ptr->get_second()->get<T>();
+      return res.error() == simdjson::error_code::SUCCESS ? res.value() : T();
+    }
+    return T();
   }
 //  ::document::impl::dict_iterator_t begin() const;
 
@@ -195,7 +200,7 @@ private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
   using json_trie_node_element = json_trie_node<element_from_immutable, element_from_mutable>;
-  using inserter_ptr = void(*)(json_trie_node_element *, std::string_view key);
+  using inserter_ptr = json_trie_node_element *(*)(allocator_type *);
 
   document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index);
 
@@ -208,9 +213,15 @@ private:
   bool is_root_;
 
   constexpr static inserter_ptr inserters[] {
-          +[](json_trie_node_element *container, std::string_view key) { container->insert_object(key); },
-          +[](json_trie_node_element *container, std::string_view key) { container->insert_array(key); },
-          +[](json_trie_node_element *container, std::string_view key) { container->insert_deleter(key); },
+          +[](allocator_type *allocator) {
+            return json_trie_node_element::create_object(allocator);
+          },
+          +[](allocator_type *allocator) {
+            return json_trie_node_element::create_array(allocator);
+          },
+          +[](allocator_type *allocator) {
+            return json_trie_node_element::create_deleter(allocator);
+          },
   };
 
   error_code_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
@@ -230,16 +241,15 @@ private:
           json_trie_node_element *&container,
           bool &is_view_key,
           std::pmr::string &key,
-          std::string_view &view_key
+          std::string_view &view_key,
+          uint32_t &index
   );
 
   template<typename T>
   static void build_primitive(simdjson::tape_builder<T> &builder, const boost::json::value &value) noexcept;
 
-  static void build_index(
+  static json_trie_node_element *build_index(
           const boost::json::value &value,
-          json_trie_node_element *node,
-          std::string_view current_key,
           simdjson::tape_builder<simdjson::dom::tape_writer_to_immutable> &builder,
           simdjson::dom::immutable_document *immut_src,
           allocator_type *allocator
