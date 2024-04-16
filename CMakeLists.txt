@@ -40,6 +40,7 @@ add_library(
 )
 
 target_include_directories(document_library PUBLIC "${CMAKE_SOURCE_DIR}/include/")
+target_include_directories(document_library PUBLIC "${CMAKE_SOURCE_DIR}/src/")
 
 target_link_libraries(
         document_library
