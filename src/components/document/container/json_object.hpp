@@ -201,7 +201,7 @@ json_object<FirstType, SecondType>::make_copy_except_deleter(allocator_type *all
     if (it.second->is_deleter()) {
       continue;
     }
-    copy->map_.insert(it);
+    copy->map_.emplace(it);
   }
   return copy;
 }
@@ -219,14 +219,14 @@ json_object<FirstType, SecondType> *json_object<FirstType, SecondType>::merge(
     }
     auto next = object1.map_.find(it.first);
     if (next == object1.map_.end()) {
-      res->map_[it.first] = it.second;
+      res->map_.emplace(it);
     } else {
-      res->map_[it.first] = json_trie_node<FirstType, SecondType>::merge(next->second.get(), it.second.get(), allocator);
+      res->map_.emplace(it.first, json_trie_node<FirstType, SecondType>::merge(next->second.get(), it.second.get(), allocator));
     }
   }
   for (auto &it : object1.map_) {
     if (object2.map_.find(it.first) == object2.map_.end()) {
-      res->map_[it.first] = it.second;
+      res->map_.emplace(it);
     }
   }
   return res;
