@@ -2,7 +2,7 @@
 
 void gen_array(int num, const document_ptr& array) {
   for (int i = 0; i < 5; ++i) {
-    array->set("/" + std::to_string(i), static_cast<int64_t>(num + i));
+    array->set("/" + std::to_string(i), num + i);
   }
 }
 
@@ -24,7 +24,7 @@ std::string gen_id(int num) {
 document_ptr gen_doc(int num, document_t::allocator_type *allocator) {
   document_ptr doc = make_document(allocator);
   doc->set("/_id", gen_id(num));
-  doc->set("/count", static_cast<int64_t>(num));
+  doc->set("/count", num);
   doc->set("/countStr", std::to_string(num));
   doc->set("/countDouble", float(num) + 0.1);
   doc->set("/countBool", num % 2 != 0);
@@ -45,7 +45,7 @@ document_ptr gen_doc(int num, document_t::allocator_type *allocator) {
     auto json_pointer = "/" + std::to_string(i);
     array->set_dict(json_pointer);
     auto dict = array->get_dict(json_pointer);
-    dict->set("/number", static_cast<int64_t>(num + i));
+    dict->set("/number", num + i);
   }
   doc->set_dict("/mixedDict");
   auto dict = doc->get_dict("/mixedDict");

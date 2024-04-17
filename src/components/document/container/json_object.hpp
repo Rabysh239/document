@@ -38,13 +38,13 @@ public:
 
   explicit json_object(allocator_type *allocator) noexcept;
 
-  ~json_object();
+  ~json_object() = default;
 
-  json_object(json_object &&) noexcept;
+  json_object(json_object &&) noexcept = default;
 
   json_object(const json_object &) = delete;
 
-  json_object &operator=(json_object &&) noexcept;
+  json_object &operator=(json_object &&) noexcept = default;
 
   json_object &operator=(const json_object &) = delete;
 
@@ -81,7 +81,6 @@ public:
   );
 
 private:
-  allocator_type *allocator_;
   absl::flat_hash_map<
           std::pmr::string,
           boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>,
@@ -97,31 +96,7 @@ private:
 
 template<typename FirstType, typename SecondType>
 json_object<FirstType, SecondType>::json_object(json_object::allocator_type *allocator) noexcept
-        : allocator_(allocator),
-          map_(allocator) {}
-
-template<typename FirstType, typename SecondType>
-json_object<FirstType, SecondType>::~json_object() {
-  allocator_ = nullptr;
-}
-
-template<typename FirstType, typename SecondType>
-json_object<FirstType, SecondType>::json_object(json_object &&other) noexcept
-        : allocator_(other.allocator_),
-          map_(std::move(other.map_)) {
-  other.allocator_ = nullptr;
-}
-
-template<typename FirstType, typename SecondType>
-json_object<FirstType, SecondType> &json_object<FirstType, SecondType>::operator=(json_object &&other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-  allocator_ = other.allocator_;
-  map_ = std::move(other.map_);
-  other.allocator_ = nullptr;
-  return *this;
-}
+        : map_(allocator) {}
 
 template<typename FirstType, typename SecondType>
 const json_trie_node<FirstType, SecondType> *json_object<FirstType, SecondType>::get(std::string_view key) const {
@@ -165,7 +140,8 @@ size_t json_object<FirstType, SecondType>::size() const noexcept {
 template<typename FirstType, typename SecondType>
 json_object<FirstType, SecondType> *
 json_object<FirstType, SecondType>::make_deep_copy() const {
-  auto copy = new(allocator_->allocate(sizeof(json_object<FirstType, SecondType>))) json_object(allocator_);
+  auto copy = new(map_.get_allocator().resource()->allocate(sizeof(json_object<FirstType, SecondType>)))
+          json_object(map_.get_allocator().resource());
   for (auto &it : map_) {
     copy->map_[it.first] = it.second->make_deep_copy();
   }
@@ -177,7 +153,7 @@ std::pmr::string json_object<FirstType, SecondType>::to_json(
         std::pmr::string (*to_json_first)(const FirstType *, std::pmr::memory_resource *),
         std::pmr::string (*to_json_second)(const SecondType *, std::pmr::memory_resource *)
 ) const {
-  std::pmr::string res(allocator_);
+  std::pmr::string res(map_.get_allocator().resource());
   res.append("{");
   for (auto &it : map_) {
     auto key = it.first;
@@ -225,7 +201,7 @@ json_object<FirstType, SecondType>::make_copy_except_deleter(allocator_type *all
     if (it.second->is_deleter()) {
       continue;
     }
-    copy->map_.emplace(it);
+    copy->map_.insert(it);
   }
   return copy;
 }
@@ -243,14 +219,14 @@ json_object<FirstType, SecondType> *json_object<FirstType, SecondType>::merge(
     }
     auto next = object1.map_.find(it.first);
     if (next == object1.map_.end()) {
-      res->map_.emplace(it.first, it.second);
+      res->map_[it.first] = it.second;
     } else {
-      res->map_.emplace(it.first, json_trie_node<FirstType, SecondType>::merge(next->second.get(), it.second.get(), allocator));
+      res->map_[it.first] = json_trie_node<FirstType, SecondType>::merge(next->second.get(), it.second.get(), allocator);
     }
   }
-  for (auto &entry : object1.map_) {
-    if (object2.map_.find(entry.first) == object2.map_.end()) {
-      res->map_.emplace(entry.first, entry.second);
+  for (auto &it : object1.map_) {
+    if (object2.map_.find(it.first) == object2.map_.end()) {
+      res->map_[it.first] = it.second;
     }
   }
   return res;
