@@ -135,7 +135,7 @@ class mutable_document : public document<mutable_document> {
 public:
   using allocator_type = std::pmr::memory_resource;
 
-  mutable_document() noexcept;
+  mutable_document() noexcept = default;
 
   explicit mutable_document(allocator_type *) noexcept;
 
@@ -145,7 +145,7 @@ public:
 
   mutable_document(const mutable_document &) = delete;
 
-  mutable_document &operator=(mutable_document &&other) noexcept;
+  mutable_document &operator=(mutable_document &&other) noexcept = default;
 
   mutable_document &operator=(const mutable_document &) = delete;
 
@@ -156,7 +156,6 @@ public:
   size_t size_impl() const noexcept;
 
 private:
-  allocator_type *allocator_;
   std::pmr::vector<uint64_t> tape{};
   std::pmr::vector<uint8_t> string_buf{};
   friend class tape_writer_to_mutable;
