@@ -193,8 +193,8 @@ inline error_code immutable_document::allocate(size_t capacity) noexcept {
   // and we would need capacity/3 * 5 bytes on the string buffer
   size_t string_capacity = SIMDJSON_ROUNDUP_N(5 * capacity / 3 + SIMDJSON_PADDING, 64);
   try {
-    string_buf = std::move(allocator_make_unique_ptr<uint8_t>(allocator_, string_capacity));
-    tape = std::move(allocator_make_unique_ptr<uint64_t>(allocator_, tape_capacity));
+    string_buf = allocator_make_unique_ptr<uint8_t>(allocator_, string_capacity);
+    tape = allocator_make_unique_ptr<uint64_t>(allocator_, tape_capacity);
     next_tape_loc = tape.get();
     current_string_buf_loc = string_buf.get();
   } catch (std::bad_alloc &) {
@@ -245,31 +245,13 @@ inline size_t immutable_document::size_impl() const noexcept {
   return next_tape_loc - tape.get();
 }
 
-inline mutable_document::mutable_document() noexcept
-        : allocator_(nullptr) {}
-
 inline mutable_document::mutable_document(mutable_document::allocator_type *allocator) noexcept
-        : allocator_(allocator),
-          tape(allocator),
+        : tape(allocator),
           string_buf(allocator) {}
 
 inline mutable_document::mutable_document(mutable_document &&other) noexcept
-        : allocator_(other.allocator_),
-          tape(std::move(other.tape)),
-          string_buf(std::move(other.string_buf)) {
-  other.allocator_ = nullptr;
-}
-
-inline mutable_document &mutable_document::operator=(mutable_document &&other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-  allocator_ = other.allocator_;
-  tape = std::move(other.tape);
-  string_buf = std::move(other.string_buf);
-  other.allocator_ = nullptr;
-  return *this;
-}
+        : tape(std::move(other.tape)),
+          string_buf(std::move(other.string_buf)) {}
 
 inline const uint64_t &mutable_document::get_tape_impl(size_t json_index) const {
   return tape[json_index];

@@ -9,13 +9,13 @@ public:
 
   explicit json_array(allocator_type *allocator) noexcept;
 
-  ~json_array();
+  ~json_array() = default;
 
-  json_array(json_array &&) noexcept;
+  json_array(json_array &&) noexcept = default;
 
   json_array(const json_array &) = delete;
 
-  json_array &operator=(json_array &&) noexcept;
+  json_array &operator=(json_array &&) noexcept = default;
 
   json_array &operator=(const json_array &) = delete;
 
@@ -44,37 +44,12 @@ public:
   ) const;
 
 private:
-  allocator_type *allocator_;
   std::pmr::vector<boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>> items_;
 };
 
 template<typename FirstType, typename SecondType>
 json_array<FirstType, SecondType>::json_array(json_array::allocator_type *allocator) noexcept
-        : allocator_(allocator),
-          items_(allocator) {}
-
-template<typename FirstType, typename SecondType>
-json_array<FirstType, SecondType>::~json_array() {
-  allocator_ = nullptr;
-}
-
-template<typename FirstType, typename SecondType>
-json_array<FirstType, SecondType>::json_array(json_array &&other) noexcept
-        : allocator_(other.allocator_),
-          items_(std::move(other.items_)) {
-  other.allocator_ = nullptr;
-}
-
-template<typename FirstType, typename SecondType>
-json_array<FirstType, SecondType> &json_array<FirstType, SecondType>::operator=(json_array &&other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-  allocator_ = other.allocator_;
-  items_ = std::move(other.items_);
-  other.allocator_ = nullptr;
-  return *this;
-}
+        : items_(allocator) {}
 
 template<typename FirstType, typename SecondType>
 const json_trie_node<FirstType, SecondType> *json_array<FirstType, SecondType>::get(uint32_t index) const {
@@ -120,7 +95,7 @@ uint32_t json_array<FirstType, SecondType>::size() const noexcept {
 
 template<typename FirstType, typename SecondType>
 json_array<FirstType, SecondType> *json_array<FirstType, SecondType>::make_deep_copy() const {
-  auto copy = new(allocator_->allocate(sizeof(json_array<FirstType, SecondType>))) json_array(allocator_);
+  auto copy = new(items_.get_allocator().resource()->allocate(sizeof(json_array<FirstType, SecondType>))) json_array(items_.get_allocator().resource());
   for (uint32_t i = 0; i < items_.size(); ++i) {
     copy->items_[i] = items_[i]->make_deep_copy();
   }
@@ -131,7 +106,7 @@ template<typename FirstType, typename SecondType>
 std::pmr::string json_array<FirstType, SecondType>::to_json(
         std::pmr::string (*to_json_first)(const FirstType *, std::pmr::memory_resource *),
         std::pmr::string (*to_json_second)(const SecondType *, std::pmr::memory_resource *)) const {
-  std::pmr::string res(allocator_);
+  std::pmr::string res(items_.get_allocator().resource());
   res.append("[");
   for (auto &it : items_) {
     if (res.size() > 1) {
