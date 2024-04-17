@@ -143,7 +143,7 @@ json_object<FirstType, SecondType>::make_deep_copy() const {
   auto copy = new(map_.get_allocator().resource()->allocate(sizeof(json_object<FirstType, SecondType>)))
           json_object(map_.get_allocator().resource());
   for (auto &it : map_) {
-    copy->map_[it.first] = it.second->make_deep_copy();
+    copy->map_.emplace(it.first, it.second->make_deep_copy());
   }
   return copy;
 }
