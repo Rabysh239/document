@@ -9,3 +9,5 @@ template<typename FirstType, typename SecondType>
 class json_array;
 template<typename FirstType, typename SecondType>
 class json_object;
+
+#define _usually_false(VAL) __builtin_expect(VAL, false)

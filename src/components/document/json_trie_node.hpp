@@ -207,7 +207,7 @@ bool json_trie_node<FirstType, SecondType>::is_deleter() const noexcept {
 
 template<typename FirstType, typename SecondType>
 const FirstType *json_trie_node<FirstType, SecondType>::get_first() const {
-  if (!is_first()) {
+  if (_usually_false(!is_first())) {
     return nullptr;
   }
   return &value_.first;
@@ -215,7 +215,7 @@ const FirstType *json_trie_node<FirstType, SecondType>::get_first() const {
 
 template<typename FirstType, typename SecondType>
 const SecondType *json_trie_node<FirstType, SecondType>::get_second() const {
-  if (!is_second()) {
+  if (_usually_false(!is_second())) {
     return nullptr;
   }
   return &value_.second;
@@ -223,7 +223,7 @@ const SecondType *json_trie_node<FirstType, SecondType>::get_second() const {
 
 template<typename FirstType, typename SecondType>
 const json_array<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::get_array() const {
-  if (!is_array()) {
+  if (_usually_false(!is_array())) {
     return nullptr;
   }
   return &value_.arr;
@@ -231,7 +231,7 @@ const json_array<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::
 
 template<typename FirstType, typename SecondType>
 const json_object<FirstType, SecondType> *json_trie_node<FirstType, SecondType>::get_object() const {
-  if (!is_object()) {
+  if (_usually_false(!is_object())) {
     return nullptr;
   }
   return &value_.obj;
