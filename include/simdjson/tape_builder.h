@@ -31,7 +31,6 @@ struct tape_builder {
 
   simdjson_inline tape_builder &operator=(const tape_builder &) = delete;
 
-  simdjson_inline void build(char const* c_str, size_t size) noexcept;
   simdjson_inline void build(std::string_view value) noexcept;
 
   simdjson_inline void build(int32_t value) noexcept;
@@ -114,15 +113,10 @@ simdjson_inline tape_builder<K>::tape_builder(allocator_type *allocator, dom::mu
                         simdjson::dom::tape_writer_to_mutable(doc)) {}
 
 template<typename K>
-simdjson_inline void tape_builder<K>::build(char const* c_str, size_t size) noexcept {
+simdjson_inline void tape_builder<K>::build(std::string_view value) noexcept {
   // we advance the point, accounting for the fact that we have a NULL termination
   append(tape_->next_string_buf_index(), internal::tape_type::STRING);
-  tape_->append_string(c_str, size);
-}
-
-template<typename K>
-simdjson_inline void tape_builder<K>::build(std::string_view value) noexcept {
-  build(std::pmr::string(value, allocator_).c_str(), value.size());
+  tape_->append_string(value);
 }
 
 template<typename K>
