@@ -2,7 +2,6 @@
 #define SIMDJSON_DOM_DOCUMENT_H
 
 #include <simdjson/dom/base.h>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
 
 #include <memory>
 
@@ -39,7 +38,7 @@ private:
  * This class cannot be copied, only moved, to avoid unintended allocations.
  */
 template<typename T>
-class document : public boost::intrusive_ref_counter<document<T>> {
+class document {
 public:
   virtual ~document() = default;
   const uint64_t &get_tape(size_t json_index) const noexcept;

@@ -8,8 +8,7 @@
 namespace components::document {
 
 document_t::document_t()
-        : allocator_intrusive_ref_counter(nullptr),
-          allocator_(nullptr),
+        : allocator_(nullptr),
           immut_src_(nullptr),
           mut_src_(nullptr),
           element_ind_(nullptr),
@@ -23,8 +22,7 @@ document_t::~document_t() {
 }
 
 document_t::document_t(document_t &&other) noexcept
-        : allocator_intrusive_ref_counter(other.allocator_),
-          allocator_(other.allocator_),
+        : allocator_(other.allocator_),
           immut_src_(other.immut_src_),
           mut_src_(other.mut_src_),
           builder_(std::move(other.builder_)),
@@ -38,8 +36,7 @@ document_t::document_t(document_t &&other) noexcept
 }
 
 document_t::document_t(document_t::allocator_type *allocator, bool is_root)
-        : allocator_intrusive_ref_counter(allocator),
-          allocator_(allocator),
+        : allocator_(allocator),
           immut_src_(nullptr),
           mut_src_(is_root ? new(allocator_->allocate(sizeof(simdjson::dom::mutable_document))) simdjson::dom::mutable_document(allocator_) : nullptr),
           builder_(allocator_, *mut_src_),
@@ -230,8 +227,7 @@ compare_t document_t::compare(const document_t& other, std::string_view json_poi
 }
 
 document_t::document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index)
-        : allocator_intrusive_ref_counter(allocator),
-          allocator_(allocator),
+        : allocator_(allocator),
           immut_src_(nullptr),
           mut_src_(ancestor->mut_src_),
           builder_(allocator_, *mut_src_),
@@ -564,6 +560,10 @@ bool document_t::is_equals_documents(const document_ptr &doc1, const document_pt
           &is_equals_value<simdjson::dom::mutable_document, simdjson::dom::mutable_document>,
           &is_equals_value<simdjson::dom::immutable_document, simdjson::dom::mutable_document>
   );
+}
+
+document_t::allocator_type *document_t::get_allocator() {
+  return allocator_;
 }
 
 template<typename T>
