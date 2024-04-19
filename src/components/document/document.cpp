@@ -448,7 +448,7 @@ void document_t::build_primitive(simdjson::tape_builder<T> &builder, const boost
   // Use the fact that most scalars are going to be either strings or numbers.
   if (value.is_string()) {
     auto &str = value.get_string();
-    builder.build(str.c_str(), str.size());
+    builder.build(str);
   } else if (value.is_number()) {
     if (value.is_double()) {
       builder.build(value.get_double());
