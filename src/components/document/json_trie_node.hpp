@@ -73,6 +73,9 @@ public:
 
   static json_trie_node<FirstType, SecondType> *create_deleter(allocator_type *allocator);
 
+protected:
+  allocator_type *get_allocator();
+
 private:
   allocator_type *allocator_;
 
@@ -117,8 +120,7 @@ json_trie_node<FirstType, SecondType>::json_trie_node(
         T &&value,
         json_type type
 ) noexcept
-        : allocator_intrusive_ref_counter(allocator),
-          allocator_(allocator),
+        : allocator_(allocator),
           value_(std::forward<T>(value)),
           type_(type) {}
 
@@ -127,8 +129,7 @@ json_trie_node<FirstType, SecondType>::json_trie_node(
         allocator_type *allocator,
         json_type type
 ) noexcept
-        : allocator_intrusive_ref_counter(allocator),
-          allocator_(allocator),
+        : allocator_(allocator),
           value_(),
           type_(type) {}
 
@@ -353,4 +354,10 @@ template<typename FirstType, typename SecondType>
 json_trie_node<FirstType, SecondType> *
 json_trie_node<FirstType, SecondType>::create_deleter(json_trie_node::allocator_type *allocator) {
   return new(allocator->allocate(sizeof(json_trie_node))) json_trie_node(allocator, DELETER);
+}
+
+template<typename FirstType, typename SecondType>
+typename json_trie_node<FirstType, SecondType>::allocator_type *
+json_trie_node<FirstType, SecondType>::get_allocator() {
+  return allocator_;
 }
