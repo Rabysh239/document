@@ -196,6 +196,9 @@ public:
 
   static bool is_equals_documents(const ptr &doc1, const ptr &doc2);
 
+protected:
+  allocator_type *get_allocator();
+
 private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
   using element_from_mutable = simdjson::dom::element<simdjson::dom::mutable_document>;
