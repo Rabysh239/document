@@ -1,5 +1,8 @@
 [requires]
+benchmark/1.6.1
 boost/1.84.0
+abseil/20211102.0
+catch2/3.4.0
 
 [generators]
 cmake

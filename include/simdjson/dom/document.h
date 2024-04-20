@@ -1,13 +1,36 @@
 #ifndef SIMDJSON_DOM_DOCUMENT_H
 #define SIMDJSON_DOM_DOCUMENT_H
 
-#include "../../simdjson/dom/base.h"
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
+#include <simdjson/dom/base.h>
 
 #include <memory>
 
 namespace simdjson {
 namespace dom {
+
+template<typename T>
+class array_deleter {
+public:
+  array_deleter();
+
+  array_deleter(std::pmr::memory_resource *allocator, size_t n);
+
+  ~array_deleter() = default;
+
+  array_deleter(array_deleter &&other) noexcept;
+
+  array_deleter(const array_deleter &) = delete;
+
+  array_deleter &operator=(array_deleter &&other) noexcept;
+
+  array_deleter &operator=(const array_deleter &) = delete;
+
+  void operator()(T* p);
+
+private:
+  std::pmr::memory_resource *allocator_;
+  size_t n_;
+};
 
 /**
  * A parsed JSON document.
@@ -15,12 +38,16 @@ namespace dom {
  * This class cannot be copied, only moved, to avoid unintended allocations.
  */
 template<typename T>
-class document : public boost::intrusive_ref_counter<document<T>> {
+class document {
 public:
   virtual ~document() = default;
-  const uint64_t &get_tape(size_t json_index) const;
-  const uint8_t &get_string_buf(size_t json_index) const;
-  const uint8_t *get_string_buf_ptr() const;
+  const uint64_t &get_tape(size_t json_index) const noexcept;
+  const uint8_t &get_string_buf(size_t json_index) const noexcept;
+  const uint8_t *get_string_buf_ptr() const noexcept;
+
+  size_t size() const noexcept;
+
+  element<T> next_element() const noexcept;
   /**
  * @private Dump the raw tape for debugging.
  *
@@ -64,12 +91,7 @@ public:
 
   const uint64_t &get_tape_impl(size_t json_index) const;
   const uint8_t &get_string_buf_impl(size_t json_index) const;
-  const uint8_t *get_string_buf_ptr_impl() const;
-
-  /**
-   * Get the root element of this document as a JSON array.
-   */
-  element<immutable_document> root() const noexcept;
+  const uint8_t *get_string_buf_ptr_impl() const noexcept;
 
   /** @private Allocate memory to support
    * input JSON documents of up to len bytes.
@@ -89,19 +111,22 @@ public:
    */
   size_t capacity() const noexcept;
 
+  size_t size_impl() const noexcept;
 
 private:
   allocator_type *allocator_;
   /** @private Structural values. */
-  std::unique_ptr<uint64_t[], std::function<void(uint64_t *)>> tape{};
+  std::unique_ptr<uint64_t[], array_deleter<uint64_t>> tape{};
 
   /** @private String values.
    *
    * Should be at least byte_capacity.
    */
-  std::unique_ptr<uint8_t[], std::function<void(uint8_t *)>> string_buf{};
+  std::unique_ptr<uint8_t[], array_deleter<uint8_t>> string_buf{};
   size_t allocated_capacity{0};
-  friend class parser;
+
+  uint64_t *next_tape_loc = nullptr;
+  uint8_t *current_string_buf_loc = nullptr;
   friend class tape_writer_to_immutable;
 }; // class immutable_document
 
@@ -109,7 +134,7 @@ class mutable_document : public document<mutable_document> {
 public:
   using allocator_type = std::pmr::memory_resource;
 
-  mutable_document() noexcept;
+  mutable_document() noexcept = default;
 
   explicit mutable_document(allocator_type *) noexcept;
 
@@ -119,23 +144,24 @@ public:
 
   mutable_document(const mutable_document &) = delete;
 
-  mutable_document &operator=(mutable_document &&other) noexcept;
+  mutable_document &operator=(mutable_document &&other) noexcept = default;
 
   mutable_document &operator=(const mutable_document &) = delete;
 
   const uint64_t &get_tape_impl(size_t json_index) const;
   const uint8_t &get_string_buf_impl(size_t json_index) const;
-  const uint8_t *get_string_buf_ptr_impl() const;
-  element<mutable_document> next_element() const noexcept;
+  const uint8_t *get_string_buf_ptr_impl() const noexcept;
+
+  size_t size_impl() const noexcept;
+
 private:
-  allocator_type *allocator_;
   std::pmr::vector<uint64_t> tape{};
   std::pmr::vector<uint8_t> string_buf{};
   friend class tape_writer_to_mutable;
 }; // class mutable_document
 
 template<typename T>
-std::unique_ptr<T[], std::function<void(T*)>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n);
+std::unique_ptr<T[], array_deleter<T>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n);
 
 } // namespace dom
 } // namespace simdjson

@@ -3,61 +3,91 @@
 
 // Inline implementations go in here.
 
-#include "../../simdjson/dom/base.h"
-#include "../../simdjson/dom/document.h"
-#include "../../simdjson/dom/element-inl.h"
-#include "../../simdjson/internal/tape_ref-inl.h"
-#include "../../simdjson/internal/jsonformatutils.h"
+#include <simdjson/dom/base.h>
+#include <simdjson/dom/document.h>
+#include <simdjson/dom/element-inl.h>
+#include <simdjson/internal/tape_ref-inl.h>
+#include <simdjson/internal/jsonformatutils.h>
 
 #include <cstring>
 
 namespace simdjson {
 namespace dom {
 
+template<typename T>
+array_deleter<T>::array_deleter()
+        : allocator_(nullptr), n_(0) {}
+
+template<typename T>
+array_deleter<T>::array_deleter(std::pmr::memory_resource *allocator, size_t n)
+        : allocator_(allocator), n_(n) {}
+
+template<typename T>
+array_deleter<T>::array_deleter(array_deleter &&other) noexcept
+        : allocator_(other.allocator_),
+          n_(other.n_) {
+  other.allocator_ = nullptr;
+}
+
+template<typename T>
+array_deleter<T> &array_deleter<T>::operator=(array_deleter &&other) noexcept {
+  allocator_ = other.allocator_;
+  n_ = other.n_;
+  other.allocator_ = nullptr;
+  return *this;
+}
+
+template<typename T>
+void array_deleter<T>::operator()(T *p) {
+  if (allocator_ != nullptr) {
+    std::destroy_n(p, n_);
+    allocator_->deallocate(p, n_ * sizeof(T));
+  }
+}
+
 //
 // document inline implementation
 //
 
 template<typename T>
-const uint64_t &document<T>::get_tape(size_t json_index) const {
+const uint64_t &document<T>::get_tape(size_t json_index) const noexcept {
   return self()->get_tape_impl(json_index);
 }
 
 template<typename T>
-const uint8_t &document<T>::get_string_buf(size_t json_index) const {
+const uint8_t &document<T>::get_string_buf(size_t json_index) const noexcept {
   return self()->get_string_buf_impl(json_index);
 }
 
 template<typename T>
-const uint8_t *document<T>::get_string_buf_ptr() const {
+const uint8_t *document<T>::get_string_buf_ptr() const noexcept {
   return self()->get_string_buf_ptr_impl();
+}
+
+template<typename T>
+size_t document<T>::size() const noexcept {
+  return self()->size_impl();
+}
+
+template<typename T>
+element<T> document<T>::next_element() const noexcept {
+  return {internal::tape_ref(this, size())};
 }
 
 template<typename T>
 inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
   uint32_t string_length;
   size_t tape_idx = 0;
-  uint64_t tape_val = get_tape(tape_idx);
-  uint8_t type = uint8_t(tape_val >> 56);
-  os << tape_idx << " : " << type;
-  tape_idx++;
-  size_t how_many = 0;
-  if (type == 'r') {
-    how_many = size_t(tape_val & internal::JSON_VALUE_MASK);
-  } else {
-    // Error: no starting root node?
-    return false;
-  }
-  os << "\t// pointing to " << how_many << " (right after last node)\n";
+  size_t how_many = size();
   uint64_t payload;
   for (; tape_idx < how_many; tape_idx++) {
     os << tape_idx << " : ";
-    tape_val = get_tape(tape_idx);
-    payload = tape_val & internal::JSON_VALUE_MASK;
-    type = uint8_t(tape_val >> 56);
+    auto tape_val = get_tape(tape_idx);
+    auto type = uint8_t(tape_val >> 56);
     switch (type) {
       case '"': // we have a string
         os << "string \"";
+        payload = tape_val & internal::JSON_VALUE_MASK;
         std::memcpy(&string_length, get_string_buf_ptr() + payload, sizeof(uint32_t));
         os << internal::escape_json_string(std::string_view(
                 reinterpret_cast<const char *>(get_string_buf_ptr() + payload + sizeof(uint32_t)),
@@ -66,20 +96,39 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         os << '"';
         os << '\n';
         break;
+      case 'i': // we have a long int
+        os << "int " << static_cast<int32_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
+        break;
       case 'l': // we have a long int
         if (tape_idx + 1 >= how_many) {
           return false;
         }
-        os << "integer " << static_cast<int64_t>(get_tape(++tape_idx)) << "\n";
+        os << "long " << static_cast<int64_t>(get_tape(++tape_idx)) << "\n";
         break;
-      case 'u': // we have a long uint
+      case 'h': // we have a long int
+        if (tape_idx + 2 >= how_many) {
+          return false;
+        }
+        os << "hugeint\n"; //TODO support value
+        tape_idx += 2;
+        break;
+      case 'u': // we have a long int
+        os << "unsigned int " << static_cast<uint32_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
+        break;
+      case 'U': // we have a long uint
         if (tape_idx + 1 >= how_many) {
           return false;
         }
-        os << "unsigned integer " << get_tape(++tape_idx) << "\n";
+        os << "unsigned long " << get_tape(++tape_idx) << "\n";
+        break;
+      case 'f': // we have a double
+        os << "float ";
+        float float_value;
+        std::memcpy(&float_value, &get_tape(tape_idx), sizeof(float_value));
+        os << float_value << '\n';
         break;
       case 'd': // we have a double
-        os << "float ";
+        os << "double ";
         if (tape_idx + 1 >= how_many) {
           return false;
         }
@@ -90,43 +139,16 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
       case 'n': // we have a null
         os << "null\n";
         break;
-      case 't': // we have a true
+      case '1': // we have a true
         os << "true\n";
         break;
-      case 'f': // we have a false
+      case '0': // we have a false
         os << "false\n";
         break;
-      case '{': // we have an object
-        os << "{\t// pointing to next tape location " << uint32_t(payload)
-           << " (first node after the scope), "
-           << " saturated count "
-           << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
-        break;    case '}': // we end an object
-        os << "}\t// pointing to previous tape location " << uint32_t(payload)
-           << " (start of the scope)\n";
-        break;
-      case '[': // we start an array
-        os << "[\t// pointing to next tape location " << uint32_t(payload)
-           << " (first node after the scope), "
-           << " saturated count "
-           << ((payload >> 32) & internal::JSON_COUNT_MASK)<< "\n";
-        break;
-      case ']': // we end an array
-        os << "]\t// pointing to previous tape location " << uint32_t(payload)
-           << " (start of the scope)\n";
-        break;
-      case 'r': // we start and end with the root node
-        // should we be hitting the root node?
-        return false;
       default:
         return false;
     }
   }
-  tape_val = get_tape(++tape_idx);
-  payload = tape_val & internal::JSON_VALUE_MASK;
-  type = uint8_t(tape_val >> 56);
-  os << tape_idx << " : " << type << "\t// pointing to " << payload
-     << " (start root)\n";
   return true;
 }
 
@@ -143,13 +165,10 @@ inline const uint8_t &immutable_document::get_string_buf_impl(size_t json_index)
   return string_buf[json_index];
 }
 
-inline const uint8_t *immutable_document::get_string_buf_ptr_impl() const {
+inline const uint8_t *immutable_document::get_string_buf_ptr_impl() const noexcept {
   return string_buf.get();
 }
 
-inline element<immutable_document> immutable_document::root() const noexcept {
-  return {internal::tape_ref(this, 1)};
-}
 simdjson_warn_unused
 inline size_t immutable_document::capacity() const noexcept {
   return allocated_capacity;
@@ -174,8 +193,10 @@ inline error_code immutable_document::allocate(size_t capacity) noexcept {
   // and we would need capacity/3 * 5 bytes on the string buffer
   size_t string_capacity = SIMDJSON_ROUNDUP_N(5 * capacity / 3 + SIMDJSON_PADDING, 64);
   try {
-    string_buf = std::move(allocator_make_unique_ptr<uint8_t>(allocator_, string_capacity));
-    tape = std::move(allocator_make_unique_ptr<uint64_t>(allocator_, tape_capacity));
+    string_buf = allocator_make_unique_ptr<uint8_t>(allocator_, string_capacity);
+    tape = allocator_make_unique_ptr<uint64_t>(allocator_, tape_capacity);
+    next_tape_loc = tape.get();
+    current_string_buf_loc = string_buf.get();
   } catch (std::bad_alloc &) {
     allocated_capacity = 0;
     string_buf.reset();
@@ -197,8 +218,12 @@ inline immutable_document::immutable_document(immutable_document::allocator_type
 inline immutable_document::immutable_document(immutable_document &&other) noexcept
         : allocator_(other.allocator_),
           tape(std::move(other.tape)),
-          string_buf(std::move(other.string_buf)) {
+          string_buf(std::move(other.string_buf)),
+          next_tape_loc(other.next_tape_loc),
+          current_string_buf_loc(other.current_string_buf_loc) {
   other.allocator_ = nullptr;
+  other.next_tape_loc = nullptr;
+  other.current_string_buf_loc = nullptr;
 }
 
 inline immutable_document &immutable_document::operator=(immutable_document &&other) noexcept {
@@ -208,35 +233,25 @@ inline immutable_document &immutable_document::operator=(immutable_document &&ot
   allocator_ = other.allocator_;
   tape = std::move(other.tape);
   string_buf = std::move(other.string_buf);
+  next_tape_loc = other.next_tape_loc;
+  current_string_buf_loc = other.current_string_buf_loc;
   other.allocator_ = nullptr;
+  other.next_tape_loc = nullptr;
+  other.current_string_buf_loc = nullptr;
   return *this;
 }
 
-inline mutable_document::mutable_document() noexcept
-        : allocator_(nullptr) {}
+inline size_t immutable_document::size_impl() const noexcept {
+  return next_tape_loc - tape.get();
+}
 
 inline mutable_document::mutable_document(mutable_document::allocator_type *allocator) noexcept
-        : allocator_(allocator),
-          tape(allocator),
+        : tape(allocator),
           string_buf(allocator) {}
 
 inline mutable_document::mutable_document(mutable_document &&other) noexcept
-        : allocator_(other.allocator_),
-          tape(std::move(other.tape)),
-          string_buf(std::move(other.string_buf)) {
-  other.allocator_ = nullptr;
-}
-
-inline mutable_document &mutable_document::operator=(mutable_document &&other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-  allocator_ = other.allocator_;
-  tape = std::move(other.tape);
-  string_buf = std::move(other.string_buf);
-  other.allocator_ = nullptr;
-  return *this;
-}
+        : tape(std::move(other.tape)),
+          string_buf(std::move(other.string_buf)) {}
 
 inline const uint64_t &mutable_document::get_tape_impl(size_t json_index) const {
   return tape[json_index];
@@ -246,22 +261,18 @@ inline const uint8_t &mutable_document::get_string_buf_impl(size_t json_index) c
   return string_buf[json_index];
 }
 
-inline const uint8_t *mutable_document::get_string_buf_ptr_impl() const {
+inline const uint8_t *mutable_document::get_string_buf_ptr_impl() const noexcept {
   return string_buf.data();
 }
 
-inline element<mutable_document> mutable_document::next_element() const noexcept {
-  return {internal::tape_ref(this, tape.size())};
+inline size_t mutable_document::size_impl() const noexcept {
+  return tape.size();
 }
 
 template<typename T>
-std::unique_ptr<T[], std::function<void(T*)>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n) {
+std::unique_ptr<T[], array_deleter<T>> allocator_make_unique_ptr(std::pmr::memory_resource *allocator, size_t n) {
   T* array = new(allocator->allocate(n * sizeof(T))) T[n];
-  auto deleter = [allocator, n](T *p) {
-    std::destroy_n(p, n);
-    allocator->deallocate(p, n * sizeof(T));
-  };
-  return {array, deleter};
+  return {array, array_deleter<T>(allocator, n)};
 }
 
 } // namespace dom
