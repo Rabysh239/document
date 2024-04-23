@@ -30,8 +30,9 @@ add_compile_options(
         -Wsign-promo
 )
 add_compile_options(-fno-omit-frame-pointer)
-#add_compile_options(-fsanitize=address)
-#add_link_options(-fsanitize=address)
+add_compile_options(-fsanitize=leak)
+add_link_options(-fsanitize=leak)
+
 
 add_library(
         document_library
@@ -45,7 +46,6 @@ target_include_directories(document_library PUBLIC "${CMAKE_SOURCE_DIR}/src/")
 target_link_libraries(
         document_library
         CONAN_PKG::boost
-        CONAN_PKG::abseil
 )
 
 add_subdirectory(components)

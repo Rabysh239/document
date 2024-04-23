@@ -1,35 +1,6 @@
 #pragma once
 
 #include <components/document/base.hpp>
-#include <absl/container/flat_hash_map.h>
-
-struct string_view_hash {
-  using is_transparent = void;
-
-  size_t operator()(const std::pmr::string &s) const {
-    return std::hash<std::pmr::string>{}(s);
-  }
-
-  size_t operator()(std::string_view sv) const {
-    return std::hash<std::string_view>{}(sv);
-  }
-};
-
-struct string_view_eq {
-  using is_transparent = void;
-
-  bool operator()(const std::pmr::string &lhs, const std::pmr::string &rhs) const noexcept {
-    return lhs == rhs;
-  }
-
-  bool operator()(const std::pmr::string &lhs, std::string_view rhs) const noexcept {
-    return lhs == rhs;
-  }
-
-  bool operator()(std::string_view lhs, const std::pmr::string &rhs) const noexcept {
-    return lhs == rhs;
-  }
-};
 
 template<typename FirstType, typename SecondType>
 class json_object {
@@ -81,16 +52,9 @@ public:
   );
 
 private:
-  absl::flat_hash_map<
-          std::pmr::string,
-          boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>,
-          string_view_hash, string_view_eq,
-          std::pmr::polymorphic_allocator<
-                  std::pair<
-                          const std::pmr::string,
-                          boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>
-                  >
-          >
+  std::pmr::unordered_map<
+          std::string,
+          boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>
   > map_;
 };
 
@@ -100,7 +64,7 @@ json_object<FirstType, SecondType>::json_object(json_object::allocator_type *all
 
 template<typename FirstType, typename SecondType>
 const json_trie_node<FirstType, SecondType> *json_object<FirstType, SecondType>::get(std::string_view key) const {
-  auto res = map_.find(key);
+  auto res = map_.find(std::string(key));
   if (res == map_.end()) {
     return nullptr;
   }
@@ -109,7 +73,7 @@ const json_trie_node<FirstType, SecondType> *json_object<FirstType, SecondType>:
 
 template<typename FirstType, typename SecondType>
 void json_object<FirstType, SecondType>::set(std::string_view key, json_trie_node<FirstType, SecondType> *value) {
-  map_[key] = value;
+  map_[std::string(key)] = value;
 }
 
 template<typename FirstType, typename SecondType>
@@ -117,13 +81,13 @@ void json_object<FirstType, SecondType>::set(
         std::string_view key,
         boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> &&value
 ) {
-  map_[key] = std::forward<boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>>(value);
+  map_[std::string(key)] = std::forward<boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>>(value);
 }
 
 template<typename FirstType, typename SecondType>
 boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>
 json_object<FirstType, SecondType>::remove(std::string_view key) {
-  auto found = map_.find(key);
+  auto found = map_.find(std::string(key));
   if (found == map_.end()) {
     return nullptr;
   }
