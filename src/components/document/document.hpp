@@ -29,7 +29,7 @@ enum class special_type {
   DELETER,
 };
 
-class document_t final : public allocator_intrusive_ref_counter {
+class document_t final : public allocator_intrusive_ref_counter<document_t> {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
   using allocator_type = std::pmr::memory_resource;
@@ -297,7 +297,7 @@ template<>
 inline error_code_t document_t::set(std::string_view json_pointer, document_ptr value) {
   ancestors_.push_back(value);
   auto copy = value->element_ind_;
-  set_(json_pointer, std::move(copy));
+  return set_(json_pointer, std::move(copy));
 }
 //
 //template<class T>

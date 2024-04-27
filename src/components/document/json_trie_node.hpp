@@ -7,7 +7,7 @@
 #include "container/json_array.hpp"
 
 template<typename FirstType, typename SecondType>
-class json_trie_node : public allocator_intrusive_ref_counter {
+class json_trie_node : public allocator_intrusive_ref_counter<json_trie_node<FirstType, SecondType>> {
 public:
   using allocator_type = std::pmr::memory_resource;
 
@@ -319,19 +319,19 @@ json_trie_node<FirstType, SecondType>::merge(
 template<typename FirstType, typename SecondType>
 json_trie_node<FirstType, SecondType> *
 json_trie_node<FirstType, SecondType>::create(FirstType value, json_trie_node::allocator_type *allocator) {
-  return new(allocator->allocate(sizeof(json_trie_node))) json_trie_node(allocator, value, FIRST);
+  return new(allocator->allocate(sizeof(json_trie_node<FirstType, SecondType>))) json_trie_node(allocator, value, FIRST);
 }
 
 template<typename FirstType, typename SecondType>
 json_trie_node<FirstType, SecondType> *
 json_trie_node<FirstType, SecondType>::create(SecondType value, json_trie_node::allocator_type *allocator) {
-  return new(allocator->allocate(sizeof(json_trie_node))) json_trie_node(allocator, value, SECOND);
+  return new(allocator->allocate(sizeof(json_trie_node<FirstType, SecondType>))) json_trie_node(allocator, value, SECOND);
 }
 
 template<typename FirstType, typename SecondType>
 json_trie_node<FirstType, SecondType> *
 json_trie_node<FirstType, SecondType>::create_array(json_trie_node::allocator_type *allocator) {
-  return new(allocator->allocate(sizeof(json_trie_node)))
+  return new(allocator->allocate(sizeof(json_trie_node<FirstType, SecondType>)))
           json_trie_node(
           allocator,
           std::forward<json_array<FirstType, SecondType>>((json_array<FirstType, SecondType>(allocator))),
@@ -342,7 +342,7 @@ json_trie_node<FirstType, SecondType>::create_array(json_trie_node::allocator_ty
 template<typename FirstType, typename SecondType>
 json_trie_node<FirstType, SecondType> *
 json_trie_node<FirstType, SecondType>::create_object(json_trie_node::allocator_type *allocator) {
-  return new(allocator->allocate(sizeof(json_trie_node)))
+  return new(allocator->allocate(sizeof(json_trie_node<FirstType, SecondType>)))
           json_trie_node(
           allocator,
           std::forward<json_object<FirstType, SecondType>>((json_object<FirstType, SecondType>(allocator))),
@@ -353,7 +353,7 @@ json_trie_node<FirstType, SecondType>::create_object(json_trie_node::allocator_t
 template<typename FirstType, typename SecondType>
 json_trie_node<FirstType, SecondType> *
 json_trie_node<FirstType, SecondType>::create_deleter(json_trie_node::allocator_type *allocator) {
-  return new(allocator->allocate(sizeof(json_trie_node))) json_trie_node(allocator, DELETER);
+  return new(allocator->allocate(sizeof(json_trie_node<FirstType, SecondType>))) json_trie_node(allocator, DELETER);
 }
 
 template<typename FirstType, typename SecondType>
