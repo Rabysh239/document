@@ -134,7 +134,7 @@ void tape_writer_to_mutable::append_string_impl(std::string_view val) noexcept {
   auto buf_size = current_string_buf->size();
   current_string_buf->resize(buf_size + final_size);
   auto size_ptr = reinterpret_cast<uint32_t*>(current_string_buf->data() + buf_size);
-  *size_ptr = str_length;
+  std::memcpy(size_ptr, &str_length, sizeof(uint32_t));
   char* str_ptr = reinterpret_cast<char*>(size_ptr + 1);
   std::memcpy(str_ptr, val.data(), str_length);
   str_ptr[str_length] = '\0';

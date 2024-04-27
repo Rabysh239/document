@@ -76,7 +76,7 @@ tape_builder<K>::tape_builder() noexcept
 
 template<typename K>
 tape_builder<K>::~tape_builder() {
-  mr_delete(allocator_, tape_);
+  mr_delete(allocator_, static_cast<K *>(tape_));
 }
 
 template<typename K>

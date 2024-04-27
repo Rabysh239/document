@@ -39,10 +39,13 @@ document_t::document_t(document_t::allocator_type *allocator, bool is_root)
         : allocator_(allocator),
           immut_src_(nullptr),
           mut_src_(is_root ? new(allocator_->allocate(sizeof(simdjson::dom::mutable_document))) simdjson::dom::mutable_document(allocator_) : nullptr),
-          builder_(allocator_, *mut_src_),
           element_ind_(is_root ? json_trie_node_element::create_object(allocator_) : nullptr),
           ancestors_(allocator_),
-          is_root_(is_root) {}
+          is_root_(is_root) {
+  if (is_root) {
+    builder_ = simdjson::tape_builder<simdjson::dom::tape_writer_to_mutable>(allocator_, *mut_src_);
+  }
+}
 
 bool document_t::is_valid() const {
   return allocator_ != nullptr;

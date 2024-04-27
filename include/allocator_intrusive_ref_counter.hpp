@@ -4,6 +4,7 @@
 #include <atomic>
 #include <mr_utils.hpp>
 
+template<typename T>
 class allocator_intrusive_ref_counter {
 public:
   explicit allocator_intrusive_ref_counter();
@@ -18,9 +19,16 @@ public:
 
   allocator_intrusive_ref_counter& operator=(allocator_intrusive_ref_counter &&) noexcept = delete;
 
-  friend void intrusive_ptr_add_ref(allocator_intrusive_ref_counter* p);
+  friend void intrusive_ptr_add_ref(allocator_intrusive_ref_counter<T> *p) {
+    p->ref_count_.fetch_add(1, std::memory_order_relaxed);
+  }
 
-  friend void intrusive_ptr_release(allocator_intrusive_ref_counter* p);
+  friend void intrusive_ptr_release(allocator_intrusive_ref_counter<T> *p) {
+    if (p->ref_count_.fetch_sub(1, std::memory_order_release) == 1) {
+      std::atomic_thread_fence(std::memory_order_acquire);
+      mr_delete(p->get_allocator(), static_cast<T *>(p));
+    }
+  }
 
 protected:
   virtual std::pmr::memory_resource *get_allocator() = 0;
@@ -29,16 +37,6 @@ private:
   std::atomic<std::size_t> ref_count_;
 };
 
-inline allocator_intrusive_ref_counter::allocator_intrusive_ref_counter()
+template<typename T>
+inline allocator_intrusive_ref_counter<T>::allocator_intrusive_ref_counter()
         : ref_count_(0) {}
-
-inline void intrusive_ptr_add_ref(allocator_intrusive_ref_counter *p) {
-  p->ref_count_.fetch_add(1, std::memory_order_relaxed);
-}
-
-inline void intrusive_ptr_release(allocator_intrusive_ref_counter *p) {
-  if (p->ref_count_.fetch_sub(1, std::memory_order_release) == 1) {
-    std::atomic_thread_fence(std::memory_order_acquire);
-    mr_delete(p->get_allocator(), p);
-  }
-}

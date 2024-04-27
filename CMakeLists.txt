@@ -30,8 +30,8 @@ add_compile_options(
         -Wsign-promo
 )
 add_compile_options(-fno-omit-frame-pointer)
-#add_compile_options(-fsanitize=address)
-#add_link_options(-fsanitize=address)
+add_compile_options(-fsanitize=undefined, -fsanitize=address, -fsanitize=leak)
+add_link_options(-fsanitize=undefined, -fsanitize=address, -fsanitize=leak)
 
 add_library(
         document_library

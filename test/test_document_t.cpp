@@ -136,7 +136,7 @@ TEST_CASE("document_t::float") {
   auto doc = make_document(allocator);
 
   std::string_view key("/valueFloat");
-  float value = 2.3;
+  float value = 2.3f;
   doc->set(key, value);
 
   REQUIRE(doc->is_exists(key));
