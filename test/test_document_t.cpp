@@ -178,7 +178,7 @@ TEST_CASE("document_t::set doc") {
   auto nestedDoc = document_t::document_from_json(json, allocator);
 
   std::string_view key("/nestedDoc");
-  doc->set(key, nestedDoc);
+  REQUIRE(doc->set(key, nestedDoc) == error_code_t::SUCCESS);
 
   int64_t value = 3;
   doc->set("/nestedDoc/other_number", value);
