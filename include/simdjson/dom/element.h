@@ -339,7 +339,7 @@ private:
 template<typename K, typename From, typename To, typename std::enable_if<std::is_signed<From>::value && std::is_signed<To>::value, uint8_t>::type = 0>
 simdjson_result<To> cast_from(internal::tape_ref<K> tape) noexcept {
   From result = tape.template next_tape_value<From>();
-  if (result > From((std::numeric_limits<To>::max)()) || result < From((std::numeric_limits<To>::min)() < result)) {
+  if (result > From((std::numeric_limits<To>::max)()) || result < From((std::numeric_limits<To>::min)())) {
     return NUMBER_OUT_OF_RANGE;
   }
   return static_cast<To>(result);

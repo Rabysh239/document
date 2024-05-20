@@ -145,6 +145,17 @@ TEST_CASE("document_t::float") {
   REQUIRE(is_equals(doc->get_double(key), double(value)));
 }
 
+TEST_CASE("document_t::cast signed to signed") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/value");
+  int64_t value = -1;
+  doc->set(key, value);
+
+  REQUIRE(doc->get_int(key) == value);
+}
+
 TEST_CASE("document_t::set") {
   auto allocator = std::pmr::new_delete_resource();
   auto doc = gen_doc(1, allocator);
