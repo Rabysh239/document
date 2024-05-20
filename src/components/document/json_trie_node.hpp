@@ -74,7 +74,7 @@ public:
   static json_trie_node<FirstType, SecondType> *create_deleter(allocator_type *allocator);
 
 protected:
-  allocator_type *get_allocator();
+  allocator_type *get_allocator() override;
 
 private:
   allocator_type *allocator_;
@@ -86,10 +86,10 @@ private:
     SecondType second;
 
     value_type(json_object<FirstType, SecondType> &&value)
-            : obj(std::forward<json_object<FirstType, SecondType>>(value)) {};
+            : obj(std::move(value)) {};
 
     value_type(json_array<FirstType, SecondType> &&value)
-            : arr(std::forward<json_array<FirstType, SecondType>>(value)) {};
+            : arr(std::move(value)) {};
 
     value_type(FirstType value) : first(value) {};
 
@@ -334,7 +334,7 @@ json_trie_node<FirstType, SecondType>::create_array(json_trie_node::allocator_ty
   return new(allocator->allocate(sizeof(json_trie_node<FirstType, SecondType>)))
           json_trie_node(
           allocator,
-          std::forward<json_array<FirstType, SecondType>>((json_array<FirstType, SecondType>(allocator))),
+          std::move((json_array<FirstType, SecondType>(allocator))),
           ARRAY
   );
 }
@@ -345,7 +345,7 @@ json_trie_node<FirstType, SecondType>::create_object(json_trie_node::allocator_t
   return new(allocator->allocate(sizeof(json_trie_node<FirstType, SecondType>)))
           json_trie_node(
           allocator,
-          std::forward<json_object<FirstType, SecondType>>((json_object<FirstType, SecondType>(allocator))),
+          std::move((json_object<FirstType, SecondType>(allocator))),
           OBJECT
   );
 }

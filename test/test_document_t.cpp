@@ -397,7 +397,7 @@ TEST_CASE("document_t::remove fail when no element") {
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
 
-TEST_CASE("document_t::remove fail when removing array element") {
+TEST_CASE("document_t::remove when removing array element") {
   auto json = R"(
 {
   "_id": "000000000000000000000001",
@@ -481,7 +481,7 @@ TEST_CASE("document_t::move fail when no element") {
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
 
-TEST_CASE("document_t::move fail when moving array element") {
+TEST_CASE("document_t::move when moving array element") {
   auto json = R"(
 {
   "_id": "000000000000000000000001",

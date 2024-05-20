@@ -197,7 +197,7 @@ public:
   static bool is_equals_documents(const ptr &doc1, const ptr &doc2);
 
 protected:
-  allocator_type *get_allocator();
+  allocator_type *get_allocator() override;
 
 private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
@@ -205,7 +205,7 @@ private:
   using json_trie_node_element = json_trie_node<element_from_immutable, element_from_mutable>;
   using inserter_ptr = json_trie_node_element *(*)(allocator_type *);
 
-  document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index);
+  document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element *index);
 
   allocator_type *allocator_;
   simdjson::dom::immutable_document *immut_src_;
@@ -215,16 +215,10 @@ private:
   std::pmr::vector<ptr> ancestors_{};
   bool is_root_;
 
-  constexpr static inserter_ptr inserters[] {
-          +[](allocator_type *allocator) {
-            return json_trie_node_element::create_object(allocator);
-          },
-          +[](allocator_type *allocator) {
-            return json_trie_node_element::create_array(allocator);
-          },
-          +[](allocator_type *allocator) {
-            return json_trie_node_element::create_deleter(allocator);
-          },
+  constexpr static inserter_ptr creators[] {
+          json_trie_node_element::create_object,
+          json_trie_node_element::create_array,
+          json_trie_node_element::create_deleter
   };
 
   error_code_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
