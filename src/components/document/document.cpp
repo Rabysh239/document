@@ -318,10 +318,10 @@ error_code_t document_t::set_(std::string_view json_pointer, boost::intrusive_pt
     if (container->is_object()) {
       container->as_object()->set(
               is_view_key ? view_key : key,
-              std::forward<boost::intrusive_ptr<json_trie_node_element>>(value)
+              std::move(value)
       );
     } else {
-      container->as_array()->set(index, std::forward<boost::intrusive_ptr<json_trie_node_element>>(value));
+      container->as_array()->set(index, std::move(value));
     }
   }
   return res;
@@ -335,7 +335,7 @@ error_code_t document_t::set_(std::string_view json_pointer, special_type value)
   uint32_t index;
   auto res = find_container_key(json_pointer, container, is_view_key, key, view_key, index);
   if (res == error_code_t::SUCCESS) {
-    auto node = inserters[static_cast<int>(value)](allocator_);
+    auto node = creators[static_cast<int>(value)](allocator_);
     if (container->is_object()) {
       container->as_object()->set(is_view_key ? view_key : key, node);
     } else {

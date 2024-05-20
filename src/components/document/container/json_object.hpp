@@ -117,7 +117,7 @@ void json_object<FirstType, SecondType>::set(
         std::string_view key,
         boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> &&value
 ) {
-  map_[key] = std::forward<boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>>(value);
+  map_[key] = std::move(value);
 }
 
 template<typename FirstType, typename SecondType>
