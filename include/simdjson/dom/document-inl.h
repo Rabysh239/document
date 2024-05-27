@@ -96,7 +96,13 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         os << '"';
         os << '\n';
         break;
-      case 'i': // we have a long int
+      case 'c':
+        os << "char " << static_cast<int8_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
+        break;
+      case 's':
+        os << "short int " << static_cast<int16_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
+        break;
+      case 'i':
         os << "int " << static_cast<int32_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
         break;
       case 'l': // we have a long int
@@ -112,7 +118,13 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         os << "hugeint\n"; //TODO support value
         tape_idx += 2;
         break;
-      case 'u': // we have a long int
+      case '8':
+        os << "unsigned char " << static_cast<uint8_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
+        break;
+      case 'G':
+        os << "unsigned short int " << static_cast<uint16_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
+        break;
+      case 'u':
         os << "unsigned int " << static_cast<uint32_t>(get_tape(tape_idx) & internal::JSON_VALUE_MASK) << "\n";
         break;
       case 'U': // we have a long uint
@@ -121,7 +133,7 @@ inline bool document<T>::dump_raw_tape(std::ostream &os) const noexcept {
         }
         os << "unsigned long " << get_tape(++tape_idx) << "\n";
         break;
-      case 'f': // we have a double
+      case 'f':
         os << "float ";
         float float_value;
         std::memcpy(&float_value, &get_tape(tape_idx), sizeof(float_value));

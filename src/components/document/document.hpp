@@ -89,9 +89,17 @@ public:
 
   bool is_bool(std::string_view json_pointer) const;
 
+  bool is_utinyint(std::string_view json_pointer) const;
+
+  bool is_usmallint(std::string_view json_pointer) const;
+
   bool is_uint(std::string_view json_pointer) const;
 
   bool is_ulong(std::string_view json_pointer) const;
+
+  bool is_tinyint(std::string_view json_pointer) const;
+
+  bool is_smallint(std::string_view json_pointer) const;
 
   bool is_int(std::string_view json_pointer) const;
 
@@ -111,9 +119,17 @@ public:
 
   bool get_bool(std::string_view json_pointer) const;
 
+  uint8_t get_utinyint(std::string_view json_pointer) const;
+
+  uint16_t get_usmallint(std::string_view json_pointer) const;
+
   uint32_t get_uint(std::string_view json_pointer) const;
 
   uint64_t get_ulong(std::string_view json_pointer) const;
+
+  int8_t get_tinyint(std::string_view json_pointer) const;
+
+  int16_t get_smallint(std::string_view json_pointer) const;
 
   int32_t get_int(std::string_view json_pointer) const;
 

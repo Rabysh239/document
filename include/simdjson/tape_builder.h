@@ -33,12 +33,16 @@ struct tape_builder {
 
   simdjson_inline void build(std::string_view value) noexcept;
 
+  simdjson_inline void build(int8_t value) noexcept;
+  simdjson_inline void build(int16_t value) noexcept;
   simdjson_inline void build(int32_t value) noexcept;
   /** Write a signed 64-bit value to  */
   simdjson_inline void build(int64_t value) noexcept;
 
   simdjson_inline void build(__int128_t value) noexcept;
 
+  simdjson_inline void build(uint8_t value) noexcept;
+  simdjson_inline void build(uint16_t value) noexcept;
   simdjson_inline void build(uint32_t value) noexcept;
   /** Write an unsigned 64-bit value to  */
   simdjson_inline void build(uint64_t value) noexcept;
@@ -121,6 +125,16 @@ simdjson_inline void tape_builder<K>::build(std::string_view value) noexcept {
 }
 
 template<typename K>
+simdjson_inline void tape_builder<K>::build(int8_t value) noexcept {
+  append(value, internal::tape_type::INT8);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(int16_t value) noexcept {
+  append(value, internal::tape_type::INT16);
+}
+
+template<typename K>
 simdjson_inline void tape_builder<K>::build(int32_t value) noexcept {
   append(value, internal::tape_type::INT32);
 }
@@ -133,6 +147,16 @@ simdjson_inline void tape_builder<K>::build(int64_t value) noexcept {
 template<typename K>
 simdjson_inline void tape_builder<K>::build(__int128_t value) noexcept {
   append3(value, internal::tape_type::INT128);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(uint8_t value) noexcept {
+  append(value, internal::tape_type::UINT8);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(uint16_t value) noexcept {
+  append(value, internal::tape_type::UINT16);
 }
 
 template<typename K>

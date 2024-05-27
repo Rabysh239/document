@@ -85,9 +85,17 @@ bool document_t::is_null(std::string_view json_pointer) const {
 
 bool document_t::is_bool(std::string_view json_pointer) const { return is_as<bool>(json_pointer); }
 
+bool document_t::is_utinyint(std::string_view json_pointer) const { return is_as<uint16_t>(json_pointer); }
+
+bool document_t::is_usmallint(std::string_view json_pointer) const { return is_as<uint16_t>(json_pointer); }
+
 bool document_t::is_uint(std::string_view json_pointer) const { return is_as<uint32_t>(json_pointer); }
 
 bool document_t::is_ulong(std::string_view json_pointer) const { return is_as<uint64_t>(json_pointer); }
+
+bool document_t::is_tinyint(std::string_view json_pointer) const { return is_as<int8_t>(json_pointer); }
+
+bool document_t::is_smallint(std::string_view json_pointer) const { return is_as<int16_t>(json_pointer); }
 
 bool document_t::is_int(std::string_view json_pointer) const { return is_as<int32_t>(json_pointer); }
 
@@ -113,9 +121,17 @@ bool document_t::is_dict(std::string_view json_pointer) const {
 
 bool document_t::get_bool(std::string_view json_pointer) const { return get_as<bool>(json_pointer); }
 
+uint8_t document_t::get_utinyint(std::string_view json_pointer) const { return get_as<uint8_t>(json_pointer); }
+
+uint16_t document_t::get_usmallint(std::string_view json_pointer) const { return get_as<uint16_t>(json_pointer); }
+
 uint32_t document_t::get_uint(std::string_view json_pointer) const { return get_as<uint32_t>(json_pointer); }
 
 uint64_t document_t::get_ulong(std::string_view json_pointer) const { return get_as<uint64_t>(json_pointer); }
+
+int8_t document_t::get_tinyint(std::string_view json_pointer) const { return get_as<int8_t>(json_pointer); }
+
+int16_t document_t::get_smallint(std::string_view json_pointer) const { return get_as<int16_t>(json_pointer); }
 
 int32_t document_t::get_int(std::string_view json_pointer) const { return get_as<int32_t>(json_pointer); }
 
@@ -172,12 +188,20 @@ compare_t compare_(
 
   if (type1 == element2->type()) {
     switch (type1) {
+      case element_type::INT8:
+        return equals_<int8_t>(element1, element2);
+      case element_type::INT16:
+        return equals_<int16_t>(element1, element2);
       case element_type::INT32:
         return equals_<int32_t>(element1, element2);
       case element_type::INT64:
         return equals_<int64_t>(element1, element2);
       case element_type::INT128:
         return equals_<__int128_t>(element1, element2);
+      case element_type::UINT8:
+        return equals_<uint8_t>(element1, element2);
+      case element_type::UINT16:
+        return equals_<uint16_t>(element1, element2);
       case element_type::UINT32:
         return equals_<uint32_t>(element1, element2);
       case element_type::UINT64:
@@ -532,12 +556,20 @@ bool is_equals_value(const simdjson::dom::element<T> *value1, const simdjson::do
   }
 
   switch (type1) {
+    case element_type::INT8:
+      return value1->get_int8().value() == value2->get_int8().value();
+    case element_type::INT16:
+      return value1->get_int16().value() == value2->get_int16().value();
     case element_type::INT32:
       return value1->get_int32().value() == value2->get_int32().value();
     case element_type::INT64:
       return value1->get_int64().value() == value2->get_int64().value();
     case element_type::INT128:
       return value1->get_int128().value() == value2->get_int128().value();
+    case element_type::UINT8:
+      return value1->get_uint8().value() == value2->get_uint8().value();
+    case element_type::UINT16:
+      return value1->get_uint16().value() == value2->get_uint16().value();
     case element_type::UINT32:
       return value1->get_uint32().value() == value2->get_uint32().value();
     case element_type::UINT64:
@@ -574,12 +606,20 @@ std::pmr::string value_to_string(const simdjson::dom::element<T> *value, std::pm
   using simdjson::dom::element_type;
 
   switch (value->type()) {
+    case element_type::INT8:
+      return create_pmr_string_(value->get_int8().value(), allocator);
+    case element_type::INT16:
+      return create_pmr_string_(value->get_int16().value(), allocator);
     case element_type::INT32:
       return create_pmr_string_(value->get_int32().value(), allocator);
     case element_type::INT64:
       return create_pmr_string_(value->get_int64().value(), allocator);
     case element_type::INT128:
       return {"hugeint", allocator}; //TODO support value
+    case element_type::UINT8:
+      return create_pmr_string_(value->get_uint8().value(), allocator);
+    case element_type::UINT16:
+      return create_pmr_string_(value->get_uint16().value(), allocator);
     case element_type::UINT32:
       return create_pmr_string_(value->get_uint32().value(), allocator);
     case element_type::UINT64:
