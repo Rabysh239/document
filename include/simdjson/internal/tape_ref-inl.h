@@ -39,6 +39,16 @@ simdjson_inline bool tape_ref<K>::is_double() const noexcept {
   return doc->get_tape(json_index) == tape_double;
 }
 template<typename K>
+simdjson_inline bool tape_ref<K>::is_int8() const noexcept {
+  constexpr auto tape_int32 = uint8_t(tape_type::INT8);
+  return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_int32;
+}
+template<typename K>
+simdjson_inline bool tape_ref<K>::is_int16() const noexcept {
+  constexpr auto tape_int32 = uint8_t(tape_type::INT16);
+  return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_int32;
+}
+template<typename K>
 simdjson_inline bool tape_ref<K>::is_int32() const noexcept {
   constexpr auto tape_int32 = uint8_t(tape_type::INT32);
   return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_int32;
@@ -52,6 +62,16 @@ template<typename K>
 simdjson_inline bool tape_ref<K>::is_int128() const noexcept {
   constexpr uint64_t tape_int128 = uint64_t(tape_type::INT128)<<56;
   return doc->get_tape(json_index) == tape_int128;
+}
+template<typename K>
+simdjson_inline bool tape_ref<K>::is_uint8() const noexcept {
+  constexpr auto tape_int32 = uint8_t(tape_type::UINT8);
+  return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_int32;
+}
+template<typename K>
+simdjson_inline bool tape_ref<K>::is_uint16() const noexcept {
+  constexpr auto tape_int32 = uint8_t(tape_type::UINT16);
+  return reinterpret_cast<const uint8_t *>(&doc->get_tape(json_index))[7] == tape_int32;
 }
 template<typename K>
 simdjson_inline bool tape_ref<K>::is_uint32() const noexcept {

@@ -24,9 +24,13 @@ public:
   simdjson_inline uint64_t tape_value() const noexcept;
   simdjson_inline bool is_float() const noexcept;
   simdjson_inline bool is_double() const noexcept;
+  simdjson_inline bool is_int8() const noexcept;
+  simdjson_inline bool is_int16() const noexcept;
   simdjson_inline bool is_int32() const noexcept;
   simdjson_inline bool is_int64() const noexcept;
   simdjson_inline bool is_int128() const noexcept;
+  simdjson_inline bool is_uint8() const noexcept;
+  simdjson_inline bool is_uint16() const noexcept;
   simdjson_inline bool is_uint32() const noexcept;
   simdjson_inline bool is_uint64() const noexcept;
   simdjson_inline bool is_false() const noexcept;
@@ -35,7 +39,6 @@ public:
 
   template<typename T, typename std::enable_if<(sizeof(T) < sizeof(uint64_t)), uint8_t>::type = 0>
   simdjson_inline T next_tape_value() const noexcept {
-    static_assert(sizeof(T) == sizeof(uint32_t), "next_tape_value() template parameter must be 32, 64 or 128-bit");
     T x;
     std::memcpy(&x,&doc->get_tape(json_index),sizeof(T));
     return x;
@@ -43,7 +46,7 @@ public:
 
   template<typename T, typename std::enable_if<(sizeof(T) >= sizeof(uint64_t)), uint8_t>::type = 1>
   simdjson_inline T next_tape_value() const noexcept {
-    static_assert(sizeof(T) == sizeof(uint64_t) || sizeof(T) == 2 * sizeof(uint64_t), "next_tape_value() template parameter must be 32, 64 or 128-bit");
+    static_assert(sizeof(T) == sizeof(uint64_t) || sizeof(T) == 2 * sizeof(uint64_t), "next_tape_value() template parameter must be 8, 16, 32, 64 or 128-bit");
     // Though the following is tempting...
     //  return *reinterpret_cast<const T*>(&doc_->tape[json_index + 1]);
     // It is not generally safe. It is safer, and often faster to rely

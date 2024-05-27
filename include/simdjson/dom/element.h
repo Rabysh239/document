@@ -11,9 +11,13 @@ namespace dom {
  * This is the type it is most easily cast_from to with get<>.
  */
 enum class element_type {
+  INT8 = 'c',
+  INT16 = 's',
   INT32 = 'i',
   INT64 = 'l',     ///< int64_t
   INT128 = 'h',
+  UINT8 = '8',
+  UINT16 = 'G',
   UINT32 = 'u',
   UINT64 = 'U',    ///< uint64_t: any integer that fits in uint64_t but *not* int64_t
   FLOAT = 'f',
@@ -75,6 +79,10 @@ public:
    */
   inline simdjson_result<std::string_view> get_string() const noexcept;
 
+  inline simdjson_result<int8_t> get_int8() const noexcept;
+
+  inline simdjson_result<int16_t> get_int16() const noexcept;
+
   inline simdjson_result<int32_t> get_int32() const noexcept;
   /**
    * Cast this element to a signed integer.
@@ -86,6 +94,10 @@ public:
   inline simdjson_result<int64_t> get_int64() const noexcept;
 
   inline simdjson_result<__int128_t> get_int128() const noexcept;
+
+  inline simdjson_result<uint8_t> get_uint8() const noexcept;
+
+  inline simdjson_result<uint16_t> get_uint16() const noexcept;
 
   inline simdjson_result<uint32_t> get_uint32() const noexcept;
   /**
@@ -219,6 +231,18 @@ public:
   }
 
   template<typename T>
+  inline typename std::enable_if<std::is_same<T, int8_t>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_int8();
+  }
+
+  template<typename T>
+  inline typename std::enable_if<std::is_same<T, int16_t>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_int16();
+  }
+
+  template<typename T>
   inline typename std::enable_if<std::is_same<T, int32_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_int32();
@@ -234,6 +258,18 @@ public:
   inline typename std::enable_if<std::is_same<T, __int128_t>::value, simdjson_result<T>>::type
   get() const noexcept {
     return get_int128();
+  }
+
+  template<typename T>
+  inline typename std::enable_if<std::is_same<T, uint8_t>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_uint8();
+  }
+
+  template<typename T>
+  inline typename std::enable_if<std::is_same<T, uint16_t>::value, simdjson_result<T>>::type
+  get() const noexcept {
+    return get_uint16();
   }
 
   template<typename T>
