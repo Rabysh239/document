@@ -47,6 +47,7 @@ struct tape_builder {
   /** Write a double value to  */
   simdjson_inline void build(double value) noexcept;
   simdjson_inline void build(bool value) noexcept;
+  simdjson_inline void build(nullptr_t) noexcept;
   simdjson_inline void visit_null_atom() noexcept;
 private:
   allocator_type *allocator_;
@@ -161,6 +162,11 @@ simdjson_inline void tape_builder<K>::build(double value) noexcept {
 template<typename K>
 simdjson_inline void tape_builder<K>::build(bool value) noexcept {
   append(0, value ? internal::tape_type::TRUE_VALUE : internal::tape_type::FALSE_VALUE);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(nullptr_t) noexcept {
+  visit_null_atom();
 }
 
 template<typename K>

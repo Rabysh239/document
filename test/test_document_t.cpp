@@ -176,6 +176,17 @@ TEST_CASE("document_t::set") {
   REQUIRE(doc->get_string(key) == value);
 }
 
+TEST_CASE("document_t::set nullptr") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/key");
+  doc->set(key, nullptr);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_null(key));
+}
+
 TEST_CASE("document_t::set doc") {
   auto json = R"(
 {
