@@ -72,9 +72,9 @@ template<typename FirstType, typename SecondType>
 void
 json_array<FirstType, SecondType>::set(uint32_t index, boost::intrusive_ptr<json_trie_node<FirstType, SecondType>> &&value) {
   if (index >= size()) {
-    items_.emplace_back(std::forward<boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>>(value));
+    items_.emplace_back(std::move(value));
   } else {
-    items_[index] = std::forward<boost::intrusive_ptr<json_trie_node<FirstType, SecondType>>>(value);
+    items_[index] = std::move(value);
   }
 }
 

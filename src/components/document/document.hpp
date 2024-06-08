@@ -29,7 +29,7 @@ enum class special_type {
   DELETER,
 };
 
-class document_t final : public allocator_intrusive_ref_counter {
+class document_t final : public allocator_intrusive_ref_counter<document_t> {
 public:
   using ptr = boost::intrusive_ptr<document_t>;
   using allocator_type = std::pmr::memory_resource;
@@ -89,9 +89,17 @@ public:
 
   bool is_bool(std::string_view json_pointer) const;
 
+  bool is_utinyint(std::string_view json_pointer) const;
+
+  bool is_usmallint(std::string_view json_pointer) const;
+
   bool is_uint(std::string_view json_pointer) const;
 
   bool is_ulong(std::string_view json_pointer) const;
+
+  bool is_tinyint(std::string_view json_pointer) const;
+
+  bool is_smallint(std::string_view json_pointer) const;
 
   bool is_int(std::string_view json_pointer) const;
 
@@ -111,9 +119,17 @@ public:
 
   bool get_bool(std::string_view json_pointer) const;
 
+  uint8_t get_utinyint(std::string_view json_pointer) const;
+
+  uint16_t get_usmallint(std::string_view json_pointer) const;
+
   uint32_t get_uint(std::string_view json_pointer) const;
 
   uint64_t get_ulong(std::string_view json_pointer) const;
+
+  int8_t get_tinyint(std::string_view json_pointer) const;
+
+  int16_t get_smallint(std::string_view json_pointer) const;
 
   int32_t get_int(std::string_view json_pointer) const;
 
@@ -197,7 +213,7 @@ public:
   static bool is_equals_documents(const ptr &doc1, const ptr &doc2);
 
 protected:
-  allocator_type *get_allocator();
+  allocator_type *get_allocator() override;
 
 private:
   using element_from_immutable = simdjson::dom::element<simdjson::dom::immutable_document>;
@@ -205,7 +221,7 @@ private:
   using json_trie_node_element = json_trie_node<element_from_immutable, element_from_mutable>;
   using inserter_ptr = json_trie_node_element *(*)(allocator_type *);
 
-  document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element* index);
+  document_t(ptr ancestor, allocator_type *allocator, json_trie_node_element *index);
 
   allocator_type *allocator_;
   simdjson::dom::immutable_document *immut_src_;
@@ -215,16 +231,10 @@ private:
   std::pmr::vector<ptr> ancestors_{};
   bool is_root_;
 
-  constexpr static inserter_ptr inserters[] {
-          +[](allocator_type *allocator) {
-            return json_trie_node_element::create_object(allocator);
-          },
-          +[](allocator_type *allocator) {
-            return json_trie_node_element::create_array(allocator);
-          },
-          +[](allocator_type *allocator) {
-            return json_trie_node_element::create_deleter(allocator);
-          },
+  constexpr static inserter_ptr creators[] {
+          json_trie_node_element::create_object,
+          json_trie_node_element::create_array,
+          json_trie_node_element::create_deleter
   };
 
   error_code_t set_(std::string_view json_pointer, const simdjson::dom::element<simdjson::dom::mutable_document> &value);
@@ -297,7 +307,7 @@ template<>
 inline error_code_t document_t::set(std::string_view json_pointer, document_ptr value) {
   ancestors_.push_back(value);
   auto copy = value->element_ind_;
-  set_(json_pointer, std::move(copy));
+  return set_(json_pointer, std::move(copy));
 }
 //
 //template<class T>

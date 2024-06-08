@@ -74,6 +74,50 @@ TEST_CASE("document_t::compare") {
   REQUIRE(doc1->compare(*doc2, more) == compare_t::more);
 }
 
+TEST_CASE("document_t::tiny int") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/countUnsignedInt");
+  uint16_t value = 3;
+  doc->set(key, value);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_tinyint(key));
+  REQUIRE(doc->get_tinyint(key));
+  REQUIRE(doc->get_smallint(key) == value);
+  REQUIRE(doc->get_int(key) == value);
+  REQUIRE(doc->get_long(key) == value);
+  REQUIRE(doc->get_hugeint(key) == value);
+  REQUIRE(doc->get_usmallint(key) == value);
+  REQUIRE(doc->get_uint(key) == value);
+  REQUIRE(doc->get_ulong(key) == value);
+  REQUIRE(is_equals(doc->get_float(key), float(value)));
+  REQUIRE(is_equals(doc->get_double(key), double(value)));
+}
+
+TEST_CASE("document_t::small int") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/countUnsignedInt");
+  uint16_t value = 3;
+  doc->set(key, value);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_smallint(key));
+  REQUIRE(doc->get_smallint(key) == value);
+  REQUIRE(doc->get_tinyint(key));
+  REQUIRE(doc->get_int(key) == value);
+  REQUIRE(doc->get_long(key) == value);
+  REQUIRE(doc->get_hugeint(key) == value);
+  REQUIRE(doc->get_usmallint(key) == value);
+  REQUIRE(doc->get_uint(key) == value);
+  REQUIRE(doc->get_ulong(key) == value);
+  REQUIRE(is_equals(doc->get_float(key), float(value)));
+  REQUIRE(is_equals(doc->get_double(key), double(value)));
+}
+
 TEST_CASE("document_t::int") {
   auto allocator = std::pmr::new_delete_resource();
   auto doc = make_document(allocator);
@@ -85,8 +129,58 @@ TEST_CASE("document_t::int") {
   REQUIRE(doc->is_exists(key));
   REQUIRE(doc->is_int(key));
   REQUIRE(doc->get_int(key) == value);
+  REQUIRE(doc->get_tinyint(key));
+  REQUIRE(doc->get_smallint(key) == value);
   REQUIRE(doc->get_long(key) == value);
   REQUIRE(doc->get_hugeint(key) == value);
+  REQUIRE(doc->get_utinyint(key) == value);
+  REQUIRE(doc->get_usmallint(key) == value);
+  REQUIRE(doc->get_uint(key) == value);
+  REQUIRE(doc->get_ulong(key) == value);
+  REQUIRE(is_equals(doc->get_float(key), float(value)));
+  REQUIRE(is_equals(doc->get_double(key), double(value)));
+}
+
+TEST_CASE("document_t::unsigned tiny int") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/countUnsignedInt");
+  uint16_t value = 3;
+  doc->set(key, value);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_utinyint(key));
+  REQUIRE(doc->get_utinyint(key) == value);
+  REQUIRE(doc->get_tinyint(key));
+  REQUIRE(doc->get_smallint(key) == value);
+  REQUIRE(doc->get_int(key) == value);
+  REQUIRE(doc->get_long(key) == value);
+  REQUIRE(doc->get_hugeint(key) == value);
+  REQUIRE(doc->get_usmallint(key) == value);
+  REQUIRE(doc->get_uint(key) == value);
+  REQUIRE(doc->get_ulong(key) == value);
+  REQUIRE(is_equals(doc->get_float(key), float(value)));
+  REQUIRE(is_equals(doc->get_double(key), double(value)));
+}
+
+TEST_CASE("document_t::unsigned small int") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/countUnsignedInt");
+  uint16_t value = 3;
+  doc->set(key, value);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_usmallint(key));
+  REQUIRE(doc->get_usmallint(key) == value);
+  REQUIRE(doc->get_tinyint(key));
+  REQUIRE(doc->get_smallint(key) == value);
+  REQUIRE(doc->get_int(key) == value);
+  REQUIRE(doc->get_long(key) == value);
+  REQUIRE(doc->get_hugeint(key) == value);
+  REQUIRE(doc->get_utinyint(key) == value);
   REQUIRE(doc->get_uint(key) == value);
   REQUIRE(doc->get_ulong(key) == value);
   REQUIRE(is_equals(doc->get_float(key), float(value)));
@@ -104,9 +198,13 @@ TEST_CASE("document_t::unsigned int") {
   REQUIRE(doc->is_exists(key));
   REQUIRE(doc->is_uint(key));
   REQUIRE(doc->get_uint(key) == value);
+  REQUIRE(doc->get_tinyint(key));
+  REQUIRE(doc->get_smallint(key) == value);
   REQUIRE(doc->get_int(key) == value);
   REQUIRE(doc->get_long(key) == value);
   REQUIRE(doc->get_hugeint(key) == value);
+  REQUIRE(doc->get_utinyint(key) == value);
+  REQUIRE(doc->get_usmallint(key) == value);
   REQUIRE(doc->get_ulong(key) == value);
   REQUIRE(is_equals(doc->get_float(key), float(value)));
   REQUIRE(is_equals(doc->get_double(key), double(value)));
@@ -123,8 +221,12 @@ TEST_CASE("document_t::hugeint") {
   REQUIRE(doc->is_exists(key));
   REQUIRE(doc->is_hugeint(key));
   REQUIRE(doc->get_hugeint(key) == value);
+  REQUIRE(doc->get_tinyint(key));
+  REQUIRE(doc->get_smallint(key) == value);
   REQUIRE(doc->get_int(key) == value);
   REQUIRE(doc->get_long(key) == value);
+  REQUIRE(doc->get_utinyint(key) == value);
+  REQUIRE(doc->get_usmallint(key) == value);
   REQUIRE(doc->get_uint(key) == value);
   REQUIRE(doc->get_ulong(key) == value);
   REQUIRE(is_equals(doc->get_float(key), float(value)));
@@ -136,13 +238,24 @@ TEST_CASE("document_t::float") {
   auto doc = make_document(allocator);
 
   std::string_view key("/valueFloat");
-  float value = 2.3;
+  float value = 2.3f;
   doc->set(key, value);
 
   REQUIRE(doc->is_exists(key));
   REQUIRE(doc->is_float(key));
   REQUIRE(is_equals(doc->get_float(key), value));
   REQUIRE(is_equals(doc->get_double(key), double(value)));
+}
+
+TEST_CASE("document_t::cast signed to signed") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/value");
+  int64_t value = -1;
+  doc->set(key, value);
+
+  REQUIRE(doc->get_int(key) == value);
 }
 
 TEST_CASE("document_t::set") {
@@ -165,6 +278,17 @@ TEST_CASE("document_t::set") {
   REQUIRE(doc->get_string(key) == value);
 }
 
+TEST_CASE("document_t::set nullptr") {
+  auto allocator = std::pmr::new_delete_resource();
+  auto doc = make_document(allocator);
+
+  std::string_view key("/key");
+  doc->set(key, nullptr);
+
+  REQUIRE(doc->is_exists(key));
+  REQUIRE(doc->is_null(key));
+}
+
 TEST_CASE("document_t::set doc") {
   auto json = R"(
 {
@@ -178,7 +302,7 @@ TEST_CASE("document_t::set doc") {
   auto nestedDoc = document_t::document_from_json(json, allocator);
 
   std::string_view key("/nestedDoc");
-  doc->set(key, nestedDoc);
+  REQUIRE(doc->set(key, nestedDoc) == error_code_t::SUCCESS);
 
   int64_t value = 3;
   doc->set("/nestedDoc/other_number", value);
@@ -397,7 +521,7 @@ TEST_CASE("document_t::remove fail when no element") {
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
 
-TEST_CASE("document_t::remove fail when removing array element") {
+TEST_CASE("document_t::remove when removing array element") {
   auto json = R"(
 {
   "_id": "000000000000000000000001",
@@ -481,7 +605,7 @@ TEST_CASE("document_t::move fail when no element") {
   REQUIRE(document_t::is_equals_documents(doc, res_doc));
 }
 
-TEST_CASE("document_t::move fail when moving array element") {
+TEST_CASE("document_t::move when moving array element") {
   auto json = R"(
 {
   "_id": "000000000000000000000001",

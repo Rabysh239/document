@@ -33,12 +33,16 @@ struct tape_builder {
 
   simdjson_inline void build(std::string_view value) noexcept;
 
+  simdjson_inline void build(int8_t value) noexcept;
+  simdjson_inline void build(int16_t value) noexcept;
   simdjson_inline void build(int32_t value) noexcept;
   /** Write a signed 64-bit value to  */
   simdjson_inline void build(int64_t value) noexcept;
 
   simdjson_inline void build(__int128_t value) noexcept;
 
+  simdjson_inline void build(uint8_t value) noexcept;
+  simdjson_inline void build(uint16_t value) noexcept;
   simdjson_inline void build(uint32_t value) noexcept;
   /** Write an unsigned 64-bit value to  */
   simdjson_inline void build(uint64_t value) noexcept;
@@ -47,6 +51,7 @@ struct tape_builder {
   /** Write a double value to  */
   simdjson_inline void build(double value) noexcept;
   simdjson_inline void build(bool value) noexcept;
+  simdjson_inline void build(nullptr_t) noexcept;
   simdjson_inline void visit_null_atom() noexcept;
 private:
   allocator_type *allocator_;
@@ -76,7 +81,7 @@ tape_builder<K>::tape_builder() noexcept
 
 template<typename K>
 tape_builder<K>::~tape_builder() {
-  mr_delete(allocator_, tape_);
+  mr_delete(allocator_, static_cast<K *>(tape_));
 }
 
 template<typename K>
@@ -120,6 +125,16 @@ simdjson_inline void tape_builder<K>::build(std::string_view value) noexcept {
 }
 
 template<typename K>
+simdjson_inline void tape_builder<K>::build(int8_t value) noexcept {
+  append(value, internal::tape_type::INT8);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(int16_t value) noexcept {
+  append(value, internal::tape_type::INT16);
+}
+
+template<typename K>
 simdjson_inline void tape_builder<K>::build(int32_t value) noexcept {
   append(value, internal::tape_type::INT32);
 }
@@ -132,6 +147,16 @@ simdjson_inline void tape_builder<K>::build(int64_t value) noexcept {
 template<typename K>
 simdjson_inline void tape_builder<K>::build(__int128_t value) noexcept {
   append3(value, internal::tape_type::INT128);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(uint8_t value) noexcept {
+  append(value, internal::tape_type::UINT8);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(uint16_t value) noexcept {
+  append(value, internal::tape_type::UINT16);
 }
 
 template<typename K>
@@ -161,6 +186,11 @@ simdjson_inline void tape_builder<K>::build(double value) noexcept {
 template<typename K>
 simdjson_inline void tape_builder<K>::build(bool value) noexcept {
   append(0, value ? internal::tape_type::TRUE_VALUE : internal::tape_type::FALSE_VALUE);
+}
+
+template<typename K>
+simdjson_inline void tape_builder<K>::build(nullptr_t) noexcept {
+  visit_null_atom();
 }
 
 template<typename K>
