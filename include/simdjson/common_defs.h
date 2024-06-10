@@ -2,8 +2,8 @@
 #define SIMDJSON_COMMON_DEFS_H
 
 #include <cassert>
-#include "../simdjson/compiler_check.h"
-#include "../simdjson/portability.h"
+#include <simdjson/compiler_check.h>
+#include <simdjson/portability.h>
 
 namespace simdjson {
 namespace internal {
@@ -103,7 +103,7 @@ double from_chars(const char *first, const char* end) noexcept;
   #endif
 
   #define SIMDJSON_PUSH_DISABLE_WARNINGS _Pragma("GCC diagnostic push")
-  // gcc doesn't seem to disable all warnings with all and extra, add warnings here as necessary
+  // gcc doesn't seem to disable all warnings with all and extra, build warnings here as necessary
   // We do it separately for clang since it has different warnings.
   #ifdef __clang__
   // clang is missing -Wmaybe-uninitialized.

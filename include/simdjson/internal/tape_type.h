@@ -8,17 +8,20 @@ namespace internal {
  * The possible types in the tape.
  */
 enum class tape_type {
-  ROOT = 'r',
-  START_ARRAY = '[',
-  START_OBJECT = '{',
-  END_ARRAY = ']',
-  END_OBJECT = '}',
   STRING = '"',
+  INT8 = 'c',
+  INT16 = 's',
+  INT32 = 'i',
   INT64 = 'l',
-  UINT64 = 'u',
+  INT128 = 'h',
+  UINT8 = '8',
+  UINT16 = 'G',
+  UINT32 = 'u',
+  UINT64 = 'U',
+  FLOAT = 'f',
   DOUBLE = 'd',
-  TRUE_VALUE = 't',
-  FALSE_VALUE = 'f',
+  TRUE_VALUE = '1',
+  FALSE_VALUE = '0',
   NULL_VALUE = 'n'
 }; // enum class tape_type
 
