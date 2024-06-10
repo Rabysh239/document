@@ -47,18 +47,6 @@ public:
   document_t &operator=(const document_t &) = delete;
 
   explicit document_t(allocator_type *, bool = true);
-//
-//  explicit document_t(bool value);
-//
-//  explicit document_t(uint64_t value);
-//
-//  explicit document_t(int64_t value);
-//
-//  explicit document_t(double value);
-//
-//  explicit document_t(const std::string &value);
-//
-//  explicit document_t(std::string_view value);
 
   template<class T>
   error_code_t set(std::string_view json_pointer, T value);
@@ -178,33 +166,10 @@ public:
     }
     return T();
   }
-//  ::document::impl::dict_iterator_t begin() const;
 
   compare_t compare(const document_t &other, std::string_view json_pointer) const;
 
   std::pmr::string to_json() const;
-
-//  ::document::retained_t<::document::impl::dict_t> to_dict() const;
-
-//  ::document::retained_t<::document::impl::array_t> to_array() const;
-//
-//  bool operator<(const document_t &rhs) const;
-//
-//  bool operator>(const document_t &rhs) const;
-//
-//  bool operator<=(const document_t &rhs) const;
-//
-//  bool operator>=(const document_t &rhs) const;
-//
-//  bool operator==(const document_t &rhs) const;
-//
-//  bool operator!=(const document_t &rhs) const;
-//
-//  const ::document::impl::value_t *operator*() const;
-//
-//  const ::document::impl::value_t *operator->() const;
-//
-//  explicit operator bool() const;
 
   static ptr document_from_json(const std::string &json, document_t::allocator_type *allocator);
 
@@ -272,19 +237,6 @@ private:
 using document_ptr = document_t::ptr;
 
 document_ptr make_document(document_t::allocator_type *allocator);
-//
-//document_ptr make_document(const ::document::impl::dict_t *dict);
-//
-//document_ptr make_document(const ::document::impl::array_t *array);
-//
-//document_ptr make_document(const ::document::impl::value_t *value);
-//
-//template<class T>
-//document_ptr make_document(const std::string &key, T value);
-//
-//document_ptr make_upsert_document(const document_ptr &source);
-
-//document_id_t get_document_id(const document_ptr &document);
 
 template<class T>
 inline error_code_t document_t::set(std::string_view json_pointer, T value) {
@@ -309,21 +261,10 @@ inline error_code_t document_t::set(std::string_view json_pointer, document_ptr 
   auto copy = value->element_ind_;
   return set_(json_pointer, std::move(copy));
 }
-//
-//template<class T>
-//document_ptr make_document(const std::string &key, T value) {
-//  auto document = make_document();
-//  document->set(key, value);
-//  return document;
-//}
 
 std::pmr::string serialize_document(const document_ptr &document);
 
 document_ptr deserialize_document(const std::string &text, document_t::allocator_type *allocator);
-//
-//std::string to_string(const document_t &doc);
-//
-//document_t sum(const document_t &value1, const document_t &value2);
 
 template<typename T>
 std::pmr::string create_pmr_string_(T value, std::pmr::memory_resource *allocator);

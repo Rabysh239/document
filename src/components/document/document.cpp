@@ -150,7 +150,7 @@ std::pmr::string document_t::get_string(std::string_view json_pointer) const {
 document_t::ptr document_t::get_array(std::string_view json_pointer) {
   const auto node_ptr = find_node(json_pointer).first;
   if (node_ptr == nullptr || !node_ptr->is_array()) {
-    return nullptr; // temporarily
+    return nullptr;
   }
   return new(allocator_->allocate(sizeof(document_t))) document_t({this}, allocator_, node_ptr);
 }
@@ -158,7 +158,7 @@ document_t::ptr document_t::get_array(std::string_view json_pointer) {
 document_t::ptr document_t::get_dict(std::string_view json_pointer) {
   const auto node_ptr = find_node(json_pointer).first;
   if (node_ptr == nullptr || !node_ptr->is_object()) {
-    return nullptr; // temporarily
+    return nullptr;
   }
   return new(allocator_->allocate(sizeof(document_t))) document_t({this}, allocator_, node_ptr);
 }
